@@ -120,7 +120,7 @@ const getRightsList = localContext => {
 }
 
 const getFundingReferences = submission => {
-  const { funderIdentifierType, Funding, awardnumber, awardtitle, awarduri } =
+  const { funderIdentifierType, Funding, funderid, awardnumber, awardtitle, awarduri } =
     submission
 
   return Funding
@@ -128,7 +128,7 @@ const getFundingReferences = submission => {
         {
           funderName: Funding,
           funderIdentifierType,
-          funderIdentifier: Funding,
+          funderIdentifier: funderid,
           awardNumber: awardnumber || null,
           awardTitle: awardtitle || null,
           awardUri: awarduri || null,
