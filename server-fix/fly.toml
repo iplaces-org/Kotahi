@@ -1,0 +1,45 @@
+app = "iplaces-test-server"
+primary_region = "lhr"
+
+# dockerfile is resolved relative to THIS file's dir (server-fix/), while the
+# build context is the repo root (deploy script passes `.`) so the Dockerfile's
+# COPY can reach packages/. Do NOT add an [env] block or a [processes] line to
+# this file -- env lives in Fly secrets; both break this stack.
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  auto_start_machines = true
+  auto_stop_machines = true
+  force_https = true
+  internal_port = 3000
+  min_machines_running = 0
+
+[[services]]
+  internal_port = 3000
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+[[services]]
+  internal_port = 8081
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 8081
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"
+
+[[mounts]]
+  source = "kotahi_test_plugins"
+  destination = "/custom"

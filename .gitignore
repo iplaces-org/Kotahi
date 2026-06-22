@@ -55,3 +55,11 @@ packages/server/scripts/local
 !**/.yarn/versions
 
 .claude
+
+# --- iPlaces deploy hygiene (keep drift-prone local files out of git) ---
+# Unsafe/backup server tomls that must never be auto-picked by `fly deploy`.
+/fly.toml
+/fly.toml.UNSAFE
+/fly.toml.backup-*
+# R history droppings from the publishing services dirs.
+**/.Rhistory

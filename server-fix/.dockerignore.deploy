@@ -1,0 +1,19 @@
+# Deploy-scoped ignore file for the iPlaces server overlay build.
+# Passed via `fly deploy --ignorefile server-fix/.dockerignore.deploy`.
+#
+# The build context is the repo root, but the wrapper Dockerfile only needs
+# ONE file. Exclude everything, then un-ignore the single patched file and
+# each of its parent directories (Docker requires walking the parents in).
+*
+
+!packages
+packages/*
+!packages/server
+packages/server/*
+!packages/server/services
+packages/server/services/*
+!packages/server/services/publishing
+packages/server/services/publishing/*
+!packages/server/services/publishing/datacite
+packages/server/services/publishing/datacite/*
+!packages/server/services/publishing/datacite/fieldsTransformers.js
