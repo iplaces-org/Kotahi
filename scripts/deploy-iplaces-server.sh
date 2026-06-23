@@ -24,9 +24,10 @@ CONFIG="server-fix/fly.toml"
 DOCKERFILE="server-fix/Dockerfile"
 IGNOREFILE="server-fix/.dockerignore.deploy"
 CONTAINER_PATCH_PATH="/home/node/app/services/publishing/datacite/fieldsTransformers.js"
+CONTAINER_CMS_ENDPOINT_PATH="/home/node/app/api/rest/cmsUpload/endpoint.js"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://iplaces-test-client.fly.dev"
-EXPECTED_INSTANCE_GROUPS="gumpstation:journal"
+EXPECTED_INSTANCE_GROUPS="gumpstation:journal,testclone3:journal"
 # -----------------------------------------------------------------------------
 
 # Resolve repo root from this script's location, and cd there (build context).
@@ -132,6 +133,17 @@ guard_patch_landed() {
   else fail "funderid NOT found at $CONTAINER_PATCH_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_cms_endpoint_landed() {
+  hdr "Guard: cmsUpload endpoint overlay landed in container"
+  # Same parsing discipline as guard_patch_landed: grep -c prints exactly the
+  # count on its own line, so ssh chatter on stderr can't cause a false pass.
+  local out n
+  out="$(flycli ssh console --app "$APP" -C "grep -c 'await uploadCms' $CONTAINER_CMS_ENDPOINT_PATH" 2>/dev/null || true)"
+  n="$(printf '%s\n' "$out" | grep -oE '^[0-9]+$' | tail -1)"
+  if [[ -n "$n" && "$n" -ge 1 ]]; then ok "await uploadCms present in-container ($n line(s)) at flattened path"
+  else fail "await uploadCms NOT found at $CONTAINER_CMS_ENDPOINT_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+}
+
 guard_env_preserved() {
   hdr "Guard: env preserved (secrets not clobbered)"
   local ig cu
@@ -178,6 +190,7 @@ guard_listening_3000() {
 run_guards() {
   wake_machine
   guard_patch_landed
+  guard_cms_endpoint_landed
   guard_env_preserved
   guard_machine_healthy
   guard_listening_3000

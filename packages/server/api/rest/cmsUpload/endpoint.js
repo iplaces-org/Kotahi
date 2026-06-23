@@ -31,8 +31,12 @@ module.exports = app => {
     authBearer,
     upload.array('files'),
     async (req, res) => {
-      const uploadedFiles = uploadCms(req.body.id, req.files)
-      res.send(uploadedFiles)
+      try {
+        const uploadedFiles = await uploadCms(req.body.id, req.files)
+        res.send(uploadedFiles)
+      } catch (err) {
+        res.status(500).send({ error: err.message })
+      }
     },
   )
 }
