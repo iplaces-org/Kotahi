@@ -1,0 +1,479 @@
+{#
+  geome-expedition.njk — live GEOME expedition OR project summary, client-side.
+
+  Identifier comes from the article's submission data:
+        article.parsedSubmission.GEOME[0].url
+  That value may be EITHER:
+    - an expedition ARK / record URL  (e.g. ark:/21547/GCy2  or  .../record/ark:/21547/GCy2)
+    - a project URL with a projectId  (e.g. https://geome-db.org/workbench/team-overview?projectId=75)
+  parseInput() normalizes both before any API call.
+
+  TWO RESOLUTION PATHS:
+    - ARK input    -> resolveArk() -> /v1/bcids/metadata/<ark>
+                      auto-detects expedition (expeditionCode) vs project (projectId).
+    - project URL  -> NO metadata resolution needed; the projectId IS the scope.
+                      Records come straight from the confirmed-working call:
+                      /v1/records/<entity>/json?q=_projects_:<id>   (no brackets — verified on project 75)
+                      Title is a best-effort lookup that never blocks rendering.
+
+  WHY THE CAPS: a single expedition is small, but a whole project can hold many
+  expeditions and return tens of thousands of records. Fetching all of them
+  (and mapping every point) hangs the browser. So project fetches are capped
+  (MAX_PAGES_PROJECT) and counts show "<n>+" when truncated; markers are capped
+  at MAX_MARKERS. Expeditions keep the old generous limits.
+
+  UNVERIFIED (best-effort, never blocks): the /v1/projects list shape used to
+  fetch a project's title. If it fails, the heading falls back to "Project <id>".
+#}
+
+{% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME.length %}
+
+<div class="geome-expedition" data-ark="{{ article.parsedSubmission.GEOME[0].url }}" data-entity="">
+  <div class="geome-status">Loading data from GEOME…</div>
+</div>
+
+<style>
+  .geome-expedition { margin: 1.5rem 0; }
+  .geome-status { font-style: italic; opacity: 0.8; }
+  .geome-error { color: #a12; }
+  .geome-head { margin: 0 0 .25rem; }
+  .geome-sub { font-size: .9rem; opacity: .85; margin: 0 0 1rem; word-break: break-word; }
+  .geome-stats { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1rem; }
+  .geome-stat { line-height: 1.2; }
+  .geome-stat b { display: block; font-size: 1.5rem; }
+  .geome-stat span { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+  .geome-expedition details { margin: .35rem 0; }
+  .geome-expedition summary { cursor: pointer; }
+  .geome-map { height: 320px; margin: 1rem 0; border-radius: 6px; }
+  .geome-note { font-size: .8rem; opacity: .7; margin: .25rem 0 0; }
+  .geome-expedition ul.geome-inline { margin: .35rem 0 0; padding-left: 1.1rem; }
+</style>
+
+<script>
+(function () {
+  "use strict";
+  const API = "https://api.geome-db.org";
+  const SITE = "https://geome-db.org";
+
+  const PROJECT_ID_PATHS = [
+    "expedition.project.projectId", "project.projectId", "projectId", "expedition.projectId"
+  ];
+  const EXPED_CODE_PATHS = ["expedition.expeditionCode", "expeditionCode"];
+  const PREFERRED = ["Event", "Sample", "EnvironmentalPackage"];
+  const ENTITY_LABELS = { Event: "events", Sample: "samples", EnvironmentalPackage: "env. packages" };
+
+  // Safety caps. Expeditions are small; projects can be huge.
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES_EXPED = 200;   // ~unbounded for a single expedition
+  const MAX_PAGES_PROJECT = 10;  // ~10k records max per entity, keeps the browser responsive
+  const MAX_MARKERS = 1500;      // Leaflet chokes past a few thousand markers
+
+  const YEAR_KEYS = ["yearCollected", "year"];
+  const LAT_KEYS = ["decimalLatitude", "latitude", "lat"];
+  const LNG_KEYS = ["decimalLongitude", "longitude", "lng", "lon"];
+  const LOCALITY_KEYS = ["locality", "island", "country"];
+  const COLLECTOR_KEYS = ["collectorList", "recordedBy", "collector"];
+  const PROTOCOL_KEYS = ["samplingProtocol", "protocol"];
+  const ID_KEYS = ["eventID", "materialSampleID", "sampleID", "bcid", "identifier"];
+
+  function arkFromValue(v) {
+    if (!v) return null;
+    const m = String(v).trim().match(/ark:\/?(\d+)\/([^\/?#\s]+)/i);
+    return m ? "ark:/" + m[1] + "/" + m[2] : null;
+  }
+
+  // Normalize data-ark into:
+  //   { kind: "project", projectId: "75" }    when ?projectId=<n> is present
+  //   { kind: "ark",     ark: "ark:/.../..." } for an expedition ARK / record URL
+  //   null                                      when neither is found
+  // projectId is checked first so a project URL never falls through to ARK extraction.
+  function parseInput(v) {
+    if (!v) return null;
+    const s = String(v).trim();
+    const pid = s.match(/[?&]projectId=(\d+)/i);
+    if (pid) return { kind: "project", projectId: pid[1] };
+    const ark = arkFromValue(s);
+    if (ark) return { kind: "ark", ark: ark };
+    return null;
+  }
+
+  async function getJSON(url) {
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!r.ok) throw new Error(r.status + " from " + url);
+    return r.json();
+  }
+
+  function dig(obj, paths) {
+    for (const path of paths) {
+      let cur = obj, ok = true;
+      for (const key of path.split(".")) {
+        if (cur && typeof cur === "object" && key in cur) cur = cur[key];
+        else { ok = false; break; }
+      }
+      if (ok && cur != null && cur !== "") return cur;
+    }
+    return null;
+  }
+
+  function first(rec, keys) {
+    for (const k of keys) {
+      const v = rec[k];
+      if (v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length)) return v;
+    }
+    return null;
+  }
+
+  function splitPeople(value) {
+    if (!value) return [];
+    return String(value).replace(/[|,]/g, ";").split(";").map(s => s.trim()).filter(Boolean);
+  }
+
+  function toFloat(v) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  async function resolveArk(ark) {
+    const data = await getJSON(API + "/v1/bcids/metadata/" + ark);
+    const exp = data.expedition || {};
+    const expeditionCode = dig(data, EXPED_CODE_PATHS);
+    const projectId = dig(data, PROJECT_ID_PATHS);
+    const mode = expeditionCode ? "expedition" : (projectId != null ? "project" : "unknown");
+    const entities = (exp.entityIdentifiers || data.entityIdentifiers || [])
+      .map(ei => ({ entity: ei.conceptAlias, ark: ei.identifier }))
+      .filter(e => e.entity);
+    return {
+      ark: data.arkID || ark,
+      mode: mode,
+      expeditionCode: expeditionCode,
+      expeditionTitle: dig(data, ["expedition.expeditionTitle", "expeditionTitle"]),
+      projectId: projectId,
+      projectTitle: dig(data, ["expedition.project.projectTitle", "project.projectTitle", "projectTitle"]),
+      principalInvestigator: dig(data, ["expedition.project.principalInvestigator", "project.principalInvestigator", "principalInvestigator"]),
+      visibility: dig(data, ["expedition.visibility", "visibility"]),
+      entities: entities
+    };
+  }
+
+  // Project URL path: the projectId IS the scope, so no resolution is required to
+  // fetch records. We only do a best-effort title lookup against the projects list.
+  // Any failure here (404 / CORS / odd shape) is swallowed; the page still renders
+  // with "Project <id>" and live record data.
+  async function resolveProject(projectId) {
+    let title = null, pi = null;
+    try {
+      const list = await getJSON(API + "/v1/projects");
+      const arr = Array.isArray(list) ? list
+                : (list && Array.isArray(list.content)) ? list.content
+                : (list && Array.isArray(list.projects)) ? list.projects
+                : [];
+      const hit = arr.find(p => p && String(p.projectId) === String(projectId));
+      if (hit) {
+        title = hit.projectTitle || hit.title || hit.name || null;
+        pi = hit.principalInvestigator || null;
+      }
+    } catch (e) { /* best-effort only */ }
+    return {
+      ark: "project:" + projectId,
+      mode: "project",
+      expeditionCode: null,
+      expeditionTitle: null,
+      projectId: projectId,
+      projectTitle: title,
+      principalInvestigator: pi,
+      visibility: null,
+      entities: []  // unknown up front; chooseAndFetch falls back to PREFERRED
+    };
+  }
+
+  function firstObjectArray(obj) {
+    for (const k in obj) {
+      const v = obj[k];
+      if (Array.isArray(v) && (!v.length || (v[0] && typeof v[0] === "object"))) return v;
+    }
+    return null;
+  }
+
+  function extractRecords(data, entity) {
+    if (Array.isArray(data)) return data;
+    if (!data || typeof data !== "object") return [];
+    for (const c of [data.content, data.records, data.results, data.data]) {
+      if (Array.isArray(c)) return c;
+      if (c && typeof c === "object") {
+        if (Array.isArray(c[entity])) return c[entity];
+        const arr = firstObjectArray(c);
+        if (arr) return arr;
+      }
+    }
+    return firstObjectArray(data) || [];
+  }
+
+  function recordsUrl(entity, params) {
+    const qs = Object.keys(params).map(k => k + "=" + encodeURIComponent(params[k])).join("&");
+    return API + "/v1/records/" + entity + "/json?" + qs;
+  }
+
+  // Confirmed working: expeditions -> _expeditions_:<code> ; projects -> _projects_:<id>
+  // (both bare, no brackets — verified live on project 75 / expedition ISP25eDNA).
+  function scopeStrategies(scope) {
+    return scope.type === "expedition"
+      ? [{ q: "_expeditions_:" + scope.code }]
+      : [{ q: "_projects_:" + scope.projectId }];
+  }
+
+  // Returns { records, truncated }. truncated=true means we hit the page cap with a
+  // still-full final page, so more records exist than we fetched.
+  async function pageAll(entity, baseParams, maxPages) {
+    let records = [], page = 0, truncated = false;
+    while (true) {
+      if (page >= maxPages) { truncated = true; break; }
+      const params = Object.assign({}, baseParams, { limit: PAGE_SIZE, page: page });
+      const batch = extractRecords(await getJSON(recordsUrl(entity, params)), entity);
+      if (!batch.length) break;
+      records = records.concat(batch);
+      if (batch.length < PAGE_SIZE) break;  // short page => complete
+      page++;
+    }
+    return { records: records, truncated: truncated };
+  }
+
+  async function fetchScoped(scope, entity, maxPages) {
+    for (const params of scopeStrategies(scope)) {
+      const res = await pageAll(entity, params, maxPages);
+      if (res.records.length) return res;
+    }
+    return { records: [], truncated: false };
+  }
+
+  async function chooseAndFetch(meta, scope, requested, maxPages) {
+    let candidates;
+    if (requested) {
+      candidates = [requested];
+    } else {
+      const present = meta.entities.map(e => e.entity);
+      candidates = PREFERRED.filter(e => present.includes(e));
+      if (!candidates.length) candidates = present.length ? present : PREFERRED;
+    }
+    for (const ent of candidates) {
+      const res = await fetchScoped(scope, ent, maxPages);
+      if (res.records.length) return { entity: ent, records: res.records, truncated: res.truncated };
+    }
+    return { entity: candidates[candidates.length - 1] || "Event", records: [], truncated: false };
+  }
+
+  function buildDigest(meta, records, entity) {
+    const years = [], lats = [], lngs = [], mapPoints = [];
+    const localities = new Set(), collectors = new Set(), protocols = new Set();
+
+    for (const rec of records) {
+      let ry = null;
+      const y = first(rec, YEAR_KEYS);
+      if (y != null) {
+        const parsed = parseInt(String(y).slice(0, 4), 10);
+        if (Number.isFinite(parsed)) { ry = parsed; years.push(ry); }
+      }
+      const loc = first(rec, LOCALITY_KEYS);
+      if (loc) localities.add(String(loc).trim());
+      splitPeople(first(rec, COLLECTOR_KEYS)).forEach(p => collectors.add(p));
+      const proto = first(rec, PROTOCOL_KEYS);
+      if (proto) protocols.add(String(proto).trim());
+
+      const lat = toFloat(first(rec, LAT_KEYS));
+      const lng = toFloat(first(rec, LNG_KEYS));
+      if (lat != null && lng != null) {
+        lats.push(lat); lngs.push(lng);
+        mapPoints.push({ id: first(rec, ID_KEYS), locality: loc, lat: lat, lng: lng, year: ry });
+      }
+    }
+
+    const isProject = meta.mode === "project";
+    const title = meta.expeditionTitle || meta.projectTitle ||
+      (isProject ? ("Project " + meta.projectId) : meta.expeditionCode) || "GEOME record";
+    const viewInGeome = isProject
+      ? SITE + "/workbench/project-overview?projectId=" + meta.projectId
+      : SITE + "/record/" + meta.ark;
+
+    return {
+      source: {
+        ark: meta.ark, mode: meta.mode, title: title,
+        projectId: meta.projectId, projectTitle: meta.projectTitle,
+        principalInvestigator: meta.principalInvestigator,
+        primaryEntity: entity, viewInGeome: viewInGeome
+      },
+      entityCounts: {}, entityOrder: [],
+      localities: Array.from(localities).sort(),
+      collectors: Array.from(collectors).sort(),
+      samplingProtocols: Array.from(protocols).sort(),
+      yearRange: years.length ? [Math.min.apply(null, years), Math.max.apply(null, years)] : null,
+      boundingBox: (lats.length && lngs.length) ? {
+        minLat: Math.min.apply(null, lats), maxLat: Math.max.apply(null, lats),
+        minLng: Math.min.apply(null, lngs), maxLng: Math.max.apply(null, lngs)
+      } : null,
+      mapPoints: mapPoints
+    };
+  }
+
+  function loadLeaflet() {
+    return new Promise((resolve, reject) => {
+      if (window.L) return resolve(window.L);
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(css);
+      const s = document.createElement("script");
+      s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      s.onload = () => resolve(window.L);
+      s.onerror = () => reject(new Error("Leaflet failed to load"));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function drawMap(mapEl, digest) {
+    try {
+      const L = await loadLeaflet();
+      const map = L.map(mapEl, { scrollWheelZoom: false });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors", maxZoom: 18
+      }).addTo(map);
+      // Cap markers so a large project doesn't freeze the browser.
+      const points = digest.mapPoints.slice(0, MAX_MARKERS);
+      const pts = points.map(p => {
+        const m = L.marker([p.lat, p.lng]);
+        if (p.locality || p.id) m.bindPopup(esc(p.locality || p.id));
+        return m.addTo(map);
+      });
+      const bounds = L.featureGroup(pts).getBounds();
+
+      // Recalculate size + framing once the container has real dimensions.
+      function fit() {
+        map.invalidateSize();
+        if (pts.length === 1) map.setView(pts[0].getLatLng(), 11);
+        else if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+      }
+      fit();
+      setTimeout(fit, 250);
+      if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe(mapEl);
+      if (window.IntersectionObserver) {
+        new IntersectionObserver((entries) => {
+          entries.forEach(e => { if (e.isIntersecting) fit(); });
+        }).observe(mapEl);
+      }
+      window.addEventListener("resize", () => map.invalidateSize());
+    } catch (e) {
+      mapEl.style.display = "none";
+    }
+  }
+
+  function render(el, digest) {
+    const s = digest.source;
+    const yr = digest.yearRange
+      ? (digest.yearRange[0] === digest.yearRange[1] ? digest.yearRange[0]
+         : digest.yearRange[0] + "–" + digest.yearRange[1])
+      : "—";
+
+    const sub = [];
+    if (s.mode === "project") {
+      if (s.projectId != null) sub.push("Project " + esc(s.projectId));
+    } else if (s.projectTitle) {
+      sub.push(esc(s.projectTitle) + (s.projectId != null ? " (project " + esc(s.projectId) + ")" : ""));
+    }
+    if (s.principalInvestigator) sub.push("PI: " + esc(s.principalInvestigator));
+    sub.push("<a href='" + esc(s.viewInGeome) + "' target='_blank' rel='noopener'>View in GEOME ↗</a>");
+
+    const entityTiles = (digest.entityOrder.length ? digest.entityOrder : [s.primaryEntity]).map(ent => {
+      const n = (digest.entityCounts[ent] != null) ? digest.entityCounts[ent] : "—";
+      const label = ENTITY_LABELS[ent] || (ent + "s");
+      return "<div class='geome-stat'><b>" + esc(n) + "</b><span>" + esc(label) + "</span></div>";
+    }).join("");
+
+    const list = (label, items) => items.length
+      ? "<details><summary>" + items.length + " " + label + "</summary><ul class='geome-inline'>" +
+        items.map(i => "<li>" + esc(i) + "</li>").join("") + "</ul></details>"
+      : "";
+
+    const protoItems = digest.samplingProtocols.map(p =>
+      /^https?:\/\//i.test(p)
+        ? "<a href='" + esc(p) + "' target='_blank' rel='noopener'>protocol ↗</a>"
+        : esc(p));
+    const protoLine = protoItems.length
+      ? "<p class='geome-sub'>Sampling: " + protoItems.join(", ") + "</p>" : "";
+
+    const capNote = digest.capped
+      ? "<p class='geome-note'>Large project — counts shown with “+” are a sampled minimum, and the map shows the first " +
+        MAX_MARKERS + " located records.</p>"
+      : "";
+
+    el.innerHTML =
+      "<h3 class='geome-head'>" + esc(s.title) + "</h3>" +
+      "<p class='geome-sub'>" + sub.join(" · ") + "</p>" +
+      "<div class='geome-stats'>" +
+        entityTiles +
+        "<div class='geome-stat'><b>" + digest.localities.length + "</b><span>localities</span></div>" +
+        "<div class='geome-stat'><b>" + digest.collectors.length + "</b><span>collectors</span></div>" +
+        "<div class='geome-stat'><b>" + yr + "</b><span>year(s)</span></div>" +
+      "</div>" +
+      protoLine + list("localities", digest.localities) + list("collectors", digest.collectors) +
+      (digest.mapPoints.length ? "<div class='geome-map'></div>" : "") +
+      capNote;
+
+    if (digest.mapPoints.length) drawMap(el.querySelector(".geome-map"), digest);
+  }
+
+  function renderError(el, msg) {
+    el.innerHTML = "<p class='geome-error'>Couldn’t load GEOME data: " + esc(msg) + "</p>";
+  }
+
+  document.querySelectorAll(".geome-expedition").forEach(async (el) => {
+    const raw = el.getAttribute("data-ark");
+    const input = parseInput(raw);
+    const forced = el.getAttribute("data-entity") || "";
+    if (!input) return renderError(el, "no ARK or projectId found in \"" + (raw || "") + "\"");
+    try {
+      const meta = input.kind === "project"
+        ? await resolveProject(input.projectId)
+        : await resolveArk(input.ark);
+      if (meta.mode === "unknown")
+        throw new Error("resolved " + input.ark + " but found no expeditionCode or projectId");
+
+      const scope = meta.mode === "project"
+        ? { type: "project", projectId: meta.projectId }
+        : { type: "expedition", code: meta.expeditionCode };
+      const maxPages = scope.type === "project" ? MAX_PAGES_PROJECT : MAX_PAGES_EXPED;
+
+      const primary = await chooseAndFetch(meta, scope, forced, maxPages);
+      const digest = buildDigest(meta, primary.records, primary.entity);
+      let capped = !!primary.truncated;
+
+      // Per-entity counts. Reuse the primary entity's fetched records; fetch the
+      // others (capped) just to count. A "+" suffix flags a truncated (sampled) count.
+      const present = meta.entities.length ? meta.entities.map(e => e.entity) : PREFERRED;
+      const ordered = PREFERRED.filter(e => present.includes(e))
+        .concat(present.filter(e => PREFERRED.indexOf(e) === -1));
+      const counts = {};
+      for (const ent of ordered) {
+        if (ent === primary.entity) {
+          counts[ent] = primary.records.length + (primary.truncated ? "+" : "");
+        } else {
+          const res = await fetchScoped(scope, ent, maxPages);
+          counts[ent] = res.records.length + (res.truncated ? "+" : "");
+          if (res.truncated) capped = true;
+        }
+      }
+      digest.entityCounts = counts;
+      digest.entityOrder = ordered;
+      digest.capped = capped;
+
+      render(el, digest);
+    } catch (e) {
+      renderError(el, e.message);
+    }
+  });
+})();
+</script>
+
+{% endif %} 

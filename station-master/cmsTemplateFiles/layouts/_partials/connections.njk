@@ -1,0 +1,164 @@
+{% if article.parsedSubmission.$doi %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+
+<section id="datacite-connections" class="dc-connections" data-doi="{{ article.parsedSubmission.$doi }}" data-title="{{ article.headerInfo.title | striptags }}">
+  <p class="dc-connections-intro">Related works registered with DataCite for this DOI. Click a bubble to open it on DataCite Commons.</p>
+  <p class="dc-connections-loading">Loading connections…</p>
+  <div class="dc-connections-empty" style="display:none;">No connections registered for this DOI yet.</div>
+  <div class="dc-graph-wrap"><svg class="dc-graph" viewBox="0 0 700 440" preserveAspectRatio="xMidYMid meet" aria-label="Connections graph"></svg></div>
+  <div class="dc-connections-body"></div>
+  <p class="dc-connections-foot">
+    <a class="dc-commons-link" href="https://commons.datacite.org/doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener">View full connection graph on DataCite Commons →</a>
+  </p>
+</section>
+
+<style>
+  .dc-connections { max-width: 760px; margin: 0 auto; }
+  .dc-connections-intro { font-size: 0.85rem; color: #7a7a72; margin: 0 0 1rem; }
+  .dc-connections-loading { font-size: 0.85rem; color: #8a8a83; font-style: italic; }
+  .dc-connections-empty { font-size: 0.9rem; color: #8a8a83; padding: 1rem 0; }
+  .dc-graph-wrap { width: 100%; margin: 0 0 1.5rem; }
+  .dc-graph { width: 100%; height: auto; display: block; }
+  .dc-graph .dc-node { cursor: pointer; }
+  .dc-graph .dc-node circle { stroke: #fff; stroke-width: 2px; transition: opacity 0.15s; }
+  .dc-graph .dc-node:hover circle { opacity: 0.8; }
+  .dc-graph .dc-center circle { stroke: #1b1b1a; stroke-width: 2.5px; }
+  .dc-graph text { font-family: -apple-system, system-ui, sans-serif; fill: #1b1b1a; pointer-events: none; }
+  .dc-graph line { stroke: #cfccc3; stroke-width: 1.5px; }
+  .dc-connections .dc-group { margin: 0 0 1.25rem; }
+  .dc-connections .dc-group-head { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: #57574f; font-weight: 700; margin: 0 0 0.6rem; }
+  .dc-connections .dc-group-head .dc-count { background: #1b1b1a; color: #fff; border-radius: 999px; padding: 0.05rem 0.5rem; margin-left: 0.4rem; font-size: 0.68rem; }
+  .dc-connections ul { list-style: none; margin: 0; padding: 0; }
+  .dc-connections li { padding: 0.7rem 0; border-bottom: 1px solid #e9e7df; }
+  .dc-connections li:last-child { border-bottom: none; }
+  .dc-connections .dc-rel-title { display: block; font-size: 1rem; font-weight: 600; line-height: 1.35; color: #1b1b1a; text-decoration: none; }
+  .dc-connections .dc-rel-title:hover { text-decoration: underline; }
+  .dc-connections .dc-rel-meta { display: block; font-size: 0.8rem; color: #8a8a83; margin-top: 0.2rem; }
+  .dc-connections .dc-type-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 3px; margin-right: 0.4rem; }
+  .dc-connections-foot { margin-top: 0.5rem; font-size: 0.9rem; }
+</style>
+
+<script>
+(function () {
+  var section = document.getElementById('datacite-connections');
+  if (!section) return;
+  var doi = section.getAttribute('data-doi');
+  if (!doi) return;
+
+  var TYPE_COLORS = {
+    'Dataset': '#0f6e56', 'Text': '#185fa5', 'Event': '#c2479b', 'Collection': '#7a5410',
+    'Software': '#5a3a86', 'Other': '#7a7a72', 'JournalArticle': '#185fa5'
+  };
+  function colorFor(t) { return TYPE_COLORS[t] || '#7a7a72'; }
+
+  var REL = [
+    { key: 'partOf', label: 'Part of' }, { key: 'parts', label: 'Has part' },
+    { key: 'references', label: 'References' }, { key: 'citations', label: 'Cited by' },
+    { key: 'versionOf', label: 'Version of' }, { key: 'versions', label: 'Has version' }
+  ];
+  var nodeFields = 'totalCount nodes { id titles { title } types { resourceTypeGeneral } }';
+  var query = 'query($id: ID!) { work(id: $id) {'
+    + REL.map(function (r) { return ' ' + r.key + ': ' + r.key + ' { ' + nodeFields + ' }'; }).join('')
+    + ' } }';
+
+  function bareDoi(id) { return (id || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, ''); }
+  function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function truncate(s, n) { s = s || ''; return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+  var loading = section.querySelector('.dc-connections-loading');
+  var empty = section.querySelector('.dc-connections-empty');
+  var graphWrap = section.querySelector('.dc-graph-wrap');
+
+  fetch('https://api.datacite.org/graphql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: query, variables: { id: doi } })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (json) {
+    var work = json && json.data && json.data.work;
+    if (loading) loading.parentNode.removeChild(loading);
+    if (!work) { showEmpty(); return; }
+
+    var body = section.querySelector('.dc-connections-body');
+    var allWorks = [], seen = {}, anything = false;
+
+    REL.forEach(function (g) {
+      var grp = work[g.key];
+      if (!grp || !grp.nodes || grp.nodes.length === 0) return;
+      anything = true;
+      var html = '<div class="dc-group"><p class="dc-group-head">' + g.label + '<span class="dc-count">' + (grp.totalCount || grp.nodes.length) + '</span></p><ul>';
+      grp.nodes.forEach(function (n) {
+        var d = bareDoi(n.id);
+        var title = (n.titles && n.titles[0] && n.titles[0].title) ? n.titles[0].title : d;
+        var type = (n.types && n.types.resourceTypeGeneral) ? n.types.resourceTypeGeneral : 'Other';
+        var c = colorFor(type);
+        html += '<li><a class="dc-rel-title" href="https://commons.datacite.org/doi.org/' + d + '" target="_blank" rel="noopener"><span class="dc-type-badge" style="background:' + c + '22;color:' + c + '">' + esc(type) + '</span>' + esc(title) + '</a><span class="dc-rel-meta">' + esc(g.label) + ' · ' + esc(d) + '</span></li>';
+        if (!seen[d]) { seen[d] = true; allWorks.push({ doi: d, title: title, type: type, rel: g.label }); }
+      });
+      html += '</ul></div>';
+      body.insertAdjacentHTML('beforeend', html);
+    });
+
+    if (!anything) { showEmpty(); return; }
+    if (window.d3 && allWorks.length) drawGraph(allWorks);
+  })
+  .catch(function () {
+    if (loading) loading.parentNode.removeChild(loading);
+    showEmpty();
+  });
+
+  function showEmpty() {
+    if (graphWrap) graphWrap.style.display = 'none';
+    var foot = section.querySelector('.dc-connections-foot');
+    if (foot) foot.style.display = 'none';
+    var intro = section.querySelector('.dc-connections-intro');
+    if (intro) intro.style.display = 'none';
+    if (empty) empty.style.display = '';
+  }
+
+  function drawGraph(works) {
+    var svg = d3.select(section).select('.dc-graph');
+    var W = 700, H = 440;
+    var centerTitle = section.getAttribute('data-title') || 'This work';
+
+    var nodes = [{ id: '__center__', label: truncate(centerTitle, 28), type: 'center', r: 30 }];
+    var links = [];
+    works.forEach(function (w) {
+      nodes.push({ id: w.doi, label: truncate(w.title, 22), type: w.type, doi: w.doi, r: 22 });
+      links.push({ source: '__center__', target: w.doi });
+    });
+
+    var link = svg.append('g').selectAll('line').data(links).enter().append('line');
+    var node = svg.append('g').selectAll('g').data(nodes).enter().append('g')
+      .attr('class', function (d) { return 'dc-node' + (d.type === 'center' ? ' dc-center' : ''); })
+      .on('click', function (e, d) { if (d.doi) window.open('https://commons.datacite.org/doi.org/' + d.doi, '_blank', 'noopener'); });
+
+    node.append('title').text(function (d) { return d.type === 'center' ? centerTitle : (d.type + ' — ' + d.label); });
+    node.append('circle').attr('r', function (d) { return d.r; })
+      .attr('fill', function (d) { return d.type === 'center' ? '#1b1b1a' : colorFor(d.type); });
+    node.append('text').attr('text-anchor', 'middle').attr('dy', function (d) { return d.r + 14; })
+      .attr('font-size', '11px').text(function (d) { return d.label; });
+
+    var sim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(130))
+      .force('charge', d3.forceManyBody().strength(-450))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collide', d3.forceCollide().radius(function (d) { return d.r + 22; }))
+      .on('tick', function () {
+        link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+            .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+        node.attr('transform', function (d) {
+          d.x = Math.max(d.r, Math.min(W - d.r, d.x));
+          d.y = Math.max(d.r, Math.min(H - d.r - 12, d.y));
+          return 'translate(' + d.x + ',' + d.y + ')';
+        });
+      });
+
+    node.call(d3.drag()
+      .on('start', function (e, d) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', function (e, d) { d.fx = e.x; d.fy = e.y; })
+      .on('end', function (e, d) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+  }
+})();
+</script>
+{% endif %} 

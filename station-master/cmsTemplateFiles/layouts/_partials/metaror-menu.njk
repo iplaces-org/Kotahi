@@ -1,0 +1,442 @@
+<style>
+  #sticky-menu {
+    background: #fff;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    padding: 0 20px;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    z-index: 999999;
+    max-width: 1400px;
+  }
+  nav {
+    align-items: center;
+    height: 100px;
+    display: flex;
+    overflow-x: hidden;
+    overflow-y: visible;
+    height: 100%;
+
+    * {
+      user-select: none;
+    }
+    a,
+    .link > label {
+      display: flex;
+      align-items: center;
+      color: black;
+      font-size: 18px;
+      font-weight: 500;
+      margin-left: 30px;
+      height: 100%;
+      transition: all 0.3s;
+      text-decoration: none;
+      white-space: nowrap;
+      position: relative;
+      cursor: pointer;
+
+      &::before {
+        background-color: #0470c0;
+        content: '';
+        display: block;
+        height: 2px;
+        margin-top: 5px;
+        width: 100%;
+        bottom: 50%;
+        position: absolute;
+        opacity: 0;
+        transition: all 0.3s;
+      }
+
+      &:hover {
+        color: #0470c0;
+        &::before,
+        &:focus::before {
+          opacity: 1;
+          bottom: 0;
+        }
+      }
+    }
+    .dropdown-btn {
+      display: none;
+    }
+
+    .dropdown {
+      display: flex;
+      top: 100px;
+      border: 1px solid #ddd0;
+      border-block: none;
+      height: fit-content;
+      flex-direction: column;
+      background: #fff;
+      position: absolute;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.3s;
+      padding: 0;
+      z-index: 5;
+
+      * {
+        transition: all 0.3s, color 0s;
+        opacity: 0;
+      }
+      a {
+        color: #0470c0;
+        font-size: 14px;
+        border-bottom: 1px solid #ddd9;
+        margin: 0;
+        padding: 10px 20px;
+        &::before {
+          display: none;
+        }
+        &:hover {
+          background: #0470c0;
+          color: #fff;
+        }
+      }
+    }
+    .link {
+      height: 100%;
+      display: flex;
+      justify-content: flex-end;
+      overflow: visible;
+      position: static;
+      input:checked ~ .dropdown {
+        max-height: 300px;
+        border-color: #ddd5;
+        z-index: 10;
+
+        * {
+          opacity: 1;
+        }
+      }
+      input:checked ~ label.open-dropdown {
+        color: #0470c0 !important;
+        &::before,
+        &:focus::before {
+          opacity: 1 !important;
+          bottom: 0;
+        }
+      }
+
+      > label svg.collapse-icon {
+        width: 20px;
+        height: 20px;
+        transform: scaleY(-1);
+        fill: #0470bf;
+        margin-left: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      border-left: 1px solid #ddd;
+      position: absolute;
+      background-color: #fff;
+      right: 0;
+      top: var(--header-height);
+      z-index: 30;
+      padding: 25px 0;
+      max-width: 0;
+      height: 100dvh;
+      background: #fff !important;
+
+      display: block;
+      top: 60px;
+      width: 100dvw !important;
+      transition: all 0.3s !important;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      .link,
+      a {
+        width: 100%;
+        height: fit-content !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .dropdown {
+        position: relative !important;
+        top: 0;
+        left: 0;
+        transform: none;
+        max-height: 100%;
+        margin-bottom: 10px;
+
+        a {
+          color: #222;
+          align-items: center;
+          opacity: 1;
+          border: none;
+        }
+      }
+
+      * {
+        opacity: 0;
+      }
+
+      > :first-child {
+        padding-top: 10px;
+      }
+
+      a,
+      .link > label {
+        margin: 0;
+        padding: 0 20px 10px;
+        height: 100%;
+        text-align: center;
+
+        &::before {
+          display: none;
+        }
+      }
+      label.open-dropdown > span {
+        color: #0470c0;
+      }
+    }
+  }
+
+  nav.toc a {
+    &::before {
+      display: none;
+    }
+  }
+
+  #topbar {
+    display: flex;
+    width: 100%;
+    justify-content: flex-end;
+    padding: 10px 20px;
+    background: rgb(4, 112, 192);
+    color: #fff;
+    transition: all 0.3s;
+    height: 34px;
+    max-height: 50px;
+    &.hide-topbar {
+      padding: 0 20px;
+      max-height: 0;
+    }
+  }
+  #menu {
+    transition: all 0.3s;
+  }
+  /* Responsive Styles */
+  @media screen and (max-width: 768px) {
+    #main-container {
+      flex-direction: column;
+      width: 100% !important;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .article-preview main {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 0;
+    }
+
+    .tabs {
+      top: 58px;
+    }
+
+    aside {
+      width: 100%;
+      position: relative;
+      top: unset;
+      right: unset;
+    }
+
+    aside.toc-wrapper {
+      display: none;
+            width: 15dvw;
+    }
+
+    #sticky-menu {
+      height: 60px;
+      background: #0470c0 !important;
+      padding-left: 0 !important;
+    }
+
+    .article-preview .article-content {
+      flex-direction: column;
+    }
+
+    .fullwidth-box {
+      padding: 0px;
+    }
+  }
+  /*menu btn*/
+
+  input#menu-btn {
+    display: none;
+  }
+
+  .menu-icon {
+    cursor: pointer;
+    display: flex;
+    height: 24px;
+    padding: 16px;
+    width: 24px;
+    transform: scale(1.2);
+  }
+
+  label.menu-icon {
+    position: relative;
+    z-index: 200;
+    display: none;
+
+    margin-bottom: 5px;
+    @media screen and (max-width: 768px) {
+      display: flex;
+    }
+  }
+
+  .menu-icon .menu,
+  .menu-icon .menu::before,
+  .menu-icon .menu::after {
+    background: #fff;
+    content: '';
+    display: block;
+    height: 2px;
+    position: absolute;
+    transition: background ease 0.2s, top ease 0.2s 0.2s, transform ease 0.2s;
+    width: 20px;
+  }
+
+  .menu-icon:hover .menu,
+  .menu-icon:hover .menu::before,
+  .menu-icon:hover .menu::after {
+    background: #fff;
+  }
+
+  .menu-icon .menu {
+    left: 6px;
+    top: 16px;
+  }
+
+  .menu-icon .menu::before {
+    top: -6px;
+  }
+
+  .menu-icon .menu::after {
+    top: 6px;
+  }
+
+  #menu-btn:checked + .menu-icon .menu {
+    background: transparent;
+  }
+
+  #menu-btn:checked + .menu-icon .menu::before {
+    transform: rotate(45deg);
+  }
+
+  #menu-btn:checked + .menu-icon .menu::after {
+    transform: rotate(-45deg);
+  }
+
+  #menu-btn:checked + .menu-icon .menu::before,
+  #menu-btn:checked + .menu-icon .menu::after {
+    top: 0;
+    transition: top ease 0.2s, transform ease 0.2s 0.2s;
+  }
+
+  #menu-btn:checked ~ nav {
+    max-width: 100%;
+    padding-inline: 25px;
+
+    * {
+      opacity: 1;
+    }
+  }
+
+  .mobile-only {
+    display: none;
+    @media screen and (max-width: 768px) {
+      display: flex !important;
+    }
+  }
+
+  .desktop-only {
+    display: flex;
+    @media screen and (max-width: 768px) {
+      display: none !important;
+    }
+  }
+
+.manuscript a {
+  border-bottom: 1px dotted;
+}
+
+.logo img{
+  max-width: 75%;
+}
+</style>
+
+
+<div
+  id="topbar"
+>
+</div>
+<div id="sticky-menu">
+{% include "_partials/logo.njk" %}
+  <input type="checkbox" id="menu-btn" /><label
+    for="menu-btn"
+    class="menu-icon"
+  >
+    <div class="menu"></div>
+  </label>
+  <nav id="menu">
+    <a href="/browse">
+      <span>Browse</span>
+    </a>
+    <a href="/archive/" aria-current="page">
+      <span>Archive</span>
+    </a>
+    <a href="/collections/" aria-current="page">
+      <span>Collections</span>
+    </a>
+    <a href="/about/" aria-current="page">
+      <span>About</span>
+    </a>
+<a href="https://iplaces-test-client.fly.dev/{{ cmsConfig.group.name }}/login" aria-current="page">
+      <span>Log in</span>
+    </a>
+  </nav>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const select = s => document.querySelector(s)
+    const all = s => [...document.querySelectorAll(s)]
+    const mainContainer = select('main') || select('#main-container')
+    const dropdownControls = all('input.dropdown-btn')
+    const menu_btn = select('#menu-btn')
+    const topbar = select('#topbar')
+
+    menu_btn.addEventListener('input', e => {
+      const { checked } = e.target
+      const method = checked ? 'add' : 'remove'
+      topbar.classList[method]('hide-topbar')
+      const transition = checked ? 'all 0.3s 0s' : 'all 0.3s 0.3s'
+      topbar.style.transition = transition
+    })
+    const closeDropdown = checkbox => (checkbox.checked = false)
+    const closeAll = () => dropdownControls.forEach(closeDropdown)
+
+    const closeOthers = checkbox => {
+      const others = dropdownControls.filter(curr => curr !== checkbox)
+      others.forEach(closeDropdown)
+    }
+
+    mainContainer.addEventListener('click', closeAll)
+    dropdownControls.forEach(checkbox => {
+      checkbox.addEventListener('input', () => closeOthers(checkbox))
+    })
+  })
+</script>
+ 

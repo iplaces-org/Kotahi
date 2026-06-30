@@ -1,0 +1,20 @@
+{% extends '../layouts/base.njk' %}
+{% set currentPage = cmsPage %}
+{% set title = cmsPage.title %}
+{% block content %}
+    <main>
+        <div class="page-content">
+            {{ cmsPage.content | safe }}
+        </div>
+    </main>
+{% endblock %}
+
+{% block styles %}
+  {{ super() }}
+  <style>
+    .page-content {
+      margin-left: 335px;
+      margin-right: 335px;
+    }
+  </style>
+{% endblock %}

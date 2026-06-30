@@ -1,0 +1,169 @@
+{% if article.parsedSubmission.$doi %}
+<section id="datacite-revisions" class="dc-revisions" data-doi="{{ article.parsedSubmission.$doi }}">
+  <p class="dc-rev-intro">Provenance history for this DOI, recorded by DataCite. Each entry is a registered metadata version.</p>
+  <p class="dc-rev-loading">Loading revision history…</p>
+  <div class="dc-rev-empty" style="display:none;">No revision history available for this DOI.</div>
+  <ol class="dc-rev-list"></ol>
+  <p class="dc-rev-credit">Powered by <a href="https://github.com/Metadata-Game-Changers/recuration-watch" target="_blank" rel="noopener">MGC Re-Curation Watch</a> and the <a href="https://api.datacite.org" target="_blank" rel="noopener">DataCite API</a>.</p>
+</section>
+
+<style>
+  .dc-revisions { max-width: 760px; margin: 0 auto; }
+  .dc-rev-intro { font-size: 0.85rem; color: #7a7a72; margin: 0 0 1.25rem; }
+  .dc-rev-loading { font-size: 0.85rem; color: #8a8a83; font-style: italic; }
+  .dc-rev-empty { font-size: 0.9rem; color: #8a8a83; padding: 1rem 0; }
+  .dc-rev-list { list-style: none; margin: 0; padding: 0; }
+  .dc-rev-item { position: relative; padding: 0 0 1.4rem 1.6rem; border-left: 2px solid #e0ddd4; }
+  .dc-rev-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .dc-rev-item::before {
+    content: ''; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px;
+    border-radius: 50%; background: #fff; border: 2px solid #1b1b1a;
+  }
+  .dc-rev-item.dc-rev-create::before { background: #1b1b1a; }
+  .dc-rev-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .dc-rev-version { font-weight: 700; font-size: 0.95rem; color: #1b1b1a; }
+  .dc-rev-date { font-size: 0.82rem; color: #8a8a83; }
+  .dc-rev-changes { font-size: 0.88rem; color: #57534e; margin: 0.3rem 0 0; line-height: 1.5; }
+  .dc-rev-changes strong { color: #1b1b1a; font-weight: 600; }
+  .dc-rev-toggle {
+    font-size: 0.75rem; color: #185fa5; background: none; border: none; padding: 0;
+    cursor: pointer; margin-top: 0.4rem; font-family: inherit;
+  }
+  .dc-rev-toggle:hover { text-decoration: underline; }
+  .dc-rev-detail { display: none; margin-top: 0.6rem; }
+  .dc-rev-detail.open { display: block; }
+  .dc-rev-diff { display: grid; grid-template-columns: 130px 1fr; gap: 0.4rem 0.6rem; align-items: start; }
+  .dc-rev-dfield { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; padding-top: 0.15rem; }
+  .dc-rev-dvals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; }
+  .dc-rev-before { background: #fef2f2; color: #991b1b; padding: 0.08rem 0.35rem; text-decoration: line-through; word-break: break-word; }
+  .dc-rev-arrow { color: #a8a29e; }
+  .dc-rev-after { background: #f0fdf4; color: #166534; padding: 0.08rem 0.35rem; word-break: break-word; }
+  .dc-rev-newval { background: #eff6ff; color: #1e40af; padding: 0.08rem 0.35rem; word-break: break-word; }
+  .dc-rev-credit { font-size: 0.72rem; color: #a8a29e; margin: 1.5rem 0 0; padding-top: 1rem; border-top: 1px solid #e9e7df; }
+  .dc-rev-credit a { color: #78716c; text-decoration: none; }
+  .dc-rev-credit a:hover { text-decoration: underline; }
+</style>
+
+<script>
+(function () {
+  var section = document.getElementById('datacite-revisions');
+  if (!section) return;
+  var doi = section.getAttribute('data-doi');
+  if (!doi) return;
+
+  var loading = section.querySelector('.dc-rev-loading');
+  var empty = section.querySelector('.dc-rev-empty');
+  var list = section.querySelector('.dc-rev-list');
+
+  var FIELD_LABELS = {
+    dates: 'dates', url: 'landing page URL', types: 'resource type', contributors: 'contributors',
+    creators: 'creators', publisher: 'publisher', publication_year: 'publication year',
+    related_identifiers: 'related identifiers', rights_list: 'rights / Local Contexts notices',
+    titles: 'title', descriptions: 'description', subjects: 'subjects', schema_version: 'schema version',
+    geo_locations: 'geolocation', funding_references: 'funding', sizes: 'sizes', formats: 'formats',
+    version_info: 'version info', identifiers: 'identifiers', container: 'container'
+  };
+  function labelFor(k) { return FIELD_LABELS[k] || k.replace(/_/g, ' '); }
+
+  function fmtDate(s) {
+    if (!s) return '';
+    var d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function summarise(val) {
+    if (val === null || val === undefined) return '—';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+    if (Array.isArray(val)) { if (!val.length) return '(empty)'; return val.map(summarise).join(', '); }
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+  }
+
+  function detailHtml(changes, action) {
+    if (!changes || typeof changes !== 'object') return '';
+    var isCreate = action === 'create';
+    var rows = [];
+    Object.keys(changes).forEach(function (field) {
+      if (field === 'doi') return;
+      var val = changes[field];
+      var label = esc(labelFor(field));
+      if (isCreate) {
+        var s = summarise(val);
+        if (!s || s === '—' || s === '(empty)') return;
+        rows.push('<div class="dc-rev-dfield">' + label + '</div><div class="dc-rev-dvals"><span class="dc-rev-newval">' + esc(s) + '</span></div>');
+      } else if (Array.isArray(val) && val.length === 2) {
+        var b = summarise(val[0]), a2 = summarise(val[1]);
+        if (b === a2) return;
+        rows.push('<div class="dc-rev-dfield">' + label + '</div><div class="dc-rev-dvals"><span class="dc-rev-before">' + esc(b) + '</span><span class="dc-rev-arrow">→</span><span class="dc-rev-after">' + esc(a2) + '</span></div>');
+      } else {
+        var s2 = summarise(val);
+        if (!s2 || s2 === '—') return;
+        rows.push('<div class="dc-rev-dfield">' + label + '</div><div class="dc-rev-dvals"><span class="dc-rev-newval">' + esc(s2) + '</span></div>');
+      }
+    });
+    if (!rows.length) return '';
+    return '<div class="dc-rev-diff">' + rows.join('') + '</div>';
+  }
+
+  fetch('https://api.datacite.org/dois/' + doi + '/activities', { headers: { 'Accept': 'application/vnd.api+json' } })
+  .then(function (r) { return r.json(); })
+  .then(function (json) {
+    if (loading) loading.parentNode.removeChild(loading);
+    var items = json && json.data;
+    if (!items || !items.length) { if (empty) empty.style.display = ''; return; }
+
+    items.sort(function (a, b) { return (b.attributes.version || 0) - (a.attributes.version || 0); });
+
+    items.forEach(function (it) {
+      var a = it.attributes || {};
+      var action = a.action || 'update';
+      var version = a.version != null ? a.version : '?';
+      var when = fmtDate(a['prov:generatedAtTime']);
+      var changes = a.changes || {};
+      var keys = Object.keys(changes).filter(function (k) { return k !== 'doi'; });
+
+      var summary;
+      if (action === 'create') {
+        var title = (changes.titles && changes.titles[0] && changes.titles[0].title) ? changes.titles[0].title : '';
+        summary = 'DOI registered' + (title ? ': <strong>' + esc(title) + '</strong>' : '') + '.';
+      } else if (keys.length) {
+        var labels = keys.map(function (k) { return '<strong>' + esc(labelFor(k)) + '</strong>'; });
+        summary = 'Updated ' + labels.join(', ') + '.';
+      } else {
+        summary = 'Metadata updated.';
+      }
+
+      var detail = detailHtml(changes, action);
+
+      var li = document.createElement('li');
+      li.className = 'dc-rev-item' + (action === 'create' ? ' dc-rev-create' : '');
+      li.innerHTML =
+        '<div class="dc-rev-head">'
+        + '<span class="dc-rev-version">Version ' + version + '</span>'
+        + '<span class="dc-rev-date">' + esc(when) + '</span>'
+        + '</div>'
+        + '<p class="dc-rev-changes">' + summary + '</p>'
+        + (detail ? '<button class="dc-rev-toggle">Show details ▸</button><div class="dc-rev-detail">' + detail + '</div>' : '');
+      list.appendChild(li);
+
+      var btn = li.querySelector('.dc-rev-toggle');
+      var panel = li.querySelector('.dc-rev-detail');
+      if (btn && panel) {
+        btn.addEventListener('click', function () {
+          var open = panel.classList.toggle('open');
+          btn.textContent = open ? 'Hide details ▾' : 'Show details ▸';
+        });
+      }
+    });
+  })
+  .catch(function () {
+    if (loading) loading.parentNode.removeChild(loading);
+    if (empty) empty.style.display = '';
+  });
+})();
+</script>
+{% endif %} 

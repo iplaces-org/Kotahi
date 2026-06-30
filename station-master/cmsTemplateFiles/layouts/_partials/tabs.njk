@@ -1,0 +1,27 @@
+<div class="tabbed">
+    <input type="radio" id="tab1" name="css-tabs" checked>
+    <input type="radio" id="tab2" name="css-tabs">
+    <input type="radio" id="tab3" name="css-tabs">
+    {% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME[0] and article.parsedSubmission.GEOME[0].url %}<input type="radio" id="tab4" name="css-tabs">{% endif %}
+
+    <ul class="tabs">
+        <li class="tab"><label for="tab1">Full text</label></li>
+        <li class="tab"><label for="tab2">Revisions</label></li>
+        <li class="tab"><label for="tab3">Connections</label></li>
+        {% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME[0] and article.parsedSubmission.GEOME[0].url %}<li class="tab"><label for="tab4">GEOME</label></li>{% endif %}
+    </ul>
+    <div class="tab-content">
+        {% include "_partials/full-text.njk" %}
+    </div>
+    <div class="tab-content">
+        {% include "_partials/revisions.njk" %}
+    </div>
+    <div class="tab-content">
+        {% include "_partials/connections.njk" %}
+    </div>
+    {% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME[0] and article.parsedSubmission.GEOME[0].url %}
+    <div class="tab-content">
+        {% include "_partials/geome.njk" %}
+    </div>
+    {% endif %}
+</div>

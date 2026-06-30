@@ -1,0 +1,140 @@
+---
+permalink: /assets/css/theme/mobile.css
+---
+
+
+/* Hamburger Menu Styles */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.hamburger div {
+  width: 25px;
+  height: 3px;
+  background-color: var(--awb-color8);
+}
+#menu {
+  width: fit-content;
+}
+/* Responsive Styles */
+@media screen and (max-width: 768px) {
+
+  #main-container {
+    flex-direction: column;
+    width: 100% !important;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .article-preview main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;    
+  }
+
+  .tabs {
+    top: 60px;
+    > .tab > label {
+      font-size: 10px !important;
+    }
+  }
+
+  aside {
+    width: 100%;
+    position: relative;
+    top: unset;
+    right: unset;
+  }
+
+  aside.toc-wrapper {
+    display: none;
+  }
+
+  #sticky-menu {
+    height: 60px;  
+  }
+
+  .article-preview .article-content {
+    flex-direction: column;
+  }
+
+  .fullwidth-box {
+    padding: 0px;
+  }
+
+  .fusion-layout-column .fusion-column-wrapper {
+    margin-left: 0px;
+    margin-right: 0px;
+  }
+  
+  .fusion-flex-container .fusion-row .fusion-flex-column {
+    width: 100%;
+  }
+  
+  .awb-menu__main-ul_row {
+    flex-direction: column;  
+  }
+  
+  nav {
+    display: none; /* Hide menu by default */
+    flex-direction: column;
+    position: fixed;
+    top: 60px;
+    right: 0;
+    background-color: var(--awb-color1);
+    width: 100dvw;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  nav ul {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .hamburger {
+    display: flex; /* Show hamburger menu */
+  }
+
+  nav.show {
+    display: flex; /* Show menu when toggled */
+    width: 100dvw !important;
+    position: fixed !important;
+    left: 0;
+  }
+
+  .awb-menu__main-li {
+    flex-direction: column;
+  }
+
+  .awb-menu_dropdown .awb-menu__sub-ul {
+    z-index: unset;
+    width: 100%;
+    position: relative;
+    top: unset;
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .awb-menu__sub-a {
+    justify-content: center;
+  }
+  .article-preview-header .article-title {
+    font-size: 26px !important;
+  }
+  tabs > .tab > label {
+    font-size: 10px;
+  }
+  .modal-content {
+    width: 95%;
+  }
+  
+}
+
+ 

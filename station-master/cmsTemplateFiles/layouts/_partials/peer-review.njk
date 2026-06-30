@@ -1,0 +1,175 @@
+{% set finalMetaData = article.metaData | filterArray('fieldName', 'submission.articlecitation') | filterArray('fieldName', 'submission.preprintposteddate') | filterArray('fieldName', 'submission.preprinturl') | filterArray('fieldName', 'submission.peerreviewdate') | filterArray('fieldName', 'submission.curateddate') %}
+
+<div class="article-content">
+            <div class="meta-data">
+                <aside class="toc-wrapper">
+                    {% if article.decisions.length > 0 %}
+                      {% set decisionJSONData = article.decisions[0].jsonData | filterArray('field.component', 'ThreadedDiscussion') %}
+                       
+                      {% if decisionJSONData.length > 0 %}
+                        <li>
+                            <a href="#decisions-{{ article.decisions[0].id }}" class="toc-link" >Editorial Assessment</a>
+                        </li>
+                      {% endif %}
+                    {% endif %}
+
+                    {% if article.editors.length > 0 %}
+                        <li>
+                            <a href="#editors" class="toc-link">Editors</a>
+                        </li>
+                    {% endif %} 
+                       
+                    {% if article.reviews.length > 0 %}
+                     {% for review in article.reviews %}
+                        <li>
+                            <a href="#review-{{ review.id }}" class="toc-link">Peer review {{ loop.index }}</a>
+                        </li>
+                     {% endfor %}
+                    {% endif %}
+
+                     
+                    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
+                    
+                    {%  if authorResponse != null %}
+                         <li>
+                            <a href="#authorResponse" class="toc-link">Author Response</a>
+                        </li>
+                    {% endif %}
+
+                    {% if finalMetaData.length > 0 %}
+                        <li>
+                            <a href="#metaData" class="toc-link">Metadata</a>
+                        </li>
+                    {% endif %}
+                     </ul>
+                </aside>
+            </div>
+            <article>
+                <section class="manuscript">
+                    {% if article.decisions.length > 0 %}        
+                        {% if decisionJSONData.length > 0 %} 
+                         <div class="manuscript-metadata" style="margin-bottom: unset;">
+                            <h3 id="decisions-{{ article.decisions[0].id }}">Editorial Assessment</h3>
+                            <section class="content">         
+                                {% for decisionData in decisionJSONData %}
+                                    {% if decisionData.field.component !== 'ThreadedDiscussion' %}
+                                      <div class="review-field">
+                                        {{ decisionData.text |safe }}
+                                      </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </section>
+                         </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if article.editors.length > 0 %}
+                     <div class="manuscript-metadata">
+                        <h3 id="editors">Editors</h3>
+                        {% for editor in article.editors %}
+                            <section class="content">
+                                <p class="editor-role">{{ editor.role | convertCamelCaseToTitleCase }}</p>
+                                <p class="user-name">{{ editor.name }}</p>
+                            </section>
+                        {% endfor %}
+                       </div>
+                    {% endif %}
+                     
+                    {% if article.reviews.length > 0 %}
+                        {% for review in article.reviews %}
+                     {% set userIdentity = review.users | map('defaultIdentity') %}
+                       <div class="manuscript-metadata">
+                          <h3 id="review-{{ review.id }}">Peer Review {{ loop.index }}</h3>
+                            <p class="user-name">
+                               <span style="margin-right: 10px;">{{ review.users | map('username') | sort | join(', ') }}</span>
+                               <a class="orcid" target="_blank" href="https://orcid.org/{{ userIdentity[0].identifier | safe }}" style="background-position-y: 3px;"></a>
+                            </p>
+                            <section class="content">
+                                {% for reviewData in review.jsonData%}
+                                    <div class="review-field">
+                                        {{ reviewData.text |safe }}
+                                    </div>
+                                {% endfor %}
+                            </section>
+                              <div style="display:none;"> 
+                                <br />
+                                <a target="_blank" href="https://doi.org/10.70744/{{ review.id }}" style="font-size: 13px; font-weight: bold;">https://doi.org/10.70744/{{ review.id }}</a>
+                              </div>
+                         </div>
+                        {% endfor %}
+                    {% endif %}
+
+                     {% if authorResponse != null %}
+                     <div class="manuscript-metadata">
+                        <h3 id="authorResponse">Author Response</h3>
+                            <section class="content">
+                                    <div class="review-field">
+                                        {{ authorResponse.text | safe }}
+                                    </div>
+                            </section>
+                         </div>
+                    {% endif %}
+
+                    {% if finalMetaData.length > 0 %}
+                     <div class="manuscript-metadata">
+                        <h3 id="metaData">Metadata</h3>
+                        <section class="content">
+                            {% for data in finalMetaData %}    
+                                <div class="review-field">
+                                    {% if data.fieldName === "submission.version" %} <div id="version"><span>Version:</span> {{ data.text | safe }}</div> {% endif %}
+                                </div>
+                            {% endfor %}
+                        </section>
+                     </div>
+                    {% endif %}
+                </section>
+            </article>
+        </div>
+
+
+
+      <script>
+                         
+        window.addEventListener("scroll", function () {
+          var scrollPosition = window.scrollY;
+          var tocLinks = document.querySelectorAll("a.toc-link");
+          tocLinks.forEach(function (link) {
+            var target = document.querySelector(link.hash);
+            if (target) {
+              var targetTop = target.getBoundingClientRect().top + scrollPosition - 200;
+              var targetBottom = targetTop + target.offsetHeight;
+        
+              if (targetTop <= scrollPosition && targetBottom > scrollPosition) {
+                tocLinks.forEach(function (link) {
+                  link.closest("li").classList.remove("active")
+                });
+                link.closest("li").classList.add("active");
+              }
+            }
+          });
+        });
+          
+        document.addEventListener('DOMContentLoaded', () => {
+          function setupAndHandleTocItemClicks(event) {
+            setTimeout(()=>{
+              let targetClass = 'active';
+              const liElements = document.querySelectorAll('li');
+              liElements.forEach(li => {
+                li.classList.remove(targetClass);
+              });
+  
+              let element = event.target.closest("li");
+              if(element) {
+                element.classList.add(targetClass)
+              }
+            }, 1000); 
+          }
+          
+          // Attach click listener to all <a> elements with the "toc-link" class
+          const tocLinks = document.querySelectorAll('a.toc-link');
+          tocLinks.forEach(link => {
+            link.addEventListener('click', setupAndHandleTocItemClicks);
+          });
+        });
+      </script>
+ 

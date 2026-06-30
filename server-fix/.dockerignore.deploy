@@ -1,11 +1,15 @@
 # Deploy-scoped ignore file for the iPlaces server overlay build.
 # Passed via `fly deploy --ignorefile server-fix/.dockerignore.deploy`.
 #
-# The build context is the repo root, but the wrapper Dockerfile only needs
-# ONE file. Exclude everything, then un-ignore the single patched file and
-# each of its parent directories (Docker requires walking the parents in).
+# The build context is the repo root, but the wrapper Dockerfile only needs the
+# DataCite overlays (fieldsTransformers.js + index.js), the cmsUpload endpoint,
+# Gump's forms-journal submit form, the cmsTemplateFiles tree, and the pdfExport
+# overlay. Exclude everything, then un-ignore each path and walk its parent
+# directories in (Docker requires the parents to be un-ignored before a nested
+# path can be re-included).
 *
 
+# (1) DataCite overlays: fieldsTransformers.js (Patch 1) + index.js (Patch 2).
 !packages
 packages/*
 !packages/server
@@ -17,3 +21,37 @@ packages/server/services/publishing/*
 !packages/server/services/publishing/datacite
 packages/server/services/publishing/datacite/*
 !packages/server/services/publishing/datacite/fieldsTransformers.js
+!packages/server/services/publishing/datacite/index.js
+
+# (1b) cmsUpload endpoint overlay.
+!packages/server/api
+packages/server/api/*
+!packages/server/api/rest
+packages/server/api/rest/*
+!packages/server/api/rest/cmsUpload
+packages/server/api/rest/cmsUpload/*
+!packages/server/api/rest/cmsUpload/endpoint.js
+
+# (2a) Gump's submission form, overlaid onto forms-journal/submit.json.
+!packages/server/config
+packages/server/config/*
+!packages/server/config/storage
+packages/server/config/storage/*
+!packages/server/config/storage/forms-journal
+packages/server/config/storage/forms-journal/*
+!packages/server/config/storage/forms-journal/submit.json
+
+# (2b) Gump CMS look tree.
+!station-master
+station-master/*
+!station-master/cmsTemplateFiles
+
+# (3) pdfExport crash-guard overlay, pinned to the image's own version of the
+#     file (see server-fix/Dockerfile section (4) for why it's not under packages/).
+!server-fix
+server-fix/*
+!server-fix/overlays
+server-fix/overlays/*
+!server-fix/overlays/controllers
+server-fix/overlays/controllers/*
+!server-fix/overlays/controllers/pdfExport.controllers.js

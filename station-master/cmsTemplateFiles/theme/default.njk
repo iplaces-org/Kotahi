@@ -1,0 +1,23 @@
+---
+permalink: /assets/css/theme/default.css
+---
+
+:root {
+    --color-primary: {{ cmsLayout.primaryColor | valueOrDefault('#087cca') | safe  }};
+    --color-secondary: {{ cmsLayout.secondaryColor | valueOrDefault('#757575') | safe  }};;
+    --color-background: #fff;
+    --color-grey: #999;
+    --color-grey-light: #ccc;
+    --color-highlight: #e6f2cd; 
+    --color-button: #edeff4;
+    --color-body: #212121;
+    --font-size: 1em;
+    --base-font-size: 16;
+    --divider: #e0e0e0;
+    --border: 1px solid var(--divider);
+    --font-meta: 'DM Sans', arial, helvetica, sans-serif;
+    --font-interface: 'DM Sans', arial, helvetica, sans-serif;
+    --font-content:'DM Sans', arial, helvetica, sans-serif;
+    --font-family-secondary: 'DM Sans', serif;
+}
+

@@ -1,0 +1,546 @@
+---
+permalink: /assets/css/theme/one-column.css
+---
+
+@import url(reset.css);
+
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  /* scroll-margin-top: 2em; */
+}
+
+@media screen {
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100dvw;
+  }
+}
+
+.readMenu {
+  position: fixed;
+  left: 4ch;
+  top: 30vh;
+  justify-items: flex-start;
+  z-index: 20001;
+}
+
+.readMenu button,
+.readMenu a {
+  display: block;
+}
+
+.book-toc {
+  overflow: auto;
+  opacity: 0;
+  font-size: .8em;
+  position: fixed;
+  z-index: -200;
+  background: var(--color-white);
+  border: 7px solid var(--color-body);
+  padding: 1em 3ch 1em 3ch;
+  max-height: 80vh;
+  box-shadow: 0 0 0 3px var(--color-background), 0 0 0 4px var(--color-body);
+  left: 5vw;
+  border-radius: 8px;
+  display: none;
+}
+
+.book-toc * {
+  color: var(--color-body) !important;
+}
+
+.book-toc.show {
+  z-index: 2000;
+  opacity: 1;
+  display: block;
+}
+
+.book-toc ol {
+  padding-left: 3ch;
+  color: var(--color-background);
+}
+
+.book-toc h2 {
+  font-size: 1em;
+  font-family: var(--font-interface);
+  font-weight: 700;
+  /* color: var(--color-background); */
+}
+
+.readMenu button,
+.readMenu a {
+  border: 0;
+  background: transparent;
+  padding: .8ch .4em;
+  color: var(--color-body);
+  display: flex;
+  align-item: center;
+  justify-content: start;
+  position: relative;
+}
+
+.readMenu button:hover .icon svg {
+  stroke: var(--color-primary);
+}
+
+.readMenu button .icon svg {
+  stroke: var(--color-button);
+}
+
+.readMenu #downloads:hover #back {
+  stroke: var(--color-primary);
+}
+
+.readMenu #downloads:hover #arrow {
+  stroke: var(--color-primary);
+  fill: var(--color-primary);
+}
+
+.readMenu button span.label {
+  display: none;
+  opacity: 0;
+  position: absolute;
+  left: 3em;
+  width: max-content;
+  color: var(--color-primary);
+  padding: .5em;
+  top: 0;
+  font-size: .8em;
+  letter-spacing: .1ch;
+  /* border: 1px solid var(--color-primary); */
+  /* border-radius: 8px; */
+  /* background: var(--color-background); */
+  background: var(--color-background);
+  border: 1px solid var(--color-body);
+  z-index: 200001;
+}
+
+.readMenu button:hover span.label {
+  opacity: 1;
+  transition: opacity 10ms;
+  display: block;
+  z-index: 200001;
+  top: -2em;
+  left: 0;
+  position: absolute;
+}
+
+/* ↓----------------- menu -------------↓ */
+
+.topbar {
+  background: linear-gradient(to bottom, var(--color-background) 90%, var(--color-background) 90%, transparent 100%);
+  padding: 1em 5vh;
+  z-index: 10000000;
+  align-items: center;
+  font-family: var(--font-interface);
+  top: 0;
+  position: sticky;
+  transition: background-color 1000ms;
+  box-shadow: 20% 0 0 0 var(--color-background);
+}
+
+@keyframes showtopbarback {
+  from {
+    background: transparent;
+  }
+
+  to {
+    background: linear-gradient(to bottom, var(--color-background) 90%, var(--color-background) 90%, transparent 100%);
+  }
+}
+
+/* button to toggle the menu 
+  ------------------------↓↓↓---------------------------*/
+
+@media screen and (min-width: 769px) {
+  /* topbar menu */
+  #menuTOC + nav {
+    display: block;
+  }
+}
+
+@media screen and (max-width: 768px) {
+
+  .logo {
+    text-align: center;
+    font-size: 3em;
+  }
+
+  .topbar {
+    flex-direction: column;
+  }
+
+  .topbar nav {
+    flex-direction: row;
+    height: auto;
+    padding-bottom: 3em;
+  }
+
+  .topbar nav   ul {
+    align-items: center;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+  }
+
+  .topbar nav  ul   li {
+    padding: 1em;
+  }
+}
+
+
+
+/* @media print {
+  body {
+    display: block;
+  }
+
+  main {
+    overflow: unset;
+  }
+
+  .topbar {
+    display: none;
+  }
+
+  main.book-index,
+  main.book-single {
+    height: auto;
+  }
+
+  .sidebar {
+    display: none;
+    font-family: var(--font-interface);
+  }
+
+  footer {
+    position: fixed;
+  }
+
+  .content {
+    display: auto;
+    height: unset;
+    padding: 0;
+    overflow: unset;
+  }
+} */
+
+
+
+
+
+/* reset (kind of) */
+
+img {
+  max-width: 100%;
+}
+
+figure {
+  max-width: 100%;
+  /* margin-bottom: em; */
+}
+
+main {
+  --text-zoom: 0;
+  font-size: calc(var(--font-size) + var(--text-zoom));
+  transition: var(--text-zoom) 1s;
+}
+
+@media screen {
+  main {
+    width: clamp(16rem, 90vw, 70rem);
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+.readMenu .downloadLinks {
+  position: relative;
+  display: flex;
+}
+
+.readMenu .downloadLinks:hover .links {
+  display: flex;
+}
+
+.readMenu .downloadLinks .links {
+  /* position: absolute; */
+  /* right: -7em; */
+  display: none;
+  top: 0;
+}
+
+.readMenu .zoomcontrols {
+  /* position: relative; */
+  display: none;
+}
+
+.readMenu .zooms:hover .zoomcontrols {
+  display: flex;
+}
+
+.readMenu .zooms {
+  display: flex;
+}
+
+.readMenu a:hover {
+  color: var(--color-primary);
+}
+
+.readMenu #print {
+  color: var(--color-button);
+}
+
+.readMenu #print:hover {
+  color: var(--color-primary);
+}
+
+.prints {
+  display: flex;
+}
+
+.prints:hover .printcontrols {
+  display: flex;
+}
+
+.printcontrols {
+  display: none;
+}
+
+.readMenu .downloadLinks .links {
+  background: var(--color-background);
+}
+
+.readMenu button {
+  background: var(--color-background);
+}
+
+@media screen and (max-width: 700px) {
+  .readMenu {
+    top: unset;
+    left: unset;
+    bottom: 0;
+    left: 0;
+    flex-direction: row;
+  }
+
+  .prints {
+    display: none;
+  }
+
+  header h1,
+  .booktitle {
+    font-size: 2em;
+  }
+}
+
+mark {
+  /* color: red !important;
+  font-size: 2em;
+  line-height: 0; */
+}
+
+mark {
+  font-weight: 600;
+}
+
+.query-0 {
+  background: var(--color-query-0);
+}
+
+.query-1 {
+  background: var(--color-query-1);
+}
+
+.query-2 {
+  background: var(--color-query-2);
+}
+
+.query-3 {
+  background: var(--color-query-3);
+}
+
+.query-4 {
+  background: var(--color-query-4);
+}
+
+.query-5 {
+  background: var(--color-query-5);
+}
+
+.results > * {
+  margin-bottom: 3em;
+  text-align: left;
+  text-indent: 0;
+}
+
+#searchIcon {
+  /* color: red; */
+  display: inline;
+  background: transparent;
+}
+
+.searchButtons {
+  display: grid;
+  grid-template-columns: 90% 10%;
+  margin-bottom: 1.3em;
+  margin-top: 1.3em;
+}
+
+.searchButtons icon {
+  grid-column: 2;
+}
+
+.searchbox h2 {
+  margin-top: 0;
+  font-size: .9em;
+  padding: 0;
+  margin: 0;
+  padding: .5em 2ch .4e 1ch;
+}
+
+.search-title {
+  font-size: .8em;
+  margin-top: 2em;
+  margin-bottom: .4em;
+  text-align: center;
+  color: var(--color-primary);
+}
+
+.searchbox {
+  font-size: 1em;
+  position: fixed;
+  z-index: -200;
+  min-width: 300px;
+  width: 50vw;
+  background: var(--color-white);
+  border: 7px solid var(--color-body);
+  padding: 1em 3ch 1em 3ch;
+  max-height: 80vh;
+  box-shadow: 0 0 0 3px var(--color-background), 0 0 0 4px var(--color-body);
+  border-radius: 8px;
+  position: fixed;
+  z-index: 3000000;
+  display: none;
+}
+
+.searchbox.active {
+  display: flex;
+  flex-direction: column;
+  top: 30vh;
+  left: 30vw;
+}
+
+.button-move {
+  position: absolute;
+  right: 2px;
+  top: -2px;
+}
+
+.readMenu .searchUI {
+  display: flex;
+}
+
+.readMenu .searchUI .links {
+  display: none;
+}
+
+.readMenu .searchUI:hover .links {
+  display: flex;
+}
+
+.readMenu .searchUI button:hover {
+  color: var(--color-primary);
+}
+
+.clearPrevious {
+  color: var(--color-primary);
+  display: none;
+}
+
+button + .clearPrevious {
+  display: block;
+}
+
+.searchspace > * {
+  color: var(--color-body);
+  display: none;
+}
+
+.previousSearch {
+  color: grey;
+  margin-right: 3ch;
+  font-size: .8em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2em;
+}
+
+.previousSearch .clearPrevious {
+  display: block;
+  color: var(--color-primary);
+  background: var(--color-white);
+}
+
+.previousQuery.multiple::after {
+  content: "(" attr(data-searched) ")";
+}
+
+button {
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+.search-hide {
+  display: none;
+}
+
+.checkquery:hover + .hover {
+  display: block;
+  position: relative;
+}
+
+.hover {
+  display: block;
+}
+
+.hover {
+  display: none;
+  background: var(--color-background);
+  padding: .8em 1ch;
+}
+
+[data-done="true"] {
+  position: relative;
+}
+
+[data-done="true"] a.link-away {
+  position: absolute;
+  left: -3ch;
+  top: 0;
+}
+
+main nav ol {
+  margin-left: 2em;
+}
+
+.background {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.background img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}

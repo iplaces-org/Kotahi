@@ -1,0 +1,389 @@
+<script> 
+  const article = JSON.parse('{{ article | dump | escape }}');
+  console.log(article);
+ </script>
+
+<aside class="side-section">
+  <div class="article-status">
+    <div class="review-timeline-container">
+      <dl class="review-timeline" id="review-timeline" aria-label="Version history">
+        <dt class="review-timeline__event review-timeline__event--revised">Curated article</dt>
+        <dd class="review-timeline__detail review-timeline__event--revised">
+          <p>Gump Station has curated this project application.</p>
+          <a class="review-timeline__link" href="https://www.moorea.berkeley.edu/">About Gump Station’s process</a>
+        </dd>
+      </dl>
+    </div>
+    <div class="article-actions-container">
+      <ul class="article-actions">
+        <li class="article-actions__list-item">
+                  {% if article.files and article.files.length > 0 %}
+                    {% set pdfFiles = [] %}
+                    {% for file in article.files %}
+                      {% if file.name and file.name.includes('.pdf') %}
+                        {% set pdfFiles = (pdfFiles.push(file), pdfFiles) %}
+                      {% endif %}
+                    {% endfor %}
+                    
+                    {% if pdfFiles.length > 0 %}
+                      {% set lastPdf = pdfFiles[pdfFiles.length - 1] %}
+                      {% if lastPdf and lastPdf.storedObjects and lastPdf.storedObjects[0] %}
+                        {% set linkUrl = lastPdf.storedObjects[0].url %}
+                        {% set linkText = 'Download' %}
+                        {{ ('<a class="button button--icon-download button--action"  id="download-button" rel="nofollow" href="' + linkUrl + '" download="' + article.parsedSubmission.$title +'" target="_blank">' + linkText + '</a>') | linkHandler(article.shortId, 'supplementary-files', cmsConfig.group, cmsLayout.hexCode) | safe }}
+                      {% endif %}
+                    {% endif %}
+                  {% endif %}   
+        </li>
+        <li class="article-actions__list-item">
+          <a class="button button--icon-citation button--action"  id="cite-button" rel="nofollow">Cite</a>
+        </li>
+        <li class="article-actions__list-item">
+          <a class="button button--icon-share button--action" id="share-button" rel="nofollow">Share</a>
+        </li>
+      </ul>
+
+      {# ---- Local Contexts: resolve the data first, then render the whole block only if it exists ---- #}
+      {% set lc = 
+        (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.$localContext) 
+        or (article.parsedSubmission and article.parsedSubmission.$localContext) 
+      %}
+
+      {% if lc and lc.url and (lc.label or lc.notice) %}
+        <hr />
+        <div class="review-timeline-container local-context-container">
+          <dl class="review-timeline" aria-label="Local Contexts">
+            <dt class="review-timeline__event review-timeline__event--revised">Local Contexts</dt>
+            <dd class="review-timeline__detail review-timeline__event--revised">
+              {% if lc.label %}
+                <div class="local-context-labels">
+                  {% for label in lc.label %}
+                    <a href="{{ lc.url }}" target="_blank" rel="noopener noreferrer" title="{{ label.labelText }}">
+                      <img src="{{ label.imgUrl }}" alt="{{ label.name }}" class="local-context-label" />
+                    </a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              {% if lc.notice %}
+                <div class="local-context-notices">
+                  {% for notice in lc.notice %}
+                    <a href="{{ lc.url }}" target="_blank" rel="noopener noreferrer" title="{{ notice.defaultText }}">
+                      <img src="{{ notice.imgUrl }}" alt="{{ notice.name }}" class="local-context-notice" />
+                    </a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      {% endif %}
+
+      {# ---- Add supplementary files: title above, button below; sits beneath Local Contexts ---- #}
+      <hr />
+      <div class="review-timeline-container">
+        <dl class="review-timeline" aria-label="Add supplementary files">
+          <dt class="review-timeline__event review-timeline__event--revised">Add supplementary files</dt>
+          <dd class="review-timeline__detail review-timeline__event--revised">
+            <a class="button button--action" id="zenodo-button" rel="nofollow"
+               target="_blank" rel="noopener noreferrer"
+               href="https://iplaces-zenodo.fly.dev/zenodo/start?shortId={{ article.shortId }}&group={{ cmsConfig.group.name }}">
+              Add files to Zenodo
+            </a>
+          </dd>
+        </dl>
+      </div>
+
+      {# ---- Related works: merge inbound + outbound DataCite relations, resolve real titles ---- #}
+      <hr />
+      <div class="review-timeline-container">
+        <dl class="review-timeline" aria-label="Related works">
+          <dt class="review-timeline__event review-timeline__event--revised">Related works</dt>
+          <dd class="review-timeline__detail review-timeline__event--revised">
+            <ul class="related-works" id="related-works"><li>Loading…</li></ul>
+          </dd>
+        </dl>
+      </div>
+      <script>
+      (function () {
+        var doi = "{{ article.parsedSubmission.$doi }}";
+        var el  = document.getElementById("related-works");
+        if (!doi || !el) return;
+
+        var API = "https://api.datacite.org";
+
+        function bare(s) {
+          s = String(s || "").toLowerCase();
+          var i = s.indexOf("doi.org/");
+          return i >= 0 ? s.slice(i + 8) : s;
+        }
+        var self = bare(doi);
+
+        var RELATION_LABELS = {
+          issupplementto: "Supplementary material",
+          issupplementedby: "Supplemented by",
+          references: "Referenced work",
+          isreferencedby: "Referenced by",
+          cites: "Cited work",
+          iscitedby: "Cited by",
+          ispartof: "Part of",
+          haspart: "Has part",
+          isversionof: "Version of",
+          isderivedfrom: "Derived from"
+        };
+        function relationLabel(rel) {
+          return RELATION_LABELS[(rel || "").toLowerCase()] || (rel || "Related");
+        }
+
+        function getJSON(u) {
+          return fetch(u, { headers: { Accept: "application/vnd.api+json" } })
+            .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+            .catch(function (e) { console.error("DataCite fetch failed:", u, e); return null; });
+        }
+
+        function resolveTitle(id) {
+          return getJSON(API + "/dois/" + encodeURIComponent(id)).then(function (j) {
+            var a = (j && j.data && j.data.attributes) || {};
+            return (a.titles && a.titles[0] && a.titles[0].title) || id;
+          });
+        }
+
+        var inboundUrl = API + "/dois?query=" +
+          encodeURIComponent('relatedIdentifiers.relatedIdentifier:"' + doi + '"') +
+          "&sort=-created&page[size]=10";
+        var selfUrl = API + "/dois/" + encodeURIComponent(doi);
+
+        Promise.all([getJSON(inboundUrl), getJSON(selfUrl)]).then(function (res) {
+          var inbound = res[0], outbound = res[1];
+          var seen = {}, rows = [];
+
+          // inbound: full records, already have titles + dates, newest first
+          var inItems = (inbound && inbound.data) || [];
+          inItems.forEach(function (d) {
+            var a = d.attributes || {};
+            var id = bare(a.doi || d.id);
+            if (!id || id === self || seen[id]) return;
+            seen[id] = 1;
+            rows.push({
+              ready: true,
+              title: (a.titles && a.titles[0] && a.titles[0].title) || a.doi || d.id,
+              href: "https://doi.org/" + (a.doi || d.id)
+            });
+          });
+
+          // outbound: identifier + relation only; resolve DOI titles, label ARKs
+          var outAttr = (outbound && outbound.data && outbound.data.attributes) || {};
+          (outAttr.relatedIdentifiers || []).forEach(function (ri) {
+            var rawId = ri.relatedIdentifier || "";
+            var id = bare(rawId);
+            if (!id || id === self || seen[id]) return;
+            seen[id] = 1;
+            var isDoi = (ri.relatedIdentifierType || "").toLowerCase() === "doi";
+            rows.push({
+              ready: false,
+              isDoi: isDoi,
+              id: id,
+              rawId: rawId,
+              relation: ri.relationType || "",
+              href: isDoi ? "https://doi.org/" + id : rawId
+            });
+          });
+
+          if (!rows.length) { el.innerHTML = "<li>No related works yet.</li>"; return; }
+
+          var shown = rows.slice(0, 5);
+
+          // resolve a real title for each displayed row (extra call per outbound DOI)
+          var jobs = shown.map(function (row) {
+            if (row.ready) return Promise.resolve({ title: row.title, href: row.href });
+            if (row.isDoi) {
+              return resolveTitle(row.id).then(function (t) {
+                return { title: t, href: row.href };
+              });
+            }
+            // non-DOI (e.g. GEOME ARK): no DataCite title exists, label by relation
+            return Promise.resolve({
+              title: relationLabel(row.relation) + ": " + row.rawId,
+              href: row.href
+            });
+          });
+
+          Promise.all(jobs).then(function (out) {
+            el.innerHTML = "";
+            out.forEach(function (row) {
+              var li = document.createElement("li");
+              li.className = "related-works__item";
+              var link = document.createElement("a");
+              link.href = row.href;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.textContent = row.title;
+              li.appendChild(link);
+              el.appendChild(li);
+            });
+          });
+        });
+      })();
+      </script>
+
+<!--
+      <div class="dates">
+        <span class="title">Curated version</span>
+        <span class="time">{{ article.parsedSubmission.curateddate | safe }}</span><br/>
+        <span class="title">Peer reviewed</span>
+        <span class="time">{{ article.parsedSubmission.peerreviewdate | safe }}</span><br/>
+        <span class="title">Preprint posted</span>
+        <span class="time">{{ article.parsedSubmission.preprintposteddate | safe }}</span>
+      </div>
+-->
+    </div>
+  </div>
+</aside>
+
+<div id="citeModal" class="modal modal--cite">
+  <!-- Modal content -->
+  <div class="modal-content modal-content--cite">
+    <div class="modal-content__top">
+      <h5 class="modal-content__title">Cite this article</h5>
+      <span id="closeCiteModal" class="close modal-content__close-button">&times;</span>
+    </div>
+    <div class="modal-content__body">
+      <div id="citedArea">
+        {% set authors = article.headerInfo.authorNames %}
+        {% for author in authors %}
+          {{- author.lastName -}}, {{ author.firstName[0] }}.{% if author.middleName and author.middleName.length > 0 %} {{ author.middleName[0] }}.{% endif %}
+          {% if not loop.last %}{% if loop.index == loop.length - 1 %}, & {% else %}, {% endif %}{% endif %}
+        {% endfor %}
+        {% set pubYear = article.headerInfo.publishedOn.split('-')[0] %}
+        ({{ pubYear }}).
+        <span style="font-style: italic;">{{ article.parsedSubmission.$title or 'Untitled' }}</span>. 
+        iPlaces Gump. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
+      </div>
+
+      <ol class="cite-downloads__list">
+        <li class="cite-downloads__list-item">
+          <button id="cite-copy-btn" class="button button--clipboard" onclick="copyToClipboard()">Copy to clipboard</button>
+          <p id="cite-copy-status" style="display: none; font-size: 0.85rem; color: green; margin-top: 0.5rem;">
+            ✅ Copied!
+          </p>
+        </li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<div id="shareModal" class="modal" style="align-items: center;justify-content: center;background: #0470c022;z-index: 9999;backdrop-filter: blur(4px);">
+  <!-- Modal content -->
+  <div class="modal-content">
+    <div class="modal-content__top">
+    <h5 class="modal-content__title">Share this article</h5>
+    <span id="closeShareModal" class="close modal-content__close-button">&times;</span>
+    </div>
+    <div class="modal-content__body">
+    <div class="form-item">
+      <input readonly="" type="input" class="text-field text-field--clipboard" id="copydoi" value="https://doi.org/{{ article.parsedSubmission.$doi }}">
+      <div class="clipboard-container">
+        <button class="button button--clipboard" onclick="copyToClipboardDoi()">Copy to clipboard</button>
+        <p id="share-copy-status" style="display: none; font-size: 0.85rem; color: green; margin-top: 0.5rem;">
+            ✅ Copied!
+          </p>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Get the modal
+var closeCiteModal = document.getElementById('closeCiteModal');
+var closeShareModal = document.getElementById('closeShareModal');
+var citeModal = document.getElementById("citeModal");
+var shareModal = document.getElementById("shareModal");
+
+// Get the button that opens the modal
+var citeBtn = document.getElementById("cite-button");
+var shareBtn = document.getElementById("share-button");
+
+// Get the <span> element that closes the modal
+var span = document.getElementsByClassName("close")[0];
+
+// When the user clicks on the button, open the modal
+citeBtn.onclick = function() {
+  citeModal.style.display = "flex";
+}
+
+shareBtn.onclick = function() {
+  shareModal.style.display = "flex";
+}
+
+// When the user clicks on <span> (x), close the modal
+closeCiteModal.onclick = function() {
+  citeModal.style.display = "none";
+}
+
+closeShareModal.onclick = function() {
+  shareModal.style.display = "none";
+}
+
+function copyToClipboard() {
+  const div = document.getElementById("citedArea");
+  
+  // Create a temporary textarea element
+  const tempTextArea = document.createElement("textarea");
+  tempTextArea.value = div.innerText || div.textContent; // Get the div content
+  
+  // Append it to the body
+  document.body.appendChild(tempTextArea);
+  
+  // Select the content
+  tempTextArea.select();
+  tempTextArea.setSelectionRange(0, 99999); // For mobile devices
+  
+  // Copy the content to clipboard
+  document.execCommand("copy");
+  
+  // Remove the temporary textarea
+  document.body.removeChild(tempTextArea);
+
+    // Show confirmation message
+  const status = document.getElementById("cite-copy-status");
+  status.style.display = "block";
+
+  // Hide after 2 seconds
+  setTimeout(() => {
+    status.style.display = "none";
+  }, 2000);
+}
+
+function copyToClipboardDoi () {
+  const div = document.getElementById("copydoi");
+  
+  // Create a temporary textarea element
+  const tempTextArea = document.createElement("textarea");
+  tempTextArea.value = div.innerText || div.textContent || div.value; // Get the div content
+  
+  // Append it to the body
+  document.body.appendChild(tempTextArea);
+  
+  // Select the content
+  tempTextArea.select();
+  tempTextArea.setSelectionRange(0, 99999); // For mobile devices
+  
+  // Copy the content to clipboard
+  document.execCommand("copy");
+  
+  // Remove the temporary textarea
+  document.body.removeChild(tempTextArea);
+
+  // Show confirmation message
+  const status = document.getElementById("share-copy-status");
+  status.style.display = "block";
+
+  // Hide after 2 seconds
+  setTimeout(() => {
+    status.style.display = "none";
+  }, 2000);
+}
+
+</script> 

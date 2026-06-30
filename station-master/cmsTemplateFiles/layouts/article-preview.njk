@@ -1,0 +1,93 @@
+{% extends '../layouts/base.njk' %}
+{% set currentPage = article %}
+{% set title = article.meta.title %}
+{% block content %}
+
+
+{% set rorArray = [] %}
+{% for authorRor in article.headerInfo.authorNames %}
+  {% if authorRor.ror and authorRor.ror.length %}
+    {% for rorItem in authorRor.ror %}
+      {% if rorItem.label and not (rorItem.label in rorArray) %}
+        {% set rorArray = rorArray.concat([rorItem.label]) %}
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    {% if authorRor.ror and authorRor.ror.label and not (authorRor.ror.label in rorArray) %}
+      {% set rorArray = rorArray.concat([authorRor.ror.label]) %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+<div id="main-container">
+ <main>
+
+   <div class="article-preview-header">
+            <span class="topics">
+                {{ article.headerInfo.topics }}
+            </span>
+            <span class="article-title">
+                {{ article.headerInfo.title }}</span>
+            <ul class="authors metadata">
+                {% for author in article.headerInfo.authorNames %}
+                    <li class="author metadata">
+                        <span class="author-name">
+                          {{- author.firstName -}}{% if author.middleName %}&nbsp;{{- author.middleName -}}{% endif %}&nbsp;{{- author.lastName -}}
+                          {% for r in rorArray %}
+                            {% if author.ror.label == r  %}
+                              <sup>{{ loop.index }}&nbsp;</sup>
+                            {% endif %}
+                         {% endfor %}
+                        </span>
+                        {% if author.email %}
+                            <a class="email" href="mailto:{{ author.email }}"></a>
+                        {% endif %}
+                        {% if author.orcid %}
+                            <a class="orcid" target="_blank" href="https://orcid.org/{{ author.orcid }}"></a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            {% if article.headerInfo.authorNames %}
+              <ol id="affiliations-list">
+                {% for re in rorArray %}
+                <li style="margin-left: 0px;">
+                    {{ re | safe }}
+                </li>
+                {% endfor %} 
+              </ol>  
+            {% endif %}
+            
+           <span class="header-doi-and-licenses">
+                <a href="https://doi.org/{{ article.parsedSubmission.$doi }}">
+                    DOI of the submitted work: {{ article.parsedSubmission.$doi }}
+                </a>
+                {% if article.parsedSubmission.$doi %}
+                    <a href="https://commons.datacite.org/doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener">
+                        View record on DataCite Commons →
+                    </a>
+                {% endif %}
+
+                {% if cmsLayout.publishConfig.licenseUrl %}
+                    <a href="{{cmsLayout.publishConfig.licenseUrl}}">
+                        {{cmsLayout.publishConfig.licenseUrl}}
+                    </a>
+                {% endif %}
+            </span>
+
+            {% if article.headerInfo.publishedOn %}
+                <p class="published-date">
+                    Published on <time datetime="article.headerInfo.publishedOn">{{ article.headerInfo.publishedOn | replace('Z','') | postDate }}</time>
+                </p>
+            {% endif %}
+        </div>
+
+        {% include "_partials/tabs.njk" %}
+  
+    </main>
+
+  {% include "_partials/side.njk" %}
+
+</div>     
+{% endblock %}

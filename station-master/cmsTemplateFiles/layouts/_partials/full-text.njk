@@ -1,0 +1,73 @@
+<div class="article-content">
+            <div class="meta-data">
+                <aside class="toc-wrapper">
+                    {% if article.parsedSubmission.$abstract != 'undefined'  %}
+                      <ul>
+                        <li>
+                            <a href="#abstract" onclick="highlightLink(this)">Abstract</a>
+                        </li>
+                      </ul>
+                    {% endif %}
+                    {{ article.meta.source | addIDtoTitles | toc({"tags":["h2","h3", "figure"]}) | safe }}
+                    <ul>
+                  
+                    {% if article.supplementaryFiles.length >= 1 %}
+                        <li>
+                            <a href="#supplementary" onclick="highlightLink(this)">Supplementary Files</a>
+                        </li>
+                    {% endif %}
+                     
+                    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
+                    
+                    {%  if authorResponse != null %}
+                         <li>
+                            <a href="#authorResponse" onclick="highlightLink(this)">Author Response</a>
+                        </li>
+                    {% endif %}
+
+                     </ul>
+                </aside>
+            </div>
+            <article>
+                <section class="manuscript">
+                    {% if article.parsedSubmission.$abstract != 'undefined'  %}
+                        <h3 id="abstract">Abstract</h3>
+                        <section class="abstract">
+                            {{ article.parsedSubmission.$abstract | safe }}
+                        </section>
+                    {% endif %}
+                    {% if article.meta.source %}
+                        <section id="article" class="article">
+                            {{ article.meta.source | addIDtoTitles | imagesHandler(article.shortId, 'articles', cmsConfig.group, cmsLayout.hexCode) | safe }}
+                        </section>
+                    {% endif %}
+                    {% if article.supplementaryFiles.length >= 1 %}
+                        <section class="manuscript-metadata">
+                            <h3 id="supplementary">Supplementary Files</h3>
+                            {% for item in article.supplementaryFiles %}
+                                <ol>
+                                    <div class="attachment">
+                                        <svg class="svg-container" viewBox="0 0 509.371 509.371" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M452.758,36.265c-48.354-48.354-127.045-48.354-175.399,0L62.657,250.967c-6.777,6.778-6.777,17.764,0,24.541 c6.786,6.777,17.764,6.777,24.541,0L301.9,60.815c34.825-34.816,91.492-34.816,126.316,0 c16.879,16.87,26.164,39.302,26.164,63.158c0,23.864-9.285,46.288-26.164,63.158L158.392,456.956 c-23.621,23.63-62.073,23.63-85.695,0c-23.621-23.639-23.63-62.074,0-85.704l217.591-217.591 c12.427-12.418,32.638-12.435,45.091,0c12.427,12.418,12.427,32.647,0,45.082L172.902,361.212c-6.777,6.777-6.777,17.764,0,24.541 c6.786,6.778,17.764,6.778,24.55,0l162.469-162.469c25.956-25.964,25.956-68.209,0-94.165c-25.964-25.982-68.209-25.964-94.173,0 l-217.6,217.591c-37.159,37.15-37.159,97.618,0,134.786c18.588,18.588,42.991,27.874,67.402,27.874s48.814-9.294,67.393-27.874 l269.815-269.824c23.439-23.422,36.335-54.567,36.335-87.7C489.092,90.841,476.197,59.696,452.758,36.265z"/>
+                                        </svg>
+                                        <a href="../../assets/supplementary-files/{{item.name}}" download>{{item.name}}</a>
+                                    </div>
+                                </ol>
+                            {% endfor %}
+                        </section>
+                    {% endif %}
+
+                     {% if authorResponse != null %}
+                     <div class="manuscript-metadata">
+                        <h3 id="authorResponse">Author Response</h3>
+                            <section class="content">
+                                    <div class="review-field">
+                                        {{ authorResponse.text | safe }}
+                                    </div>
+                            </section>
+                         </div>
+                    {% endif %}
+
+                </section>
+            </article>
+        </div> 

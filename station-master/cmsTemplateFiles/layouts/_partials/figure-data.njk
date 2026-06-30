@@ -1,0 +1,44 @@
+<div class="article-content">
+
+<div id="output">
+    <!-- The extracted matches will be shown here -->
+</div>
+
+</div>
+
+<script>
+    // Get the HTML content from the Nunjucks variable
+    const htmlContent = `{{ article.meta.source | safe }}`;
+
+const parser = new DOMParser();
+const doc = parser.parseFromString(htmlContent, "text/html");
+
+// Extract all <figure> tags and the following <p> tags
+const figures = doc.querySelectorAll("figure");
+const results = [];
+
+
+figures.forEach(figure => {
+    const nextElement = figure.nextElementSibling;
+    if (nextElement && nextElement.tagName === "P") {
+        results.push({
+            figure: figure.outerHTML,
+            paragraph: nextElement.outerHTML
+        });
+    }
+});
+
+
+    // Check if there are matches
+    if (results) {
+        results.forEach((match, index) => {
+            // Create a div to display each match
+            const matchDiv = document.createElement("div");
+            matchDiv.innerHTML = `<h3>Figure ${index + 1}</h3><br/>${match.figure}<hr />`;
+            output.appendChild(matchDiv);
+        });
+    } else {
+        output.innerHTML = "<p>No matches found.</p>";
+    }
+</script> 
+     
