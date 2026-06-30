@@ -77,7 +77,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
     $doi,
     $issueYear: issueYear,
     resourcetype: resourceTypeGeneral = 'Other',
-    ifother: resourceType = 'project',
+    ifother: resourceType = '',
     $title: title,
   } = submission
 
@@ -107,10 +107,11 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
     attributes: {
       doi,
       event: 'publish',
+      schemaVersion: 'http://datacite.org/schema/kernel-4',
       prefix,
       suffix,
       url: `${publishedArticleLocationPrefix}${shortId}`,
-      types: { resourceTypeGeneral, resourceType },
+      types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
       titles: title ? [{ title }] : [],
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
@@ -186,8 +187,8 @@ const checkPayload = async (manuscript, activeConfig) => {
     $authors,
     $dois,
     $issueYear: issueYear,
-    objectType: resourceTypeGeneral = 'Other',
-    ifother: resourceType = 'project',
+    resourcetype: resourceTypeGeneral = 'Other',
+    ifother: resourceType = '',
     $title: title,
   } = submission
 
@@ -207,10 +208,11 @@ const checkPayload = async (manuscript, activeConfig) => {
     attributes: {
       doi,
       event: 'publish',
+      schemaVersion: 'http://datacite.org/schema/kernel-4',
       prefix,
       suffix,
       url: `${publishedArticleLocationPrefix}${shortId}`,
-      types: { resourceTypeGeneral, resourceType },
+      types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
       titles: title ? [{ title }] : [],
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],

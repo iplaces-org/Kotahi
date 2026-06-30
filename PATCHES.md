@@ -2,13 +2,13 @@
 
 This repo runs the **prebuilt** Coko server image
 `cokoapps/kotahi-server:2026.04.27-0` for the `iplaces-test-server` Fly app,
-with exactly **one** source patch overlaid at build time. This file is the
-canonical record of that patch and how it is deployed.
+with a small set of source patches overlaid at build time. This file is the
+canonical record of those patches and how they are deployed.
 
-> Golden rule: there is **one** patch and **one** source of truth for it
-> (`packages/server/services/publishing/datacite/fieldsTransformers.js`).
-> If you change the patch, change that file and re-deploy with the guarded
-> script. Never hand-edit the file inside a running container.
+> Golden rule: each patch is a tracked file under `packages/server/...` that the
+> `server-fix/Dockerfile` COPYs onto the prebuilt image. If you change a patch,
+> change that file and re-deploy with the guarded script. Never hand-edit a file
+> inside a running container.
 
 ---
 
@@ -42,7 +42,34 @@ See "Update ritual" below.
 
 ---
 
-## How the patch reaches the container
+## Patch 2 — DataCite index.js: schemaVersion + resource type mapping
+
+**File:** `packages/server/services/publishing/datacite/index.js`
+**Functions:** `getPathAndPayload` (publish) and `checkPayload` (payload verifier)
+
+### What it does
+1. **`schemaVersion: 'http://datacite.org/schema/kernel-4'`** is added to both
+   payloads. Without it, DataCite stamps the DOI with a pre-4.6 default and
+   **coerces** newer `resourceTypeGeneral` values (e.g. `Project`, added in
+   schema 4.6) to `Other`. Declaring kernel-4 makes DataCite validate against the
+   current 4.x list, so `Project` is accepted as-is.
+2. **`resourceTypeGeneral` ← `submission.resourcetype`** (controlled list) in
+   *both* functions. Previously `checkPayload` read `submission.objectType`,
+   which is now never used.
+3. **`resourceType` ← `submission.ifother`** (free text), defaulting to `''` and
+   **omitted when blank** (`types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) }`).
+   This kills a spurious hardcoded `resourceType: "project"` default.
+
+### History
+This replaced an abandoned "array-shaped DataCite properties" rewrite (a generic
+`RepeatableGroup` form component + `getSubjects`/array serializers) that broke the
+client and was rolled back. Only the minimal `index.js` changes above shipped.
+Verified live: a record with `resourcetype = "Project"` now publishes
+`resourceTypeGeneral: "Project"`.
+
+---
+
+## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
 

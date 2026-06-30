@@ -79,6 +79,12 @@ preflight() {
   fi
   node --check "$f" >/dev/null 2>&1 && ok "patched file syntax valid" || fail "patched file has a syntax error"
 
+  # Patch 2: the DataCite index.js overlay must parse and carry the schemaVersion
+  # (kernel-4) that makes DataCite 4.6 accept resourceTypeGeneral values like "Project".
+  local idx="packages/server/services/publishing/datacite/index.js"
+  node --check "$idx" >/dev/null 2>&1 && ok "index.js syntax valid" || fail "index.js has a syntax error"
+  grep -q "schemaVersion" "$idx" && ok "index.js carries schemaVersion (DataCite 4.6)" || fail "index.js missing schemaVersion overlay"
+
   # A stray root ./fly.toml is the classic foot-gun (wrong port / [env] /
   # [processes]). We always deploy with -c "$CONFIG", but warn loudly.
   if [[ -f "fly.toml" ]]; then

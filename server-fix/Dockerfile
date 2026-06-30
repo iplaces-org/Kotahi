@@ -12,9 +12,16 @@
 #   -C "ls /home/node/app/config /home/node/app/config/storage".
 FROM cokoapps/kotahi-server:2026.04.27-0
 
-# (1) DataCite funderIdentifier patch -- unchanged.
+# (1) DataCite overlays (see PATCHES.md):
+#   - fieldsTransformers.js (Patch 1): funderIdentifier uses the ROR id (funderid).
+#   - index.js (Patch 2): schemaVersion = kernel-4 so DataCite validates against
+#     4.6 and accepts resourceTypeGeneral values like "Project" (otherwise coerced
+#     to "Other"); resourceTypeGeneral <- submission.resourcetype and resourceType
+#     <- submission.ifother (omitted when blank); objectType is never used.
 COPY packages/server/services/publishing/datacite/fieldsTransformers.js \
      /home/node/app/services/publishing/datacite/fieldsTransformers.js
+COPY packages/server/services/publishing/datacite/index.js \
+     /home/node/app/services/publishing/datacite/index.js
 
 # (2) Gump-clone seeds. A "station" is just a journal-type group (exactly how
 #     Gump itself is defined: gumpstation:journal) -- so we DON'T invent a new
