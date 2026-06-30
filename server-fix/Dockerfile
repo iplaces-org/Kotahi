@@ -43,3 +43,13 @@ COPY station-master/cmsTemplateFiles/ \
 #     packages/server/api/... lands at /home/node/app/api/...
 COPY packages/server/api/rest/cmsUpload/endpoint.js \
      /home/node/app/api/rest/cmsUpload/endpoint.js
+
+# (4) pdfExport crash guard. Metadata-only records (no body => meta.source null)
+#     crashed replaceImageSrc/cheerio.load(). The overlay source is PINNED to the
+#     prebuilt image's own copy of this file + the 5-line guard -- NOT the repo's
+#     packages/server/ version, which is a newer Kotahi (uses @coko/server's
+#     config.get() and a different createFile() signature). Overlaying the repo
+#     version made `config.get` undefined at require time and crash-looped boot.
+#     Re-pin after a base-image bump: see PATCHES.md "Update ritual".
+COPY server-fix/overlays/controllers/pdfExport.controllers.js \
+     /home/node/app/controllers/pdfExport.controllers.js
