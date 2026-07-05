@@ -211,6 +211,122 @@ const getFormRelatedIdentifiers = formRows => {
     })
 }
 
+
+/* iplaces Patch 4a: transform flat form-authored contributor rows
+   (ContributorsInput) into DataCite contributor objects. Handles both
+   nameTypes. ror-type field values are {label: name, value: rorUrlOrText};
+   a value containing ror.org is treated as a ROR id, anything else as free
+   text (name only). Rows without a contributorType or without a usable name
+   are skipped. */
+const getFormContributors = formRows => {
+  if (!Array.isArray(formRows)) return []
+
+  const rorAffiliation = sel =>
+    sel && sel.label
+      ? [
+          {
+            name: sel.label,
+            ...(typeof sel.value === 'string' && sel.value.includes('ror.org')
+              ? {
+                  affiliationIdentifier: sel.value,
+                  affiliationIdentifierScheme: 'ROR',
+                  schemeUri: 'https://ror.org',
+                }
+              : {}),
+          },
+        ]
+      : []
+
+  return formRows
+    .filter(r => r && r.contributorType)
+    .map(r => {
+      if (r.nameType === 'Organizational') {
+        const org = r.organization
+
+        if (!org || !org.label) return null
+        return {
+          contributorType: r.contributorType,
+          nameType: 'Organizational',
+          name: org.label,
+          ...(typeof org.value === 'string' && org.value.includes('ror.org')
+            ? {
+                nameIdentifiers: [
+                  {
+                    nameIdentifier: org.value,
+                    nameIdentifierScheme: 'ROR',
+                    schemeUri: 'https://ror.org',
+                  },
+                ],
+              }
+            : {}),
+        }
+      }
+
+      if (!r.givenName && !r.familyName) return null
+      return {
+        contributorType: r.contributorType,
+        nameType: 'Personal',
+        ...(r.givenName ? { givenName: r.givenName } : {}),
+        ...(r.familyName ? { familyName: r.familyName } : {}),
+        ...(r.orcid
+          ? {
+              nameIdentifiers: [
+                {
+                  nameIdentifier: r.orcid,
+                  nameIdentifierScheme: 'ORCID',
+                  schemeUri: 'https://orcid.org',
+                },
+              ],
+            }
+          : {}),
+        affiliation: rorAffiliation(r.affiliation),
+      }
+    })
+    .filter(Boolean)
+}
+
+/* iplaces Patch 4b: per-record publisher override. If the form supplies
+   submission.publisher (TextField), it replaces the group-config publisher;
+   submission.publisherRor (optional) adds the ROR identifier. */
+const getPublisherWithOverride = (formData, submission) => {
+  const name = submission && submission.publisher
+
+  if (name && String(name).trim() !== '') {
+    const ror = submission.publisherRor
+
+    return {
+      name: String(name).trim(),
+      ...(ror && String(ror).includes('ror.org')
+        ? {
+            publisherIdentifier: String(ror).trim(),
+            schemeUri: 'https://ror.org',
+            publisherIdentifierScheme: 'ROR',
+          }
+        : {}),
+    }
+  }
+
+  return getPublisher(formData)
+}
+
+/* iplaces Patch 4c: publicationYear no longer hardcoded to the current
+   year. Priority: submission.publicationYear (4-digit), else the year of
+   submission.datePublished, else the current year (legacy behavior). */
+const getPublicationYear = (submission, publishDate) => {
+  const explicit = submission && submission.publicationYear
+
+  if (explicit && /^\d{4}$/.test(String(explicit).trim()))
+    return parseInt(String(explicit).trim(), 10)
+
+  const datePublished = submission && submission.datePublished
+  const parsed = datePublished ? new Date(datePublished) : null
+
+  if (parsed && !Number.isNaN(parsed.getTime()))
+    return parsed.getUTCFullYear()
+
+  return publishDate.getUTCFullYear()
+}
+
 const getDates = (issueYear, publishDate) => {
   return [
     { dateType: 'Issued', date: issueYear },
@@ -271,4 +387,7 @@ module.exports = {
   getFundingReferences,
   getRelatedIdentifiers,
   getFormRelatedIdentifiers,
+  getFormContributors,
+  getPublisherWithOverride,
+  getPublicationYear,
 }
