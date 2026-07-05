@@ -35,6 +35,7 @@ import FormCollaborateWax from '../../../component-formbuilder/src/components/Fo
 import { Heading1, Section, Legend, SubNote } from '../style'
 import AuthorsInput from './AuthorsInput'
 import RelatedIdentifiersInput from './RelatedIdentifiersInput'
+import ContributorsInput from './ContributorsInput'
 import LocalContext from './LocalContext'
 import DoisInput from './MultipleDoi'
 import LinksInput from './LinksInput'
@@ -144,6 +145,7 @@ const elements = {
   Title: TextInput,
   Authors: AuthorsInput,
   RelatedIdentifiersInput,
+  ContributorsInput,
   Abstract: RichTextEditor,
   Keywords: TextInput,
   TextField: TextInput,

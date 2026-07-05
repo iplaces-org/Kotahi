@@ -1,0 +1,123 @@
+app = "iplaces-test-server"
+primary_region = "lhr"
+
+[build]
+image = "cokoapps/kotahi-server:2026.04.27-0"
+
+[processes]
+# app = "bash -c (disabled — let prebuilt image run its own start)"
+
+[http_service]
+auto_start_machines = true
+auto_stop_machines = true
+force_https = true
+internal_port = 8080
+min_machines_running = 0
+processes = ["app"]
+
+# HTTP service configuration (port 8080)
+[[services]]
+internal_port = 8080
+protocol = "tcp"
+processes = ['app']
+
+[[services.ports]]
+handlers = ["http"]
+port = 80           # Map internal HTTP service (8080) to external port 80
+
+[[services.ports]]
+handlers = ["tls", "http"]
+port = 443                 # Map internal HTTP service (8080) to external HTTPS (443)
+
+# WebSocket service configuration (port 8081)
+[[services]]
+internal_port = 8081
+protocol = "tcp"     # Use TCP for WebSocket connections
+processes = ['app']
+
+[[services.ports]]
+handlers = ["tls", "http"] # WebSocket handler
+port = 8081                # External port for WebSocket (same as internal port)
+
+[[vm]]
+cpu_kind = "shared"
+cpus = 1
+memory = "1gb"
+
+[[mounts]]
+source = 'kotahi_test_plugins'
+destination = '/custom'
+
+[env]
+NODE_ENV = "production"
+CLIENT_URL = "https://iplaces-test-client.fly.dev"
+SERVER_URL = "https://iplaces-test-server.fly.dev"
+SERVER_PORT = 8080
+WS_YJS_SERVER_PORT = 8081
+INSTANCE_GROUPS = "journal:journal,prc:prc,single_form:preprint1,preprint2:preprint2"
+MANUSCRIPTS_TABLE_COLUMNS = 'shortId, submission.$title, created, updated, status, author'
+USE_SANDBOXED_ORCID = "true"
+SERVICE_PAGEDJS_PROTOCOL = "https"
+SERVICE_PAGEDJS_HOST = "pagedjs-microservice.fly.dev"
+SERVICE_PAGEDJS_PORT = ""
+SERVICE_XSWEET_PROTOCOL = "https"
+SERVICE_XSWEET_HOST = "xsweet-microservice.fly.dev"
+SERVICE_XSWEET_PORT = ""
+SERVICE_ANYSTYLE_PROTOCOL = "https"
+SERVICE_ANYSTYLE_HOST = "anystyle-microservice.fly.dev"
+SERVICE_ANYSTYLE_PORT = ""
+FLAX_EXPRESS_PORT = 8081
+FLAX_EXPRESS_HOST = "flax.fly.dev"
+FLAX_EXPRESS_PROTOCOL = "https"
+FLAX_CLIENT_API_URL = "https://iplaces-test-server.fly.dev"
+FLAX_SITE_URL = "http://flax.fly.dev"
+
+# FLAX_CLIENT_ID=''
+# FLAX_CLIENT_SECRET=''
+
+# REVIEW_SHARED = true
+# REVIEW_HIDE = true
+
+# PUBLISHING_WEBHOOK_URL=https://someserver/webhook-address # see https://gitlab.coko.foundation/kotahi/kotahi/-/blob/main/    FAQ.md#how-do-i-publish-from-kotahi
+# PUBLISHING_WEBHOOK_SECRET=some-secret-string
+# PUBLISHING_WEBHOOK_URL=${PUBLISHING_WEBHOOK_URL:-}
+# PUBLISHING_WEBHOOK_TOKEN=${PUBLISHING_WEBHOOK_TOKEN:-}
+# PUBLISHING_WEBHOOK_REF=${PUBLISHING_WEBHOOK_REF:-}
+
+# TEAM_TIMEZONE=Etc/UTC
+# AUTO_IMPORT_HOUR_UTC=21
+# ARCHIVE_PERIOD_DAYS=60
+# ALLOW_MANUAL_IMPORT=true
+# SEMANTIC_SCHOLAR_IMPORTS_RECENCY_PERIOD_DAYS=42
+
+# USE_APERTURE_EMAIL=${USE_APERTURE_EMAIL:-false}
+# USE_COLAB_BIOPHYSICS_IMPORT=${USE_COLAB_BIOPHYSICS_IMPORT:-false}
+
+# KOTAHI_API_TOKENS=${KOTAHI_API_TOKENS:-}
+# JOURNAL_NAME=${JOURNAL_NAME:-}
+# JOURNAL_ABBREVIATED_NAME=${JOURNAL_ABBREVIATED_NAME:-}
+# JOURNAL_HOMEPAGE=${JOURNAL_HOMEPAGE:-}
+
+# GOOGLE_SPREADSHEET_CLIENT_EMAIL=${GOOGLE_SPREADSHEET_CLIENT_EMAIL:-}
+# GOOGLE_SPREADSHEET_PRIVATE_KEY=${GOOGLE_SPREADSHEET_PRIVATE_KEY:-}
+# GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:-}
+
+# HYPOTHESIS_API_KEY=${HYPOTHESIS_API_KEY:-}
+# HYPOTHESIS_GROUP=${HYPOTHESIS_GROUP:-}
+# HYPOTHESIS_REVERSE_FIELD_ORDER=${HYPOTHESIS_REVERSE_FIELD_ORDER:-}
+# HYPOTHESIS_ALLOW_TAGGING=${HYPOTHESIS_ALLOW_TAGGING:-}
+
+# CROSSREF_LOGIN=${CROSSREF_LOGIN:-}
+# CROSSREF_PASSWORD=${CROSSREF_PASSWORD:-}
+# CROSSREF_REGISTRANT=${CROSSREF_REGISTRANT:-}
+# CROSSREF_DEPOSITOR_NAME=${CROSSREF_DEPOSITOR_NAME:-}
+# CROSSREF_DEPOSITOR_EMAIL=${CROSSREF_DEPOSITOR_EMAIL:-}
+# CROSSREF_PUBLICATION_TYPE=${CROSSREF_PUBLICATION_TYPE:-article}
+# CROSSREF_USE_SANDBOX=${CROSSREF_USE_SANDBOX:-true}
+
+# DOI_PREFIX=${DOI_PREFIX:-}
+
+# PUBLISHED_ARTICLE_LOCATION_PREFIX=${PUBLISHED_ARTICLE_LOCATION_PREFIX:-}
+# PUBLICATION_LICENSE_URL=${PUBLICATION_LICENSE_URL:-}
+
+# DISABLE_EVENT_NOTIFICATIONS=${DISABLE_EVENT_NOTIFICATIONS:-}
