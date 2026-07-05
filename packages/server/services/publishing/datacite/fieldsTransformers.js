@@ -172,6 +172,45 @@ const getRelatedDois = dois => {
     : []
 }
 
+
+/* iplaces Patch 3: pass through submission.relatedIdentifiers (form-authored
+   DataCite rows from RelatedIdentifiersInput). Rules: a row must have all of
+   identifier, relatedIdentifierType and relationType to be emitted; internal
+   row id is stripped; a pasted https://doi.org/ prefix is stripped for DOI
+   rows; empty optional sub-properties are omitted. */
+const getFormRelatedIdentifiers = formRows => {
+  const doiUrl = 'https://doi.org/'
+  if (!Array.isArray(formRows)) return []
+
+  return formRows
+    .filter(
+      r =>
+        r &&
+        typeof r.relatedIdentifier === 'string' &&
+        r.relatedIdentifier.trim() !== '' &&
+        r.relatedIdentifierType &&
+        r.relationType,
+    )
+    .map(r => {
+      let identifier = r.relatedIdentifier.trim()
+
+      if (r.relatedIdentifierType === 'DOI' && identifier.startsWith(doiUrl))
+        identifier = identifier.substring(doiUrl.length)
+
+      return {
+        relatedIdentifier: identifier,
+        relatedIdentifierType: r.relatedIdentifierType,
+        relationType: r.relationType,
+        ...(r.relationTypeInformation
+          ? { relationTypeInformation: r.relationTypeInformation }
+          : {}),
+        ...(r.resourceTypeGeneral
+          ? { resourceTypeGeneral: r.resourceTypeGeneral }
+          : {}),
+      }
+    })
+}
+
 const getDates = (issueYear, publishDate) => {
   return [
     { dateType: 'Issued', date: issueYear },
@@ -231,4 +270,5 @@ module.exports = {
   getRightsList,
   getFundingReferences,
   getRelatedIdentifiers,
+  getFormRelatedIdentifiers,
 }
