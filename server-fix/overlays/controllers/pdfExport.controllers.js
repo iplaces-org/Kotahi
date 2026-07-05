@@ -1,11 +1,13 @@
+/* eslint-disable promise/always-return */
+
 const fs = require('fs-extra')
 const path = require('path')
 const crypto = require('crypto')
 const fsPromised = require('fs').promises
 const FormData = require('form-data')
 const axios = require('axios')
-const config = require('config')
 const { promisify } = require('util')
+const { config } = require('@coko/server')
 
 const {
   createFile,
@@ -34,7 +36,7 @@ const copyFile = promisify(fs.copyFile)
 
 const randomBytes = promisify(crypto.randomBytes)
 
-const { clientId, clientSecret, port, protocol, host } = config.pagedjs
+const { clientId, clientSecret, port, protocol, host } = config.get('pagedjs')
 
 const serverUrl = `${protocol}://${host}${port ? `:${port}` : ''}`
 
@@ -106,11 +108,6 @@ const pdfHandler = async manuscriptId => {
 
   const articleData = await getManuscriptById(manuscriptId)
 
-  // Metadata-only records have no body, so meta.source is null. cheerio.load()
-  // (inside replaceImageSrc) throws on non-strings, so coerce to an empty string.
-  if (!articleData.meta) articleData.meta = {}
-  if (typeof articleData.meta.source !== 'string') articleData.meta.source = ''
-
   const groupData = await getGroupAssets(articleData.groupId)
   const activeConfig = await Config.getCached(articleData.groupId)
 
@@ -118,6 +115,11 @@ const pdfHandler = async manuscriptId => {
   const dirName = `tmp/${raw.toString('hex')}_${manuscriptId}`
 
   await fsPromised.mkdir(dirName, { recursive: true })
+
+  // Metadata-only records have no body, so meta.source is null. cheerio.load()
+  // (inside replaceImageSrc) throws on non-strings, so coerce to an empty string.
+  if (!articleData.meta) articleData.meta = {}
+  if (typeof articleData.meta.source !== 'string') articleData.meta.source = ''
 
   articleData.files = await getFilesWithUrl(articleData.files)
   articleData.meta.source = await replaceImageSrc(
@@ -142,7 +144,7 @@ const pdfHandler = async manuscriptId => {
 
   if (groupData.css) {
     css = await generateCss(true)
-    // eslint-disable-next-line operator-assignment
+
     css = css + groupData.css.toString()
   } else {
     css = await generateCss()
@@ -220,14 +222,10 @@ const pdfHandler = async manuscriptId => {
           // await deleteFiles([pdfFileIds], true)
         }
 
-        const createdFile = await createFile(
-          fileStream,
-          filename,
-          null,
-          null,
-          ['printReadyPdf'],
-          manuscriptId,
-        )
+        const createdFile = await createFile(fileStream, filename, {
+          tags: ['printReadyPdf'],
+          objectId: manuscriptId,
+        })
 
         const printReadyPdfFile = await getFileWithUrl(createdFile)
         const { url } = printReadyPdfFile.storedObjects[0]

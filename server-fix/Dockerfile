@@ -4,52 +4,51 @@
 # file/folder -- the only source of truth.
 # To bump the base image, change the tag here (see PATCHES.md "Update ritual").
 #
-# NOTE on the in-image paths below: the prebuilt cokoapps/kotahi-server image
-# roots the server package directly at /home/node/app (NOT under
-# packages/server). Proven by the DataCite patch landing at
-# /home/node/app/services/... and that overlay's guard passing in-container.
-# Verify once before a bake: fly ssh console --app iplaces-test-server \
-#   -C "ls /home/node/app/config /home/node/app/config/storage".
-FROM cokoapps/kotahi-server:2026.04.27-0
+# NOTE on the in-image paths: the server package roots at /home/node/app (no
+# packages/server prefix). NEW in 2026.07.03-0: the TypeScript build mirrors
+# the app into /home/node/app/dist (verified: dist copies are identical in
+# logic, reformatted only), and we don't know which copy runs -- so EVERY
+# overlay is COPYed to both the plain path and its dist/ twin.
+FROM cokoapps/kotahi-server:2026.07.03-0
 
 # (1) DataCite overlays (see PATCHES.md):
 #   - fieldsTransformers.js (Patch 1): funderIdentifier uses the ROR id (funderid).
-#   - index.js (Patch 2): schemaVersion = kernel-4 so DataCite validates against
-#     4.6 and accepts resourceTypeGeneral values like "Project" (otherwise coerced
-#     to "Other"); resourceTypeGeneral <- submission.resourcetype and resourceType
-#     <- submission.ifother (omitted when blank); objectType is never used.
+#   - index.js (Patch 2): schemaVersion = kernel-4; resourceTypeGeneral <-
+#     submission.resourcetype; resourceType <- submission.ifother (omitted when
+#     blank); checkPayload reads resourcetype not objectType.
 COPY packages/server/services/publishing/datacite/fieldsTransformers.js \
      /home/node/app/services/publishing/datacite/fieldsTransformers.js
+COPY packages/server/services/publishing/datacite/fieldsTransformers.js \
+     /home/node/app/dist/services/publishing/datacite/fieldsTransformers.js
 COPY packages/server/services/publishing/datacite/index.js \
      /home/node/app/services/publishing/datacite/index.js
+COPY packages/server/services/publishing/datacite/index.js \
+     /home/node/app/dist/services/publishing/datacite/index.js
 
-# (2) Gump-clone seeds. A "station" is just a journal-type group (exactly how
-#     Gump itself is defined: gumpstation:journal) -- so we DON'T invent a new
-#     instance type (the compiled client's config-manager enum only allows
-#     preprint1/preprint2/prc/journal; a custom "station" instanceName makes the
-#     client reject the config and the dashboard fails to render). Instead:
-#       (a) overlay forms-journal/submit.json with Gump's (sanitized, schema-
-#           valid) submission form, so every new :journal group seeds Gump's form;
-#       (b) overlay cmsTemplateFiles -- the single shared, de-slugged Gump CMS
-#           look tree, seeded for any new group. Existing groups are untouched
-#           (seedCmsFiles only seeds groups with no CMS folder yet).
+# (2) Gump-clone seeds. A "station" is just a journal-type group; overlay
+#     forms-journal/submit.json + the de-slugged cmsTemplateFiles tree.
+#     Existing groups untouched (seedCmsFiles only seeds empty groups).
 COPY packages/server/config/storage/forms-journal/submit.json \
      /home/node/app/config/storage/forms-journal/submit.json
+COPY packages/server/config/storage/forms-journal/submit.json \
+     /home/node/app/dist/config/storage/forms-journal/submit.json
 COPY station-master/cmsTemplateFiles/ \
      /home/node/app/config/cmsTemplateFiles/
+COPY station-master/cmsTemplateFiles/ \
+     /home/node/app/dist/config/cmsTemplateFiles/
 
-# (3) cmsUpload endpoint overlay. Same flattened path convention as the DataCite
-#     overlay above: the prebuilt image drops the packages/server/ prefix, so
-#     packages/server/api/... lands at /home/node/app/api/...
+# (3) cmsUpload endpoint overlay: await + try/catch around uploadCms so upload
+#     errors surface as HTTP 500 instead of vanishing.
 COPY packages/server/api/rest/cmsUpload/endpoint.js \
      /home/node/app/api/rest/cmsUpload/endpoint.js
+COPY packages/server/api/rest/cmsUpload/endpoint.js \
+     /home/node/app/dist/api/rest/cmsUpload/endpoint.js
 
-# (4) pdfExport crash guard. Metadata-only records (no body => meta.source null)
-#     crashed replaceImageSrc/cheerio.load(). The overlay source is PINNED to the
-#     prebuilt image's own copy of this file + the 5-line guard -- NOT the repo's
-#     packages/server/ version, which is a newer Kotahi (uses @coko/server's
-#     config.get() and a different createFile() signature). Overlaying the repo
-#     version made `config.get` undefined at require time and crash-looped boot.
-#     Re-pin after a base-image bump: see PATCHES.md "Update ritual".
+# (4) pdfExport crash guard. RE-PINNED 2026-07 to the 2026.07.03-0 image's own
+#     copy (config.get('pagedjs') / new createFile signature) + the 5-line
+#     meta.source guard. Verified: diff vs image copy shows guard lines only.
+#     Re-pin again after every base-image bump: see PATCHES.md "Update ritual".
 COPY server-fix/overlays/controllers/pdfExport.controllers.js \
      /home/node/app/controllers/pdfExport.controllers.js
+COPY server-fix/overlays/controllers/pdfExport.controllers.js \
+     /home/node/app/dist/controllers/pdfExport.controllers.js
