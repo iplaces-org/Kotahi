@@ -285,24 +285,36 @@ const getFormContributors = formRows => {
     .filter(Boolean)
 }
 
-/* iplaces Patch 4b: per-record publisher override. If the form supplies
-   submission.publisher (TextField), it replaces the group-config publisher;
-   submission.publisherRor (optional) adds the ROR identifier. */
+/* iplaces Patch 4b (rev. Patch 5): per-record publisher override.
+   Accepts either shape of submission.publisher:
+   - {label, value} from PublisherInput (ROR search) -> name = label;
+     value containing ror.org -> publisherIdentifier (ROR)
+   - plain string (legacy TextField) -> name; optional submission.publisherRor
+     string adds the ROR identifier
+   Empty/absent -> group-config publisher (legacy behavior). */
 const getPublisherWithOverride = (formData, submission) => {
-  const name = submission && submission.publisher
+  const raw = submission && submission.publisher
 
-  if (name && String(name).trim() !== '') {
-    const ror = submission.publisherRor
+  const asRor = ror =>
+    ror && String(ror).includes('ror.org')
+      ? {
+          publisherIdentifier: String(ror).trim(),
+          schemeUri: 'https://ror.org',
+          publisherIdentifierScheme: 'ROR',
+        }
+      : {}
 
+  if (raw && typeof raw === 'object' && raw.label) {
     return {
-      name: String(name).trim(),
-      ...(ror && String(ror).includes('ror.org')
-        ? {
-            publisherIdentifier: String(ror).trim(),
-            schemeUri: 'https://ror.org',
-            publisherIdentifierScheme: 'ROR',
-          }
-        : {}),
+      name: String(raw.label).trim(),
+      ...asRor(raw.value),
+    }
+  }
+
+  if (raw && typeof raw === 'string' && raw.trim() !== '') {
+    return {
+      name: raw.trim(),
+      ...asRor(submission.publisherRor),
     }
   }
 
