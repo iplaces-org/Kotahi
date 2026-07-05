@@ -36,6 +36,7 @@ import { Heading1, Section, Legend, SubNote } from '../style'
 import AuthorsInput from './AuthorsInput'
 import RelatedIdentifiersInput from './RelatedIdentifiersInput'
 import ContributorsInput from './ContributorsInput'
+import PublisherInput from './PublisherInput'
 import LocalContext from './LocalContext'
 import DoisInput from './MultipleDoi'
 import LinksInput from './LinksInput'
@@ -146,6 +147,7 @@ const elements = {
   Authors: AuthorsInput,
   RelatedIdentifiersInput,
   ContributorsInput,
+PublisherInput,
   Abstract: RichTextEditor,
   Keywords: TextInput,
   TextField: TextInput,
