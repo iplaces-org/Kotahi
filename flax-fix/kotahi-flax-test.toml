@@ -2,7 +2,7 @@ app = 'flax'
 primary_region = 'lhr'
 
 [build]
-image = 'cokoapps/kotahi-flax:0.5.10'
+dockerfile = "Dockerfile"
 
 [http_service]
 internal_port = 80

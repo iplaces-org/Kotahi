@@ -1,4 +1,4 @@
-app = 'flax'
+app = 'iplaces-test-flax'
 primary_region = 'lhr'
 
 [build]

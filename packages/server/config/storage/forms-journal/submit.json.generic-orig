@@ -1,0 +1,394 @@
+{
+  "name": "Research Object Submission Form",
+  "children": [
+    {
+      "title": "Type of Research Object",
+      "id": "fa0c39ca-0486-4e29-ba24-f86f7d375c3f",
+      "component": "Select",
+      "name": "submission.objectType",
+      "permitPublishing": "false",
+      "options": [
+        {
+          "id": "df5fc212-b055-4cba-9d0e-e85222e3d4f2",
+          "label": "Dataset",
+          "value": "dataset"
+        },
+        {
+          "id": "ef2ddada-105a-412e-8d7f-56b1df44c02f",
+          "label": "Software",
+          "value": "software"
+        },
+        {
+          "id": "0fafbfc3-6797-46e3-aff4-3fd4f16261b1",
+          "label": "Figure",
+          "value": "figure"
+        },
+        {
+          "id": "5117a7c6-2fcf-414b-ac60-47f8d93ccfef",
+          "label": "Notebook",
+          "value": "notebook"
+        },
+        {
+          "id": "32121b38-b855-465e-b039-b5100177698b",
+          "label": "Research article",
+          "value": "Research article"
+        },
+        {
+          "id": "91ba65da-cd23-45db-9bd8-f3457456ae3d",
+          "label": "Audiovisual",
+          "value": "Audiovisual"
+        },
+        {
+          "id": "22d097c2-a674-48ae-9308-643cc5ca1c9b",
+          "label": "Book",
+          "value": "Book"
+        },
+        {
+          "id": "65a73d9f-7ce4-405b-a3cc-02ede6c42b01",
+          "label": "Book Chapter",
+          "value": "BookChapter"
+        },
+        {
+          "id": "995c2884-421b-45ab-952c-06ccc262c1d7",
+          "label": "Collection",
+          "value": "Collection"
+        },
+        {
+          "id": "980d5911-bca8-49a2-9834-bdf43db57e06",
+          "label": "Computational Notebook",
+          "value": "ComputationalNotebook"
+        },
+        {
+          "id": "b88dda6a-3bb9-42c6-b1e2-6614d4c1598e",
+          "label": "Conference Paper",
+          "value": "ConferencePaper"
+        },
+        {
+          "id": "fec5fdbb-3ddf-408d-b67c-1b8fa3f46386",
+          "label": "Conference Proceeding",
+          "value": "ConferenceProceeding"
+        },
+        {
+          "id": "b95f5564-3cae-472c-a58f-ab86386d95e5",
+          "label": "Data Paper",
+          "value": "DataPaper"
+        },
+        {
+          "id": "2803d4e4-9064-42e2-a236-951a45f0e657",
+          "label": "Dissertation",
+          "value": "Dissertation"
+        },
+        {
+          "id": "159077af-0b15-4cdc-95db-c6493e71915e",
+          "label": "Event",
+          "value": "Event"
+        },
+        {
+          "id": "b417d51f-c047-492c-9c0d-4accf652c328",
+          "label": "Image",
+          "value": "Image"
+        },
+        {
+          "id": "2c28de49-a3e5-4543-a580-e2fac67fd541",
+          "label": "Interactive Resource",
+          "value": "InteractiveResource"
+        },
+        {
+          "id": "06f44798-05ee-4d08-8b8a-946fb7985b8b",
+          "label": "Instrument",
+          "value": "Instrument"
+        },
+        {
+          "id": "67724cec-51bc-45a7-9538-f231bb47d3c9",
+          "label": "Journal",
+          "value": "Journal"
+        },
+        {
+          "id": "efb9ea1a-8ab0-49fb-8973-bff719fbee4d",
+          "label": "Journal Article",
+          "value": "JournalArticle"
+        },
+        {
+          "id": "bacbf174-94e3-46de-bd41-86fd82670258",
+          "label": "Model",
+          "value": "Model"
+        },
+        {
+          "id": "ba4cd24c-c5aa-400b-b9ce-2aef836d89d8",
+          "label": "Output Management Plan",
+          "value": "OutputManagementPlan"
+        },
+        {
+          "id": "3c58de5e-522c-4bbc-9132-468829460584",
+          "label": "Peer Review",
+          "value": "PeerReview"
+        },
+        {
+          "id": "f13bc593-07d8-4458-a279-800aae5bb1ed",
+          "label": "Physical Object",
+          "value": "PhysicalObject"
+        },
+        {
+          "id": "04440ff8-57d4-4dd1-b71c-82f6dd7fd64d",
+          "label": "Preprint",
+          "value": "Preprint"
+        },
+        {
+          "id": "b8812fb6-3e9c-4bcc-8112-979e425648af",
+          "label": "Report",
+          "value": "Report"
+        },
+        {
+          "id": "6f98ab37-08cb-47b1-aa2f-92222c9a0e91",
+          "label": "Service",
+          "value": "Service"
+        },
+        {
+          "id": "729fed06-3a10-47e8-a8e1-b8dd00996918",
+          "label": "Sound",
+          "value": "Sound"
+        },
+        {
+          "id": "0e07ac3f-5293-48c4-8134-9f68e3ad9ea2",
+          "label": "Standard",
+          "value": "Standard"
+        },
+        {
+          "id": "650390d5-b5ac-4df2-b9c7-d5eddcadac6b",
+          "label": "Study Registration",
+          "value": "StudyRegistration"
+        },
+        {
+          "id": "1cf2a1a9-713d-4a7d-9899-9a50a8edd98f",
+          "label": "Text",
+          "value": "Text"
+        },
+        {
+          "id": "a3dd3def-033e-4a5c-9fb0-4d74f0e0fc61",
+          "label": "Workflow",
+          "value": "Workflow"
+        },
+        {
+          "id": "402c64a2-322c-4f16-89e9-6407fa98351f",
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "title": "Title",
+      "id": "47fd802f-ed30-460d-9617-c8a9b9025e95",
+      "component": "TextField",
+      "name": "submission.$title",
+      "placeholder": "Enter the manuscript's title",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false",
+      "aiPrompt": "Main title of the manuscript"
+    },
+    {
+      "title": "Author names",
+      "id": "d76e5b3c-eeaa-4168-9318-95d43a31e3e4",
+      "component": "AuthorsInput",
+      "name": "submission.$authors",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false",
+      "aiPrompt": "Authors of the manuscript"
+    },
+    {
+      "title": "Dois",
+      "id": "338b710d-d441-4c2e-a0ad-243cbd70eb02",
+      "component": "DoisInput",
+      "name": "submission.$dois",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false"
+    },
+    {
+      "title": "Topics",
+      "id": "62ca72ad-04b0-41fc-85d1-415469d7e895",
+      "component": "CheckboxGroup",
+      "name": "submission.topics",
+      "hideFromReviewers": "false",
+      "permitPublishing": "false",
+      "options": [
+        {
+          "id": "2323b6d1-8223-45e8-a0fc-1044a1e39d37",
+          "label": "Neuropsychology ",
+          "value": "Neuropsychology "
+        },
+        {
+          "id": "ac7cafca-c5c8-4940-9f2f-014d18660e90",
+          "label": "Topic 2",
+          "value": "Topic 2"
+        },
+        {
+          "id": "93c88240-9c2b-4c23-9301-23ed94ef61d7",
+          "label": "Topic 3",
+          "value": "Topic 3"
+        }
+      ]
+    },
+    {
+      "title": "DOI",
+      "id": "1c2e9325-3fa8-41f3-8607-180eb8a25aa3",
+      "component": "TextField",
+      "name": "submission.$doi",
+      "doiValidation": "true",
+      "placeholder": "Enter the manuscript's DOI",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false"
+    },
+    {
+      "title": "Abstract",
+      "shortDescription": "Abstract",
+      "id": "d80b2c88-6144-4003-b671-63990b9b2793",
+      "component": "AbstractEditor",
+      "name": "submission.$abstract",
+      "description": "<p>Please provide a short summary of your submission</p>",
+      "placeholder": "Input your abstract...",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false",
+      "aiPrompt": "Abstract"
+    },
+    {
+      "title": "Author correspondence ",
+      "id": "7f5aa395-3486-4067-b636-ae204d472c16",
+      "component": "TextField",
+      "permitPublishing": "false",
+      "name": "submission.AuthorCorrespondence"
+    },
+    {
+      "title": "Cover letter",
+      "id": "347dc171-f008-45ac-8433-ca0711bf213c",
+      "component": "AbstractEditor",
+      "name": "submission.cover",
+      "description": "<p>Cover letter describing submission, relevant implications, and timely information to consider</p>",
+      "permitPublishing": "false",
+      "placeholder": "Enter your cover letter"
+    },
+    {
+      "title": "Editors evaluation ",
+      "id": "14b8da7d-5924-4098-8d1f-e528c7c440b9",
+      "component": "TextField",
+      "permitPublishing": "false",
+      "name": "submission.EditorsEvaluation"
+    },
+    {
+      "title": "Data and Code availability statements",
+      "id": "bf2f9b4a-377b-4303-8f51-70d836eb1456",
+      "component": "AbstractEditor",
+      "name": "submission.datacode",
+      "permitPublishing": "false",
+      "placeholder": "Enter your data and code availability statement"
+    },
+    {
+      "title": "Competing interests",
+      "id": "fa5e5b75-4b6f-4a2d-9113-c2b4db73ef8a",
+      "component": "AbstractEditor",
+      "name": "submission.competingInterests",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
+    },
+    {
+      "title": "Funding",
+      "id": "6bfdc237-814d-4af8-b0f0-064099d679ba",
+      "component": "TextField",
+      "permitPublishing": "false",
+      "name": "submission.Funding"
+    },
+    {
+      "title": "Upload supplementary materials",
+      "id": "b769b4d5-f9b3-48d3-a6d5-77bb6a9e95b0",
+      "component": "SupplementaryFiles",
+      "permitPublishing": "false",
+      "name": "fileName"
+    },
+    {
+      "title": "Author contributions ",
+      "id": "b127ecb1-4862-4662-a958-3266eb284353",
+      "component": "TextField",
+      "permitPublishing": "false",
+      "name": "submission.authorContributions"
+    },
+    {
+      "title": "Decision letter and author response",
+      "id": "6342cff7-c57a-4fd9-b91d-c4cf77b4c309",
+      "component": "AbstractEditor",
+      "permitPublishing": "false",
+      "name": "submission.DecisionLetter"
+    },
+    {
+      "title": "References ",
+      "id": "e8af0c63-e46f-46a8-bc90-5023fe50a541",
+      "component": "AbstractEditor",
+      "name": "submission.references",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
+    },
+    {
+      "title": "Reviewing editors name ",
+      "id": "ebe75cec-0ba8-4f00-9024-20e77ed94f1c",
+      "component": "AuthorsInput",
+      "permitPublishing": "false",
+      "name": "submission.reviewingEditor"
+    },
+    {
+      "title": "Copyright holder",
+      "id": "6871680a-2278-40b3-80c6-7de06f21aafb",
+      "component": "TextField",
+      "name": "submission.copyrightHolder",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">e.g. British Medical Journal </p>"
+    },
+    {
+      "title": "Copyright statement ",
+      "id": "1e9ff636-f850-4d20-b079-36af49fa4ad1",
+      "component": "TextField",
+      "name": "submission.copyrightStatement",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">e.g. This article is distributed under the terms of the Creative Commons Attribution License, which permits unrestricted use and redistribution provided that the original author and source are credited.</p>"
+    },
+    {
+      "title": "Copyright year ",
+      "id": "7617c919-4413-4306-b709-ef78c3110c3f",
+      "component": "TextField",
+      "name": "submission.copyrightYear",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">e.g. 2022</p>"
+    },
+    {
+      "title": "Date received ",
+      "id": "6deaacc6-759a-4a68-b494-c38c664bb665",
+      "component": "TextField",
+      "name": "submission.dateReceived",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>"
+    },
+    {
+      "title": "Date accepted",
+      "id": "8b858adc-5f65-4385-9f79-5c5af1f67bd5",
+      "component": "TextField",
+      "name": "submission.dateAccepted",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>"
+    },
+    {
+      "title": "Date published ",
+      "id": "f6e46890-4b96-4c90-ab48-b4fc5abb9b40",
+      "component": "TextField",
+      "name": "submission.datePublished",
+      "permitPublishing": "false",
+      "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>"
+    },
+    {
+      "title": "Manuscript File",
+      "id": "66469976-314f-4949-b2ff-702039b262c0",
+      "component": "ManuscriptFile",
+      "permitPublishing": "false",
+      "name": "manuscriptFile"
+    }
+  ],
+  "description": "<p>Please fill out the form below to complete your submission.</p>",
+  "haspopup": "true",
+  "popuptitle": "By submitting the manuscript, you agree to the following statements.",
+  "popupdescription": "<p>The corresponding author confirms that all co-authors are included, and that everyone listed as a co-author agrees to that role and all the following requirements and acknowledgements:</p><p></p><p>The submission represents original work and sources are given proper attribution. The journal employs CrossCheck to compare submissions against a large and growing database of published scholarly content. If in the judgment of a senior editor a submission is genuinely suspected of plagiarism, it will be returned to the author(s) with a request for explanation.</p><p></p><p>The research was conducted in accordance with ethical principles.</p><p></p><p>There is a Data Accessibility Statement, containing information about the location of open data and materials, in the manuscript.</p><p></p><p>A conflict of interest statement is present in the manuscript, even if to state no conflicts of interest.</p>"
+}
