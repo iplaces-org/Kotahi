@@ -4,9 +4,13 @@
  * to search the ROR registry, or type freely to keep plain text. Leave empty
  * to use the station (group config) as publisher.
  *
- * Stored value: { label: displayName, value: rorUrlOrFreeText } | ''
- * The serializer (Patch 5) maps label -> publisher.name and, when value
- * contains ror.org, value -> publisherIdentifier (ROR).
+ * Stored value: { label: displayName, ror: rorUrlOrFreeText } | ''
+ * NOTE the key is `ror`, not `value`: FormTemplate's generic onChange
+ * extracts `.value` from any object passed to it (flattening {label,value}
+ * to a bare string), so we deliberately avoid that key. Conversion to/from
+ * react-select's {label, value} shape happens at the select boundary below.
+ * The serializer maps label -> publisher.name and, when ror contains
+ * ror.org, ror -> publisherIdentifier (ROR).
  */
 
 import styled from 'styled-components'
@@ -52,9 +56,13 @@ const PublisherInput = ({ onChange, value }) => {
       loadOptions={searchRor(rorFilterOptions)}
       menuPlacement="auto"
       menuPortalTarget={document.querySelector('body')}
-      onChange={v => onChange(v || '')}
+      onChange={v => onChange(v ? { label: v.label, ror: v.value } : '')}
       placeholder="Search ROR or type a publisher name… (empty = the station)"
-      value={value && value.label ? value : null}
+      value={
+        value && value.label
+          ? { label: value.label, value: value.ror || value.label }
+          : null
+      }
     />
   )
 }
