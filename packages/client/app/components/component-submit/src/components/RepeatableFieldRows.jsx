@@ -7,6 +7,8 @@
  *  - 'ror' renders the same async-creatable ROR search AuthorsInput uses:
  *    type to search the ROR registry, or type freely to keep plain text.
  *    Stored value: { label: displayName, value: rorUrlOrFreeText } | ''
+ *    With isMulti: true on the field definition, stores an ARRAY of such
+ *    objects (legacy single-object values display as a one-item array)
  *
  * Contract matches other form components: `value` is the array stored in the
  * submission JSON; `onChange(newArray)` writes it back.
@@ -186,12 +188,23 @@ const RepeatableFieldRows = ({
                           classNamePrefix="react-select"
 			  createOptionPosition="first"
                           isClearable
+                          isMulti={f.isMulti === true}
                           loadOptions={searchRor(rorFilterOptions)}
                           menuPlacement="auto"
                           menuPortalTarget={document.querySelector('body')}
-                          onChange={v => setField(v || '')}
+                          onChange={v =>
+                            setField(v || (f.isMulti ? [] : ''))
+                          }
                           placeholder={f.placeholder}
-                          value={row[f.name] || null}
+                          value={
+                            f.isMulti
+                              ? Array.isArray(row[f.name])
+                                ? row[f.name]
+                                : row[f.name]
+                                ? [row[f.name]]
+                                : []
+                              : row[f.name] || null
+                          }
                         />
                       ) : f.type === 'select' ? (
                         <StyledSelect

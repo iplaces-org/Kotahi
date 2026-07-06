@@ -11,6 +11,7 @@
  *   type         'text' | 'select'
  *   options      [{label, value}] (select only)
  *   clearable    select only; default true
+ *   isMulti      ror only; store an array of {label, value} selections
  *   showIf       optional row => boolean; field renders only when true
  *
  * TODO(vocab-verify): lists are DataCite 4.6-complete plus known 4.7 additions
@@ -195,7 +196,8 @@ export const getRelatedIdentifierFields = () => [
 /* contributors — row shape (flat; serializer builds the DataCite
    nesting):
    Personal:       { id, nameType, contributorType, givenName,
-                     familyName, orcid, affiliation: {label,value}|'' }
+                     familyName, orcid,
+                     affiliation: [{label,value}] (legacy: single object) }
    Organizational: { id, nameType, contributorType,
                      organization: {label,value}|'' }
    (ror-type values: label = display name; value = ROR URL when picked
@@ -239,9 +241,10 @@ export const getContributorFields = () => [
   },
   {
     name: 'affiliation',
-    label: 'Affiliation (search ROR, or type any name freely)',
+    label: 'Affiliations (search ROR, or type freely — multiple allowed)',
     placeholder: 'Start typing to search ROR…',
     type: 'ror',
+    isMulti: true,
     showIf: row => row.nameType !== 'Organizational',
   },
   {
