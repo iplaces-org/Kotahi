@@ -221,21 +221,25 @@ const getFormRelatedIdentifiers = formRows => {
 const getFormContributors = formRows => {
   if (!Array.isArray(formRows)) return []
 
-  const rorAffiliation = sel =>
-    sel && sel.label
-      ? [
-          {
-            name: sel.label,
-            ...(typeof sel.value === 'string' && sel.value.includes('ror.org')
-              ? {
-                  affiliationIdentifier: sel.value,
-                  affiliationIdentifierScheme: 'ROR',
-                  schemeUri: 'https://ror.org',
-                }
-              : {}),
-          },
-        ]
-      : []
+  /* iplaces Patch 6: affiliation may be an ARRAY of {label, value}
+     selections (multi-affiliation contributors) or a legacy single
+     object from rows saved before isMulti. */
+  const rorAffiliation = sel => {
+    const list = Array.isArray(sel) ? sel : sel ? [sel] : []
+
+    return list
+      .filter(a => a && a.label)
+      .map(a => ({
+        name: a.label,
+        ...(typeof a.value === 'string' && a.value.includes('ror.org')
+          ? {
+              affiliationIdentifier: a.value,
+              affiliationIdentifierScheme: 'ROR',
+              schemeUri: 'https://ror.org',
+            }
+          : {}),
+      }))
+  }
 
   return formRows
     .filter(r => r && r.contributorType)
