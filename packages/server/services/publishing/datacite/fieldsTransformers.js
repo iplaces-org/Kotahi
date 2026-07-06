@@ -307,7 +307,7 @@ const getPublisherWithOverride = (formData, submission) => {
   if (raw && typeof raw === 'object' && raw.label) {
     return {
       name: String(raw.label).trim(),
-      ...asRor(raw.value),
+      ...asRor(raw.ror || raw.value),
     }
   }
 
