@@ -16,6 +16,9 @@ const {
   getFormContributors,
   getPublisherWithOverride,
   getPublicationYear,
+  getAllFundingReferences,
+  getFormDates,
+  getSubjects,
   getDates,
 } = require('./fieldsTransformers')
 
@@ -127,13 +130,14 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
         ...getFormContributors(submission.contributors),
       ],
       descriptions: getDescriptions($abstract),
+      subjects: getSubjects(submission),
       rightsList: getRightsList($localContext),
-      fundingReferences: getFundingReferences(submission),
+      fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
         ...getFormRelatedIdentifiers(formRelatedIdentifiers),
       ],
-      dates: getDates(issueYear, publishDate),
+      dates: getFormDates(submission, publishDate),
       // relatedItems: getRelatedItems(submission, formData),
     },
   }
@@ -235,13 +239,14 @@ const checkPayload = async (manuscript, activeConfig) => {
         ...getFormContributors(submission.contributors),
       ],
       descriptions: getDescriptions($abstract),
+      subjects: getSubjects(submission),
       rightsList: getRightsList($localContext),
-      fundingReferences: getFundingReferences(submission),
+      fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
         ...getFormRelatedIdentifiers(formRelatedIdentifiers),
       ],
-      dates: getDates(issueYear, publishDate),
+      dates: getFormDates(submission, publishDate),
       // relatedItems: getRelatedItems(submission, formData),
     },
   }
