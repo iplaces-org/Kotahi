@@ -14,11 +14,15 @@
  *   isMulti      ror only; store an array of {label, value} selections
  *   showIf       optional row => boolean; field renders only when true
  *
- * TODO(vocab-verify): lists are DataCite 4.6-complete plus known 4.7 additions
- * (relationType "Other"; resourceTypeGeneral Poster/Presentation;
- * relationTypeInformation sub-property). Before the station-master bake,
- * verify each list against
- * https://datacite-metadata-schema.readthedocs.io/en/4.7/
+ * VOCAB-VERIFIED 2026-07-07 against the official 4.7 docs
+ * (https://datacite-metadata-schema.readthedocs.io/en/4.7/, Appendix 1):
+ *   relationType          39/39 exact (order aligned to doc)
+ *   resourceTypeGeneral   34/34 exact
+ *   contributorType       22/22 exact
+ *   nameType               2/2  exact
+ *   relatedIdentifierType  fixed: added RAiD + SWHID (new in 4.7) and UPC
+ *                          (pre-existing, missing from the draft) -> 23/23
+ *   titleType              added (verified from properties/title/): 4 values
  */
 
 export const RELATED_IDENTIFIER_TYPES = [
@@ -38,7 +42,10 @@ export const RELATED_IDENTIFIER_TYPES = [
   'LSID',
   'PMID',
   'PURL',
+  'RAiD',
   'RRID',
+  'SWHID',
+  'UPC',
   'URL',
   'URN',
   'w3id',
@@ -51,8 +58,8 @@ export const RELATION_TYPES = [
   'IsSupplementedBy',
   'IsContinuedBy',
   'Continues',
-  'IsDescribedBy',
   'Describes',
+  'IsDescribedBy',
   'HasMetadata',
   'IsMetadataFor',
   'HasVersion',
@@ -77,8 +84,8 @@ export const RELATION_TYPES = [
   'IsSourceOf',
   'IsRequiredBy',
   'Requires',
-  'IsObsoletedBy',
   'Obsoletes',
+  'IsObsoletedBy',
   'IsCollectedBy',
   'Collects',
   'IsTranslationOf',
@@ -149,6 +156,15 @@ export const CONTRIBUTOR_TYPES = [
 ]
 
 export const NAME_TYPES = ['Personal', 'Organizational']
+
+/* titleType (3.a) — used only on titles beyond the main title; a title
+   with no titleType is the main title. Verified 4.7. */
+export const TITLE_TYPES = [
+  'AlternativeTitle',
+  'Subtitle',
+  'TranslatedTitle',
+  'Other',
+]
 
 const toOptions = list => list.map(v => ({ label: v, value: v }))
 
