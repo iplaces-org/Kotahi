@@ -193,6 +193,39 @@ export const getRelatedIdentifierFields = () => [
 ]
 
 /* ------------------------------------------------------------------ */
+/* fundingReferences — row shape:
+   { id, funder: {label,value}|'' , awardNumber, awardTitle, awardUri }
+   funder is a ror-type value: label = funder name; value = ROR URL when
+   picked from the registry (serializer emits funderIdentifierType ROR),
+   or free text (serializer emits funderName only).                    */
+export const getFundingReferenceFields = () => [
+  {
+    name: 'funder',
+    label: 'Funder (search ROR, or type any name freely)',
+    placeholder: 'Start typing to search ROR…',
+    type: 'ror',
+  },
+  {
+    name: 'awardNumber',
+    label: 'Award number (optional)',
+    placeholder: 'e.g. 2136…',
+    type: 'text',
+  },
+  {
+    name: 'awardTitle',
+    label: 'Award title (optional)',
+    placeholder: 'Grant/award title…',
+    type: 'text',
+  },
+  {
+    name: 'awardUri',
+    label: 'Award URI (optional)',
+    placeholder: 'https://…',
+    type: 'text',
+  },
+]
+
+/* ------------------------------------------------------------------ */
 /* contributors — row shape (flat; serializer builds the DataCite
    nesting):
    Personal:       { id, nameType, contributorType, givenName,

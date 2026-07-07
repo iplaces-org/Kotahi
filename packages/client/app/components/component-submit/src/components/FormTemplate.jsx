@@ -37,6 +37,7 @@ import AuthorsInput from './AuthorsInput'
 import RelatedIdentifiersInput from './RelatedIdentifiersInput'
 import ContributorsInput from './ContributorsInput'
 import PublisherInput from './PublisherInput'
+import FundingReferencesInput from './FundingReferencesInput'
 import LocalContext from './LocalContext'
 import DoisInput from './MultipleDoi'
 import LinksInput from './LinksInput'
@@ -148,6 +149,7 @@ const elements = {
   RelatedIdentifiersInput,
   ContributorsInput,
 PublisherInput,
+FundingReferencesInput,
   Abstract: RichTextEditor,
   Keywords: TextInput,
   TextField: TextInput,
