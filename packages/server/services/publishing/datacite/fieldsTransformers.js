@@ -343,6 +343,78 @@ const getPublicationYear = (submission, publishDate) => {
   return publishDate.getUTCFullYear()
 }
 
+
+/* iplaces Patch 7a: funding references. Form rows (FundingReferencesInput)
+   REPLACE the legacy flat fields when present; when the array is empty or
+   absent, the legacy single-funder derivation still applies (old
+   manuscripts unchanged). funder is a ror-type {label, value}: label ->
+   funderName; value containing ror.org -> funderIdentifier (ROR). */
+const getAllFundingReferences = submission => {
+  const rows = Array.isArray(submission.fundingReferences)
+    ? submission.fundingReferences
+    : []
+
+  const cleaned = rows
+    .filter(r => r && r.funder && r.funder.label)
+    .map(r => ({
+      funderName: String(r.funder.label).trim(),
+      ...(typeof r.funder.value === 'string' &&
+      r.funder.value.includes('ror.org')
+        ? {
+            funderIdentifier: r.funder.value,
+            funderIdentifierType: 'ROR',
+            schemeUri: 'https://ror.org',
+          }
+        : {}),
+      ...(r.awardNumber ? { awardNumber: String(r.awardNumber).trim() } : {}),
+      ...(r.awardTitle ? { awardTitle: String(r.awardTitle).trim() } : {}),
+      ...(r.awardUri ? { awardUri: String(r.awardUri).trim() } : {}),
+    }))
+
+  return cleaned.length ? cleaned : getFundingReferences(submission)
+}
+
+/* iplaces Patch 7b: dates from the existing form date fields, with a light
+   ISO-shape guard (YYYY, YYYY-MM or YYYY-MM-DD only) so free-text dates
+   can't produce invalid DataCite. Fixes the dateless-Issued wart: Issued
+   is emitted only when a valid datePublished or $issueYear exists. */
+const isoish = v => {
+  const s = v ? String(v).trim() : ''
+  return /^\d{4}(-\d{2}(-\d{2})?)?$/.test(s) ? s : null
+}
+
+const getFormDates = (submission, publishDate) => {
+  const dates = []
+  const submitted = isoish(submission.dateReceived)
+  const accepted = isoish(submission.dateAccepted)
+  const issued = isoish(submission.datePublished) || isoish(submission.$issueYear)
+
+  if (submitted) dates.push({ dateType: 'Submitted', date: submitted })
+  dates.push({
+    dateType: 'Accepted',
+    date: accepted || publishDate.toISOString(),
+  })
+  if (issued) dates.push({ dateType: 'Issued', date: issued })
+
+  return dates
+}
+
+/* iplaces Patch 7c: subjects from the existing topics checkboxes plus an
+   optional comma-separated submission.keywords TextField. */
+const getSubjects = submission => {
+  const topics = Array.isArray(submission.topics) ? submission.topics : []
+
+  const keywords =
+    typeof submission.keywords === 'string'
+      ? submission.keywords.split(',')
+      : []
+
+  return [...topics, ...keywords]
+    .map(s => (s ? String(s).trim() : ''))
+    .filter(s => s !== '')
+    .map(subject => ({ subject }))
+}
+
 const getDates = (issueYear, publishDate) => {
   return [
     { dateType: 'Issued', date: issueYear },
@@ -406,4 +478,7 @@ module.exports = {
   getFormContributors,
   getPublisherWithOverride,
   getPublicationYear,
+  getAllFundingReferences,
+  getFormDates,
+  getSubjects,
 }
