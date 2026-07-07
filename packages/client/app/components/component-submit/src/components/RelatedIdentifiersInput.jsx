@@ -7,11 +7,9 @@
  *   { id, relatedIdentifier, relatedIdentifierType, relationType,
  *     relationTypeInformation, resourceTypeGeneral }
  *
- * TODO(vocab): lists below are 4.6-complete + the known 4.7 additions
- * (relationType "Other", resourceTypeGeneral Poster/Presentation,
- * relationTypeInformation sub-property). Verify against
- * https://datacite-metadata-schema.readthedocs.io/en/4.7/ before production,
- * then move the lists into datacite-form-schema.json.
+ * Vocabularies and field definitions come from the shared schema module
+ * (app/shared/dataciteFieldDefinitions.js) — the single source of truth,
+ * vocab-verified against the 4.7 docs. No inline lists here.
  */
 
 import styled from 'styled-components'
@@ -23,150 +21,7 @@ import { Button } from '../../../pubsweet'
 import { DeleteControl, TextInput } from '../../../shared'
 import theme, { color } from '../../../../theme'
 import { FlexRow } from '../../../../globals'
-
-// #region vocabularies
-const RELATED_IDENTIFIER_TYPES = [
-  'ARK',
-  'arXiv',
-  'bibcode',
-  'CSTR',
-  'DOI',
-  'EAN13',
-  'EISSN',
-  'Handle',
-  'IGSN',
-  'ISBN',
-  'ISSN',
-  'ISTC',
-  'LISSN',
-  'LSID',
-  'PMID',
-  'PURL',
-  'RRID',
-  'URL',
-  'URN',
-  'w3id',
-]
-
-const RELATION_TYPES = [
-  'IsCitedBy',
-  'Cites',
-  'IsSupplementTo',
-  'IsSupplementedBy',
-  'IsContinuedBy',
-  'Continues',
-  'IsDescribedBy',
-  'Describes',
-  'HasMetadata',
-  'IsMetadataFor',
-  'HasVersion',
-  'IsVersionOf',
-  'IsNewVersionOf',
-  'IsPreviousVersionOf',
-  'IsPartOf',
-  'HasPart',
-  'IsPublishedIn',
-  'IsReferencedBy',
-  'References',
-  'IsDocumentedBy',
-  'Documents',
-  'IsCompiledBy',
-  'Compiles',
-  'IsVariantFormOf',
-  'IsOriginalFormOf',
-  'IsIdenticalTo',
-  'IsReviewedBy',
-  'Reviews',
-  'IsDerivedFrom',
-  'IsSourceOf',
-  'IsRequiredBy',
-  'Requires',
-  'IsObsoletedBy',
-  'Obsoletes',
-  'IsCollectedBy',
-  'Collects',
-  'IsTranslationOf',
-  'HasTranslation',
-  'Other',
-]
-
-const RESOURCE_TYPES_GENERAL = [
-  'Audiovisual',
-  'Award',
-  'Book',
-  'BookChapter',
-  'Collection',
-  'ComputationalNotebook',
-  'ConferencePaper',
-  'ConferenceProceeding',
-  'DataPaper',
-  'Dataset',
-  'Dissertation',
-  'Event',
-  'Image',
-  'Instrument',
-  'InteractiveResource',
-  'Journal',
-  'JournalArticle',
-  'Model',
-  'OutputManagementPlan',
-  'PeerReview',
-  'PhysicalObject',
-  'Poster',
-  'Preprint',
-  'Presentation',
-  'Project',
-  'Report',
-  'Service',
-  'Software',
-  'Sound',
-  'Standard',
-  'StudyRegistration',
-  'Text',
-  'Workflow',
-  'Other',
-]
-
-const toOptions = list => list.map(v => ({ label: v, value: v }))
-// #endregion vocabularies
-
-// #region field definitions (declarative, mirrors getAuthorFields pattern)
-const getRelatedIdentifierFields = () => [
-  {
-    name: 'relatedIdentifier',
-    label: 'Identifier',
-    placeholder: '10.60950/… or full URL/ARK…',
-    type: 'text',
-  },
-  {
-    name: 'relatedIdentifierType',
-    label: 'Identifier type',
-    placeholder: 'Select type…',
-    type: 'select',
-    options: toOptions(RELATED_IDENTIFIER_TYPES),
-  },
-  {
-    name: 'relationType',
-    label: 'Relation',
-    placeholder: 'Select relation…',
-    type: 'select',
-    options: toOptions(RELATION_TYPES),
-  },
-  {
-    name: 'relationTypeInformation',
-    label: 'Relation detail (optional; use with "Other")',
-    placeholder: 'Free-text description of the relationship…',
-    type: 'text',
-  },
-  {
-    name: 'resourceTypeGeneral',
-    label: 'Related resource type',
-    placeholder: 'Select resource type…',
-    type: 'select',
-    options: toOptions(RESOURCE_TYPES_GENERAL),
-  },
-]
-// #endregion field definitions
+import { getRelatedIdentifierFields } from '../../../../shared/dataciteFieldDefinitions'
 
 // #region styled (cloned from AuthorsInput)
 const StyledButton = styled(Button)`
