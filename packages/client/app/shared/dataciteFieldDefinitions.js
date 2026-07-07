@@ -169,6 +169,32 @@ export const TITLE_TYPES = [
 const toOptions = list => list.map(v => ({ label: v, value: v }))
 
 /* ------------------------------------------------------------------ */
+/* titles — ADDITIONAL titles beyond the main title ($title stays the
+   form's own title field and serializes with no titleType). Row shape:
+   { id, title, titleType, lang }; lang is a BCP-47 tag.               */
+export const getTitleFields = () => [
+  {
+    name: 'title',
+    label: 'Title',
+    placeholder: 'Additional title text…',
+    type: 'text',
+  },
+  {
+    name: 'titleType',
+    label: 'Title type',
+    placeholder: 'Select type…',
+    type: 'select',
+    options: toOptions(TITLE_TYPES),
+  },
+  {
+    name: 'lang',
+    label: 'Language (BCP-47, optional)',
+    placeholder: 'e.g. fr, ty, en-US…',
+    type: 'text',
+  },
+]
+
+/* ------------------------------------------------------------------ */
 /* relatedIdentifiers — row shape:
    { id, relatedIdentifier, relatedIdentifierType, relationType,
      relationTypeInformation, resourceTypeGeneral }                    */
