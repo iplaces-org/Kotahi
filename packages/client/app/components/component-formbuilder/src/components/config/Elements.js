@@ -540,6 +540,10 @@ const getBaseComponentProperties = () => ({
   PublisherInput: {
     label: 'Publisher (ROR search)',
   },
+  TitlesInput: {
+    label: 'Additional titles (DataCite)',
+    validate: validateCollection,
+  },
   LinksInput: {
     label: 'List of links (URLs)',
     validate: validateCollection,
@@ -667,6 +671,12 @@ const genericFieldOptions = [
     isCustom: true,
     fieldType: 'publisher',
     component: 'PublisherInput',
+  },
+  {
+    label: 'Additional titles (DataCite)',
+    isCustom: true,
+    fieldType: 'titles',
+    component: 'TitlesInput',
   },
   {
     label: 'List of links (URLs)',
