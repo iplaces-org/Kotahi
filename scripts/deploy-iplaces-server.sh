@@ -25,6 +25,11 @@ DOCKERFILE="server-fix/Dockerfile"
 IGNOREFILE="server-fix/.dockerignore.deploy"
 CONTAINER_PATCH_PATH="/home/node/app/services/publishing/datacite/fieldsTransformers.js"
 CONTAINER_CMS_ENDPOINT_PATH="/home/node/app/api/rest/cmsUpload/endpoint.js"
+# Marker from the LATEST serializer patch. UPDATE THIS every time a patch
+# adds a function -- it's what catches a half-deployed patch stack (index.js
+# calling what fieldsTransformers doesn't export => "X is not a function"
+# at first publish). History: Patch 7 = getSubjects.
+LATEST_PATCH_MARKER="getSubjects"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://iplaces-test-client.fly.dev"
 EXPECTED_INSTANCE_GROUPS="gumpstation:journal,testclone3:journal"
@@ -84,6 +89,19 @@ preflight() {
   local idx="packages/server/services/publishing/datacite/index.js"
   node --check "$idx" >/dev/null 2>&1 && ok "index.js syntax valid" || fail "index.js has a syntax error"
   grep -q "schemaVersion" "$idx" && ok "index.js carries schemaVersion (DataCite 4.6)" || fail "index.js missing schemaVersion overlay"
+
+  # Patches 3-7: both DataCite files must be from the SAME patch generation.
+  # The latest marker must be defined+exported in fieldsTransformers (>=2 hits)
+  # AND referenced in index.js -- a mismatch means one file is stale (the
+  # classic download-suffix / missed-download failure).
+  local ftn idxn
+  ftn="$(grep -c "$LATEST_PATCH_MARKER" "$f" || true)"
+  idxn="$(grep -c "$LATEST_PATCH_MARKER" "$idx" || true)"
+  if [[ "$ftn" -ge 2 && "$idxn" -ge 1 ]]; then
+    ok "patch generations match (marker $LATEST_PATCH_MARKER: ft=$ftn idx=$idxn)"
+  else
+    fail "PATCH GENERATION MISMATCH: $LATEST_PATCH_MARKER ft=$ftn (need >=2) idx=$idxn (need >=1) -- one file is stale"
+  fi
 
   # A stray root ./fly.toml is the classic foot-gun (wrong port / [env] /
   # [processes]). We always deploy with -c "$CONFIG", but warn loudly.
@@ -150,6 +168,19 @@ guard_cms_endpoint_landed() {
   else fail "await uploadCms NOT found at $CONTAINER_CMS_ENDPOINT_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_latest_patch_landed() {
+  hdr "Guard: latest serializer patch landed in container (both paths)"
+  # Same parsing discipline as guard_patch_landed. Checks BOTH the plain and
+  # dist/ copies (the 2026.07.03-0 image may run either).
+  local p out n
+  for p in "$CONTAINER_PATCH_PATH" "/home/node/app/dist/services/publishing/datacite/fieldsTransformers.js"; do
+    out="$(flycli ssh console --app "$APP" -C "grep -c $LATEST_PATCH_MARKER $p" 2>/dev/null || true)"
+    n="$(printf '%s\n' "$out" | grep -oE '^[0-9]+$' | tail -1)"
+    if [[ -n "$n" && "$n" -ge 2 ]]; then ok "$LATEST_PATCH_MARKER present ($n) at $p"
+    else fail "$LATEST_PATCH_MARKER NOT sufficiently present at $p (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+  done
+}
+
 guard_env_preserved() {
   hdr "Guard: env preserved (secrets not clobbered)"
   local ig cu
@@ -197,6 +228,7 @@ run_guards() {
   wake_machine
   guard_patch_landed
   guard_cms_endpoint_landed
+  guard_latest_patch_landed
   guard_env_preserved
   guard_machine_healthy
   guard_listening_3000

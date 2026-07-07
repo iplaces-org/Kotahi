@@ -63,3 +63,4 @@ packages/server/scripts/local
 /fly.toml.backup-*
 # R history droppings from the publishing services dirs.
 **/.Rhistory
+.Rhistory
