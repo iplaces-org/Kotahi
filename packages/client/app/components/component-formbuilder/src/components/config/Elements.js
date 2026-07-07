@@ -525,6 +525,21 @@ const getBaseComponentProperties = () => ({
   AuthorsInput: {
     label: 'List of contributors',
   },
+  RelatedIdentifiersInput: {
+    label: 'Related identifiers (DataCite)',
+    validate: validateCollection,
+  },
+  ContributorsInput: {
+    label: 'Contributors (DataCite, typed)',
+    validate: validateCollection,
+  },
+  FundingReferencesInput: {
+    label: 'Funding (DataCite)',
+    validate: validateCollection,
+  },
+  PublisherInput: {
+    label: 'Publisher (ROR search)',
+  },
   LinksInput: {
     label: 'List of links (URLs)',
     validate: validateCollection,
@@ -628,6 +643,30 @@ const genericFieldOptions = [
     isCustom: true,
     fieldType: 'contributors',
     component: 'AuthorsInput',
+  },
+  {
+    label: 'Related identifiers (DataCite)',
+    isCustom: true,
+    fieldType: 'relatedIdentifiers',
+    component: 'RelatedIdentifiersInput',
+  },
+  {
+    label: 'Contributors (DataCite, typed)',
+    isCustom: true,
+    fieldType: 'dataciteContributors',
+    component: 'ContributorsInput',
+  },
+  {
+    label: 'Funding (DataCite)',
+    isCustom: true,
+    fieldType: 'fundingReferences',
+    component: 'FundingReferencesInput',
+  },
+  {
+    label: 'Publisher (ROR search)',
+    isCustom: true,
+    fieldType: 'publisher',
+    component: 'PublisherInput',
   },
   {
     label: 'List of links (URLs)',
