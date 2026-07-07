@@ -465,6 +465,42 @@ const getRelatedItems = (submission, formData) => {
   return relatedItems
 }
 
+
+/* -------- Patch 8: titles --------
+   getAllTitles emits the full DataCite titles array: the main title
+   (submission.$title, no titleType — DataCite treats an untyped title as
+   the main title) followed by additional titles from submission.titles
+   rows { title, titleType, lang }. Rows without title text are skipped;
+   titleType passes through only if it is a valid 4.7 value; lang is a
+   BCP-47 tag (e.g. fr, ty, en-US) passed through trimmed. */
+const VALID_TITLE_TYPES = [
+  'AlternativeTitle',
+  'Subtitle',
+  'TranslatedTitle',
+  'Other',
+]
+
+const getAllTitles = submission => {
+  const titles = []
+  const mainTitle = submission?.$title ? String(submission.$title).trim() : ''
+  if (mainTitle) titles.push({ title: mainTitle })
+
+  const rows = Array.isArray(submission?.titles) ? submission.titles : []
+
+  rows.forEach(r => {
+    if (!r || typeof r !== 'object') return
+    const title = r.title ? String(r.title).trim() : ''
+    if (!title) return
+    const entry = { title }
+    if (r.titleType && VALID_TITLE_TYPES.includes(r.titleType))
+      entry.titleType = r.titleType
+    if (r.lang && String(r.lang).trim()) entry.lang = String(r.lang).trim()
+    titles.push(entry)
+  })
+
+  return titles
+}
+
 module.exports = {
   getDates,
   getContributor,
@@ -481,4 +517,5 @@ module.exports = {
   getAllFundingReferences,
   getFormDates,
   getSubjects,
+  getAllTitles,
 }

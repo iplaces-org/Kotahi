@@ -20,6 +20,7 @@ const {
   getFormDates,
   getSubjects,
   getDates,
+  getAllTitles,
 } = require('./fieldsTransformers')
 
 const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
@@ -120,7 +121,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       url: `${publishedArticleLocationPrefix}${shortId}`,
       schemaVersion: 'http://datacite.org/schema/kernel-4',
       types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
-      titles: title ? [{ title }] : [],
+      titles: getAllTitles(submission),
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),
@@ -229,7 +230,7 @@ const checkPayload = async (manuscript, activeConfig) => {
       url: `${publishedArticleLocationPrefix}${shortId}`,
       schemaVersion: 'http://datacite.org/schema/kernel-4',
       types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
-      titles: title ? [{ title }] : [],
+      titles: getAllTitles(submission),
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),

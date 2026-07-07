@@ -28,8 +28,8 @@ CONTAINER_CMS_ENDPOINT_PATH="/home/node/app/api/rest/cmsUpload/endpoint.js"
 # Marker from the LATEST serializer patch. UPDATE THIS every time a patch
 # adds a function -- it's what catches a half-deployed patch stack (index.js
 # calling what fieldsTransformers doesn't export => "X is not a function"
-# at first publish). History: Patch 7 = getSubjects.
-LATEST_PATCH_MARKER="getSubjects"
+# at first publish). History: Patch 7 = getSubjects; Patch 8 = getAllTitles.
+LATEST_PATCH_MARKER="getAllTitles"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://iplaces-test-client.fly.dev"
 EXPECTED_INSTANCE_GROUPS="gumpstation:journal,testclone3:journal"
