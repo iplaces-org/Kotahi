@@ -544,6 +544,10 @@ const getBaseComponentProperties = () => ({
     label: 'Additional titles (DataCite)',
     validate: validateCollection,
   },
+  AlternateIdentifiersInput: {
+    label: 'Alternate identifiers (DataCite)',
+    validate: validateCollection,
+  },
   LinksInput: {
     label: 'List of links (URLs)',
     validate: validateCollection,
@@ -677,6 +681,12 @@ const genericFieldOptions = [
     isCustom: true,
     fieldType: 'titles',
     component: 'TitlesInput',
+  },
+  {
+    label: 'Alternate identifiers (DataCite)',
+    isCustom: true,
+    fieldType: 'alternateIdentifiers',
+    component: 'AlternateIdentifiersInput',
   },
   {
     label: 'List of links (URLs)',
