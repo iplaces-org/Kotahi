@@ -44,6 +44,14 @@ COPY packages/server/api/rest/cmsUpload/endpoint.js \
 COPY packages/server/api/rest/cmsUpload/endpoint.js \
      /home/node/app/dist/api/rest/cmsUpload/endpoint.js
 
+# (3b) Patch 12: manuscript controller refreshes Local Contexts at publish and
+#      writes the fresh snapshot back to the manuscript (form + Flax + DOI from
+#      one fetch). First patch to overlay this file -- see PATCHES.md.
+COPY packages/server/controllers/manuscript/manuscript.controllers.js \
+     /home/node/app/controllers/manuscript/manuscript.controllers.js
+COPY packages/server/controllers/manuscript/manuscript.controllers.js \
+     /home/node/app/dist/controllers/manuscript/manuscript.controllers.js
+
 # (4) pdfExport crash guard. RE-PINNED 2026-07 to the 2026.07.03-0 image's own
 #     copy (config.get('pagedjs') / new createFile signature) + the 5-line
 #     meta.source guard. Verified: diff vs image copy shows guard lines only.
