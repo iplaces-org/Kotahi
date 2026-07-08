@@ -23,6 +23,7 @@ const {
   getAllTitles,
   getAlternateIdentifiers,
   getSpdxRights,
+  refreshLocalContext,
 } = require('./fieldsTransformers')
 
 const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
@@ -113,6 +114,11 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
   const path = doiAvailable ? 'dois' : `dois/${doi}`
   const method = doiAvailable ? 'post' : 'put'
 
+  const $freshLocalContext = await refreshLocalContext(
+    $localContext,
+    manuscript.groupId,
+  )
+
   const payload = {
     type: 'dois',
     attributes: {
@@ -141,7 +147,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: [...getSpdxRights(submission), ...getRightsList($localContext)],
+      rightsList: [...getSpdxRights(submission), ...getRightsList($freshLocalContext)],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
@@ -229,6 +235,11 @@ const checkPayload = async (manuscript, activeConfig) => {
   const doi = getDoiWithoutError(suffix, activeConfig)
   const publishDate = new Date()
 
+  const $freshLocalContext = await refreshLocalContext(
+    $localContext,
+    manuscript.groupId,
+  )
+
   const payload = {
     type: 'dois',
     attributes: {
@@ -257,7 +268,7 @@ const checkPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: [...getSpdxRights(submission), ...getRightsList($localContext)],
+      rightsList: [...getSpdxRights(submission), ...getRightsList($freshLocalContext)],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),

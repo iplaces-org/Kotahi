@@ -604,6 +604,45 @@ const getSpdxRights = submission => {
   ]
 }
 
+
+/* -------- Patch 11: refreshLocalContext --------
+   Re-fetches Local Contexts Hub data at publish time so that Labels a
+   community has applied since the form was last saved flow into the DOI
+   metadata. Reuses Kotahi's own localContext controller (same endpoint,
+   auth, and mapping as the form widget). On ANY failure — missing project
+   id, Hub unreachable, missing API key — returns the stored object
+   unchanged, so publishing never breaks. The stored url is preserved on
+   the fresh object because the controller result carries no url and
+   getRightsList emits it as each label's rightsUri. */
+const LC_UUID_RE =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
+const refreshLocalContext = async (stored, groupId) => {
+  if (!stored || typeof stored !== 'object') return stored
+
+  const projectId =
+    stored.id || (String(stored.url || '').match(LC_UUID_RE) || [])[0]
+
+  if (!projectId || !groupId) return stored
+
+  try {
+    // eslint-disable-next-line global-require
+    const {
+      localContext: fetchLocalContext,
+    } = require('../../../controllers/localContext/localContext.controller')
+
+    const { localContext: fresh, errorMessage } = await fetchLocalContext({
+      projectId,
+      groupId,
+    })
+
+    if (errorMessage || !fresh || !Array.isArray(fresh.notice)) return stored
+    return { ...fresh, url: stored.url }
+  } catch (e) {
+    return stored
+  }
+}
+
 module.exports = {
   getDates,
   getContributor,
@@ -623,4 +662,5 @@ module.exports = {
   getAllTitles,
   getAlternateIdentifiers,
   getSpdxRights,
+  refreshLocalContext,
 }
