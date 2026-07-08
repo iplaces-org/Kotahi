@@ -501,6 +501,34 @@ const getAllTitles = submission => {
   return titles
 }
 
+
+/* -------- Patch 9: alternateIdentifiers --------
+   getAlternateIdentifiers emits submission.alternateIdentifiers rows
+   { alternateIdentifier, alternateIdentifierType }. Both sub-fields are
+   free text in DataCite 4.7 (no controlled vocabulary), but the type is
+   mandatory whenever the identifier is present, so rows missing either
+   are skipped. */
+const getAlternateIdentifiers = submission => {
+  const rows = Array.isArray(submission?.alternateIdentifiers)
+    ? submission.alternateIdentifiers
+    : []
+
+  return rows.reduce((acc, r) => {
+    if (!r || typeof r !== 'object') return acc
+    const alternateIdentifier = r.alternateIdentifier
+      ? String(r.alternateIdentifier).trim()
+      : ''
+
+    const alternateIdentifierType = r.alternateIdentifierType
+      ? String(r.alternateIdentifierType).trim()
+      : ''
+
+    if (!alternateIdentifier || !alternateIdentifierType) return acc
+    acc.push({ alternateIdentifier, alternateIdentifierType })
+    return acc
+  }, [])
+}
+
 module.exports = {
   getDates,
   getContributor,
@@ -518,4 +546,5 @@ module.exports = {
   getFormDates,
   getSubjects,
   getAllTitles,
+  getAlternateIdentifiers,
 }

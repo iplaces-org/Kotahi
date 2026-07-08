@@ -21,6 +21,7 @@ const {
   getSubjects,
   getDates,
   getAllTitles,
+  getAlternateIdentifiers,
 } = require('./fieldsTransformers')
 
 const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
@@ -122,6 +123,13 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       schemaVersion: 'http://datacite.org/schema/kernel-4',
       types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
       titles: getAllTitles(submission),
+      alternateIdentifiers: getAlternateIdentifiers(submission),
+      ...(submission.language && String(submission.language).trim()
+        ? { language: String(submission.language).trim() }
+        : {}),
+      ...(submission.version && String(submission.version).trim()
+        ? { version: String(submission.version).trim() }
+        : {}),
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),
@@ -231,6 +239,13 @@ const checkPayload = async (manuscript, activeConfig) => {
       schemaVersion: 'http://datacite.org/schema/kernel-4',
       types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
       titles: getAllTitles(submission),
+      alternateIdentifiers: getAlternateIdentifiers(submission),
+      ...(submission.language && String(submission.language).trim()
+        ? { language: String(submission.language).trim() }
+        : {}),
+      ...(submission.version && String(submission.version).trim()
+        ? { version: String(submission.version).trim() }
+        : {}),
       creators: $authors?.map(getContributor) ?? [],
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),
