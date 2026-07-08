@@ -529,6 +529,81 @@ const getAlternateIdentifiers = submission => {
   }, [])
 }
 
+
+/* -------- Patch 10: rights / SPDX --------
+   getSpdxRights expands submission.license (a single SPDX identifier
+   chosen from a form Select) into a full DataCite rights object using
+   the lookup below. Lookup is case-insensitive; rightsIdentifier is
+   emitted lowercase per DataCite's documented convention. An unknown
+   non-empty value is emitted as free-text rights; empty emits nothing.
+   Local Contexts labels/notices are handled separately by getRightsList
+   and merged in index.js. */
+const SPDX_LICENSES = {
+  'CC-BY-4.0': {
+    rights: 'Creative Commons Attribution 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by/4.0/legalcode',
+  },
+  'CC-BY-SA-4.0': {
+    rights: 'Creative Commons Attribution Share Alike 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by-sa/4.0/legalcode',
+  },
+  'CC-BY-NC-4.0': {
+    rights: 'Creative Commons Attribution Non Commercial 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by-nc/4.0/legalcode',
+  },
+  'CC-BY-NC-SA-4.0': {
+    rights:
+      'Creative Commons Attribution Non Commercial Share Alike 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode',
+  },
+  'CC-BY-ND-4.0': {
+    rights: 'Creative Commons Attribution No Derivatives 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by-nd/4.0/legalcode',
+  },
+  'CC-BY-NC-ND-4.0': {
+    rights:
+      'Creative Commons Attribution Non Commercial No Derivatives 4.0 International',
+    rightsUri: 'https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode',
+  },
+  'CC0-1.0': {
+    rights: 'Creative Commons Zero v1.0 Universal',
+    rightsUri: 'https://creativecommons.org/publicdomain/zero/1.0/legalcode',
+  },
+  MIT: {
+    rights: 'MIT License',
+    rightsUri: 'https://opensource.org/license/mit/',
+  },
+  'Apache-2.0': {
+    rights: 'Apache License 2.0',
+    rightsUri: 'https://www.apache.org/licenses/LICENSE-2.0',
+  },
+}
+
+const SPDX_KEYS_LOWER = Object.keys(SPDX_LICENSES).reduce((acc, k) => {
+  acc[k.toLowerCase()] = k
+  return acc
+}, {})
+
+const getSpdxRights = submission => {
+  const raw = submission?.license ? String(submission.license).trim() : ''
+  if (!raw) return []
+
+  if (raw === 'All rights reserved')
+    return [{ rights: 'All rights reserved' }]
+
+  const key = SPDX_KEYS_LOWER[raw.toLowerCase()]
+  if (!key) return [{ rights: raw }]
+
+  return [
+    {
+      ...SPDX_LICENSES[key],
+      rightsIdentifier: key.toLowerCase(),
+      rightsIdentifierScheme: 'SPDX',
+      schemeUri: 'https://spdx.org/licenses/',
+    },
+  ]
+}
+
 module.exports = {
   getDates,
   getContributor,
@@ -547,4 +622,5 @@ module.exports = {
   getSubjects,
   getAllTitles,
   getAlternateIdentifiers,
+  getSpdxRights,
 }

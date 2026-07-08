@@ -22,6 +22,7 @@ const {
   getDates,
   getAllTitles,
   getAlternateIdentifiers,
+  getSpdxRights,
 } = require('./fieldsTransformers')
 
 const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
@@ -140,7 +141,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: getRightsList($localContext),
+      rightsList: [...getSpdxRights(submission), ...getRightsList($localContext)],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
@@ -256,7 +257,7 @@ const checkPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: getRightsList($localContext),
+      rightsList: [...getSpdxRights(submission), ...getRightsList($localContext)],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
