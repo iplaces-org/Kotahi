@@ -24,6 +24,7 @@ const {
   getAlternateIdentifiers,
   getSpdxRights,
   refreshLocalContext,
+  getRelatedItems,
 } = require('./fieldsTransformers')
 
 const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
@@ -154,7 +155,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
         ...getFormRelatedIdentifiers(formRelatedIdentifiers),
       ],
       dates: getFormDates(submission, publishDate),
-      // relatedItems: getRelatedItems(submission, formData),
+      relatedItems: getRelatedItems(submission, formData),
     },
   }
 
@@ -275,7 +276,7 @@ const checkPayload = async (manuscript, activeConfig) => {
         ...getFormRelatedIdentifiers(formRelatedIdentifiers),
       ],
       dates: getFormDates(submission, publishDate),
-      // relatedItems: getRelatedItems(submission, formData),
+      relatedItems: getRelatedItems(submission, formData),
     },
   }
 

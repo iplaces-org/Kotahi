@@ -31,8 +31,8 @@ CONTAINER_MS_CTRL_PATH="/home/node/app/controllers/manuscript/manuscript.control
 # calling what fieldsTransformers doesn't export => "X is not a function"
 # at first publish). History: Patch 7 = getSubjects; Patch 8 = getAllTitles;
 # Patch 9 = getAlternateIdentifiers; Patch 10 = getSpdxRights;
-# Patch 11 = refreshLocalContext.
-LATEST_PATCH_MARKER="refreshLocalContext"
+# Patch 11 = refreshLocalContext; Patch 13 = getRelatedItems (re-enabled).
+LATEST_PATCH_MARKER="getRelatedItems"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://iplaces-test-client.fly.dev"
 EXPECTED_INSTANCE_GROUPS="gumpstation:journal,testclone3:journal"

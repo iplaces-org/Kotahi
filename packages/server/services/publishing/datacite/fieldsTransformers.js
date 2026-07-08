@@ -663,4 +663,5 @@ module.exports = {
   getAlternateIdentifiers,
   getSpdxRights,
   refreshLocalContext,
+  getRelatedItems,
 }
