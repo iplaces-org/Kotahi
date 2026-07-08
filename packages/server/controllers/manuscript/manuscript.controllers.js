@@ -35,6 +35,7 @@ const { cachedGet } = require('../../services/queryCache.service')
 const seekEvent = require('../../services/notification.service')
 const sanitizeWaxImages = require('../../utils/sanitizeWaxImages')
 const { publishToDatacite } = require('../../services/publishing/datacite')
+const { localContext: fetchLocalContext } = require('../localContext/localContext.controller')
 
 const {
   publishToAda,
@@ -1309,6 +1310,46 @@ const publishManuscript = async (id, groupId) => {
     published: newPublishedDate,
     status: 'published',
     submission: manuscript.submission,
+  }
+
+  /* -------- Patch 12: refreshLocalContextWriteback --------
+     Before any DOI is minted, re-fetch Local Contexts Hub data for this
+     project and write it onto BOTH the in-memory manuscript (so the DataCite
+     serializer emits fresh rights) and update.submission (so the fresh
+     snapshot is persisted to the served row and flows to the form + Flax).
+     One fetch feeds all three surfaces; publishing an editor no longer needs
+     to press the form's Update button. Any failure leaves the stored snapshot
+     untouched so publishing never breaks. */
+  const $storedLocalContext = manuscript.submission?.$localContext
+  const $lcProjectId =
+    $storedLocalContext?.id ||
+    (String($storedLocalContext?.url || '').match(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+    ) || [])[0]
+
+  if ($lcProjectId) {
+    try {
+      const { localContext: $freshLC, errorMessage: $lcErr } =
+        await fetchLocalContext({
+          projectId: $lcProjectId,
+          groupId: manuscript.groupId,
+        })
+
+      if (!$lcErr && $freshLC && Array.isArray($freshLC.notice)) {
+        const $merged = { ...$freshLC, url: $storedLocalContext.url }
+        manuscript.submission = {
+          ...manuscript.submission,
+          $localContext: $merged,
+        }
+        update.submission = {
+          ...update.submission,
+          $localContext: $merged,
+        }
+      }
+    } catch (e) {
+      logger.error('Patch 12 refreshLocalContextWriteback failed; keeping stored snapshot')
+      logger.error(e)
+    }
   }
 
   const steps = []

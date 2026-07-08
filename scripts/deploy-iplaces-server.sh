@@ -25,6 +25,7 @@ DOCKERFILE="server-fix/Dockerfile"
 IGNOREFILE="server-fix/.dockerignore.deploy"
 CONTAINER_PATCH_PATH="/home/node/app/services/publishing/datacite/fieldsTransformers.js"
 CONTAINER_CMS_ENDPOINT_PATH="/home/node/app/api/rest/cmsUpload/endpoint.js"
+CONTAINER_MS_CTRL_PATH="/home/node/app/controllers/manuscript/manuscript.controllers.js"
 # Marker from the LATEST serializer patch. UPDATE THIS every time a patch
 # adds a function -- it's what catches a half-deployed patch stack (index.js
 # calling what fieldsTransformers doesn't export => "X is not a function"
@@ -105,6 +106,13 @@ preflight() {
     fail "PATCH GENERATION MISMATCH: $LATEST_PATCH_MARKER ft=$ftn (need >=2) idx=$idxn (need >=1) -- one file is stale"
   fi
 
+  local ctrl="packages/server/controllers/manuscript/manuscript.controllers.js"
+  if [[ -f "$ctrl" ]] && grep -q "refreshLocalContextWriteback" "$ctrl"; then
+    ok "Patch 12 marker present in local controller source"
+  else
+    fail "Patch 12 marker (refreshLocalContextWriteback) missing from local controller source -- stale copy?"
+  fi
+
   # A stray root ./fly.toml is the classic foot-gun (wrong port / [env] /
   # [processes]). We always deploy with -c "$CONFIG", but warn loudly.
   if [[ -f "fly.toml" ]]; then
@@ -170,6 +178,18 @@ guard_cms_endpoint_landed() {
   else fail "await uploadCms NOT found at $CONTAINER_CMS_ENDPOINT_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_lc_writeback_landed() {
+  hdr "Guard: Patch 12 LC write-back landed in container"
+  # Fixed-path + fixed-string check (same discipline as funderid / uploadCms).
+  # Patch 12 lives in the manuscript controller, not the serializer, so it is
+  # NOT covered by the LATEST_PATCH_MARKER generation check.
+  local out n
+  out="$(flycli ssh console --app "$APP" -C "grep -c refreshLocalContextWriteback $CONTAINER_MS_CTRL_PATH" 2>/dev/null || true)"
+  n="$(printf '%s\n' "$out" | grep -oE '^[0-9]+$' | tail -1)"
+  if [[ -n "$n" && "$n" -ge 1 ]]; then ok "refreshLocalContextWriteback present in-container ($n) at controller"
+  else fail "refreshLocalContextWriteback NOT found at $CONTAINER_MS_CTRL_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+}
+
 guard_latest_patch_landed() {
   hdr "Guard: latest serializer patch landed in container (both paths)"
   # Same parsing discipline as guard_patch_landed. Checks BOTH the plain and
@@ -231,6 +251,7 @@ run_guards() {
   guard_patch_landed
   guard_cms_endpoint_landed
   guard_latest_patch_landed
+  guard_lc_writeback_landed
   guard_env_preserved
   guard_machine_healthy
   guard_listening_3000
