@@ -169,6 +169,26 @@ export const TITLE_TYPES = [
 const toOptions = list => list.map(v => ({ label: v, value: v }))
 
 /* ------------------------------------------------------------------ */
+/* alternateIdentifiers — identifiers OTHER than the DOI that also refer
+   to THIS resource (local accession numbers, ARKs, ISBNs…). Both fields
+   are free text in 4.7; type is mandatory when the identifier is given.
+   Row shape: { id, alternateIdentifier, alternateIdentifierType }      */
+export const getAlternateIdentifierFields = () => [
+  {
+    name: 'alternateIdentifier',
+    label: 'Identifier',
+    placeholder: 'e.g. ark:/12345/…, accession no., ISBN…',
+    type: 'text',
+  },
+  {
+    name: 'alternateIdentifierType',
+    label: 'Identifier type',
+    placeholder: 'e.g. ARK, Local accession number, ISBN…',
+    type: 'text',
+  },
+]
+
+/* ------------------------------------------------------------------ */
 /* titles — ADDITIONAL titles beyond the main title ($title stays the
    form's own title field and serializes with no titleType). Row shape:
    { id, title, titleType, lang }; lang is a BCP-47 tag.               */
