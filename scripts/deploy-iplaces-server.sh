@@ -34,7 +34,7 @@ CONTAINER_MS_CTRL_PATH="/home/node/app/controllers/manuscript/manuscript.control
 # Patch 11 = refreshLocalContext; Patch 13 = getRelatedItems (re-enabled).
 LATEST_PATCH_MARKER="getRelatedItems"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
-EXPECTED_CLIENT_URL="https://iplaces-test-client.fly.dev"
+EXPECTED_CLIENT_URL="https://publish.iplacesalliance.org"
 EXPECTED_INSTANCE_GROUPS="gumpstation:journal,testclone3:journal"
 # -----------------------------------------------------------------------------
 

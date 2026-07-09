@@ -16,18 +16,6 @@ primary_region = "lhr"
   min_machines_running = 0
 
 [[services]]
-  internal_port = 3000
-  protocol = "tcp"
-
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-
-[[services]]
   internal_port = 8081
   protocol = "tcp"
 
