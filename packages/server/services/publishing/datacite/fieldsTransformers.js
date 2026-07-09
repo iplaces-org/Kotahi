@@ -396,6 +396,14 @@ const getFormDates = (submission, publishDate) => {
   })
   if (issued) dates.push({ dateType: 'Issued', date: issued })
 
+  /* iplaces Patch: temporal Coverage (RKMS-ISO8601 range string, e.g.
+     "2003-08/2003-12" or open-ended "2026-03/"). Raw passthrough — NOT run
+     through isoish, which rejects ranges and open intervals. */
+  const coverage = submission.$coverageDate
+    ? String(submission.$coverageDate).trim()
+    : ''
+  if (coverage) dates.push({ dateType: 'Coverage', date: coverage })
+
   return dates
 }
 
