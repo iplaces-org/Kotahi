@@ -363,6 +363,8 @@ export const getContributorFields = () => [
    to prefill.                                                          */
 export const MTH_ENTITY_KINDS = ['Place', 'Being']
 
+export const MTH_BYLINE_POSITIONS = ['First', 'Last']
+
 export const getMoreThanHumanAuthorFields = () => [
   {
     name: 'entityKind',
@@ -370,6 +372,14 @@ export const getMoreThanHumanAuthorFields = () => [
     placeholder: '',
     type: 'select',
     options: toOptions(MTH_ENTITY_KINDS),
+    clearable: false,
+  },
+  {
+    name: 'position',
+    label: 'Byline position',
+    placeholder: '',
+    type: 'select',
+    options: toOptions(MTH_BYLINE_POSITIONS),
     clearable: false,
   },
   {

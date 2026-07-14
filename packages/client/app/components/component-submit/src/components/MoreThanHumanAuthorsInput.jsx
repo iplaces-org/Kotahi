@@ -27,7 +27,7 @@ const MoreThanHumanAuthorsInput = ({ onChange, value }) => (
     addLabel="Add more-than-human author"
     deleteTooltip="Delete this more-than-human author"
     fields={getMoreThanHumanAuthorFields()}
-    newRowOverrides={{ entityKind: 'Place' }}
+    newRowOverrides={{ entityKind: 'Place', position: 'First' }}
     onChange={onChange}
     value={value}
   />
