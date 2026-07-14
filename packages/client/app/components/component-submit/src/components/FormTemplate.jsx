@@ -36,6 +36,7 @@ import { Heading1, Section, Legend, SubNote } from '../style'
 import AuthorsInput from './AuthorsInput'
 import RelatedIdentifiersInput from './RelatedIdentifiersInput'
 import ContributorsInput from './ContributorsInput'
+import MoreThanHumanAuthorsInput from './MoreThanHumanAuthorsInput'
 import PublisherInput from './PublisherInput'
 import FundingReferencesInput from './FundingReferencesInput'
 import TitlesInput from './TitlesInput'
@@ -150,6 +151,7 @@ const elements = {
   Authors: AuthorsInput,
   RelatedIdentifiersInput,
   ContributorsInput,
+  MoreThanHumanAuthorsInput,
 PublisherInput,
 FundingReferencesInput,
   TitlesInput,

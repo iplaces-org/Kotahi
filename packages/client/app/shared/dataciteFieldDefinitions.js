@@ -350,3 +350,45 @@ export const getContributorFields = () => [
     showIf: row => row.nameType === 'Organizational',
   },
 ]
+
+/* ------------------------------------------------------------------ */
+/* more-than-human authors — row shape (flat):
+   { id, entityKind ('Place'|'Being'), name, identifier,
+     custodialAffiliation: {label,value}|'' }
+   NOTE: entityKind is a UI/iPlaces concept, NOT a DataCite nameType.
+   NAME_TYPES stays vocab-clean (2/2 exact against 4.7); the serializer
+   decides how these rows map into DataCite creators (nameType omitted
+   or set per custodial-community decision). custodialAffiliation is
+   deliberately optional: it is the community's slot to fill, not ours
+   to prefill.                                                          */
+export const MTH_ENTITY_KINDS = ['Place', 'Being']
+
+export const getMoreThanHumanAuthorFields = () => [
+  {
+    name: 'entityKind',
+    label: 'Kind of entity',
+    placeholder: '',
+    type: 'select',
+    options: toOptions(MTH_ENTITY_KINDS),
+    clearable: false,
+  },
+  {
+    name: 'name',
+    label: 'Entity name (as the custodial community writes it)',
+    placeholder: 'Name of the place or being…',
+    type: 'text',
+  },
+  {
+    name: 'identifier',
+    label: 'Entity identifier (DOI — optional)',
+    placeholder: 'https://doi.org/10.60950/…',
+    type: 'text',
+  },
+  {
+    name: 'custodialAffiliation',
+    label:
+      'Custodial affiliation — the community that speaks for this entity (optional; theirs to confirm)',
+    placeholder: 'Leave empty until confirmed by the community…',
+    type: 'ror',
+  },
+]
