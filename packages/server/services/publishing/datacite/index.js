@@ -6,6 +6,7 @@ const { ERROR_MESSAGES } = require('./constants')
 
 const {
   getContributor,
+  buildCreators,
   getPublisher,
   getContributors,
   getDescriptions,
@@ -138,7 +139,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       ...(submission.version && String(submission.version).trim()
         ? { version: String(submission.version).trim() }
         : {}),
-      creators: $authors?.map(getContributor) ?? [],
+      creators: buildCreators($authors, submission.moreThanHumanAuthors),
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),
       publisher: getPublisherWithOverride(formData, submission),
@@ -259,7 +260,7 @@ const checkPayload = async (manuscript, activeConfig) => {
       ...(submission.version && String(submission.version).trim()
         ? { version: String(submission.version).trim() }
         : {}),
-      creators: $authors?.map(getContributor) ?? [],
+      creators: buildCreators($authors, submission.moreThanHumanAuthors),
       geoLocations: geolocation ? [{ geoLocationPlace: geolocation }] : [],
       publicationYear: getPublicationYear(submission, publishDate),
       publisher: getPublisherWithOverride(formData, submission),
