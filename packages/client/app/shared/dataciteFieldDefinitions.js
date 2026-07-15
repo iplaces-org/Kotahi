@@ -397,8 +397,9 @@ export const getMoreThanHumanAuthorFields = () => [
   {
     name: 'custodialAffiliation',
     label:
-      'Custodial affiliation — the community that speaks for this entity (optional; theirs to confirm)',
-    placeholder: 'Leave empty until confirmed by the community…',
+      'Custodial affiliations — the communities that speak for this entity (optional; theirs to confirm — multiple allowed)',
+    placeholder: 'Leave empty until confirmed by the communities…',
     type: 'ror',
+    isMulti: true,
   },
 ]
