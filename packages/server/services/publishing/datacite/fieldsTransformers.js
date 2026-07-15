@@ -73,6 +73,60 @@ const getContributor = author => {
   return contributor
 }
 
+/* iplaces Patch 14: more-than-human authors -> DataCite creators.
+   No nameType on purpose: DataCite 4.7 offers only Personal|Organizational
+   and neither is asserted for a place or being; nameType is optional and
+   omitted until the custodial community decides otherwise.
+   Row shape from the client field (submission.moreThanHumanAuthors):
+   { entityKind, position, name, identifier,
+     custodialAffiliation: {label,value}|'' } */
+const getMthCreator = mth => {
+  const { name, identifier, custodialAffiliation } = mth
+
+  const affiliations = (
+    Array.isArray(custodialAffiliation)
+      ? [...custodialAffiliation]
+      : [custodialAffiliation]
+  ).filter(a => a && a.label)
+
+  return {
+    name,
+    ...objIf(identifier, {
+      nameIdentifiers: [
+        {
+          nameIdentifierScheme: 'DOI',
+          schemeUri: 'https://doi.org',
+          nameIdentifier: identifier,
+        },
+      ],
+    }),
+    affiliation: affiliations.map(a => ({
+      name: a.label,
+      ...(a.value && String(a.value).includes('ror.org')
+        ? {
+            affiliationIdentifier: a.value,
+            affiliationIdentifierScheme: 'ROR',
+            schemeUri: 'https://ror.org',
+          }
+        : {}),
+    })),
+  }
+}
+
+/* iplaces Patch 14: creator order mirrors the byline:
+   MTH position=First, then human authors, then remaining MTH. */
+const buildCreators = (authors, mthAuthors) => {
+  const humans = (authors || []).map(getContributor)
+
+  const mth = (Array.isArray(mthAuthors) ? mthAuthors : []).filter(
+    m => m && m.name,
+  )
+
+  const first = mth.filter(m => m.position === 'First').map(getMthCreator)
+  const rest = mth.filter(m => m.position !== 'First').map(getMthCreator)
+  return [...first, ...humans, ...rest]
+}
+
 const getContributors = formData => {
   const { title: name, rorUrl } = formData.groupIdentity
 
@@ -654,6 +708,8 @@ const refreshLocalContext = async (stored, groupId) => {
 module.exports = {
   getDates,
   getContributor,
+  getMthCreator,
+  buildCreators,
   getPublisher,
   getContributors,
   getDescriptions,
