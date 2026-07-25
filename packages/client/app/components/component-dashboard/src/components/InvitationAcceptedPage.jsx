@@ -155,9 +155,9 @@ const InvitationAcceptedPage = () => {
     }
   }, [data, loggedInUserId])
 
-  if (error) {
-    setErrorMessage('invalidInviteId')
-  }
+  useEffect(() => {
+    if (error) setErrorMessage('invalidInviteId')
+  }, [error])
 
   if (redirectLink) {
     return <Navigate replace to={redirectLink} />
