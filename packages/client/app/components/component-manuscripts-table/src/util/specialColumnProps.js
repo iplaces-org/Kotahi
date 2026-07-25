@@ -18,6 +18,7 @@ import {
   OverdueTooltip,
   LastReviewerUpdated,
   ReviewerStatusBadge,
+  AuthorTeam,
 } from '../cell-components'
 import reviewFilterOptions from '../../../../../config/journal/review-status'
 import AuthorProofingLink from '../cell-components/AuthorProofingLink'
@@ -171,6 +172,11 @@ const buildSpecialColumnProps = (
       flex: '0 1 16em',
       component: Submitter,
     }, // alias of 'author'
+    authorTeam: {
+      title: 'Author team',
+      flex: '1 0.5 18em',
+      component: AuthorTeam,
+    },
     editor: {
       title: i18next.t('manuscriptsTable.Editor'),
       flex: '0 1 12em',
