@@ -2123,6 +2123,7 @@ const submitManuscript = async (id, input, userId) => {
 
   seekEvent('manuscript-submit', {
     manuscript,
+    user: recipient,
     context: {
       recipient: recipient?.email,
       messageContent,
