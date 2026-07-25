@@ -46,10 +46,11 @@ class YjsService extends Service {
     this.app.PmPlugins.add('ySyncPlugin', ySyncPlugin(type))
 
     if (cursorBuilder) {
-      // this.app.PmPlugins.add(
-      //   'yCursorPlugin',
-      //   yCursorPlugin(provider.awareness, { cursorBuilder }),
-      // )
+      console.log('[iplaces] yjs cursor plugin enabled')
+      this.app.PmPlugins.add(
+        'yCursorPlugin',
+        yCursorPlugin(provider.awareness, { cursorBuilder }),
+      )
     } else {
       this.app.PmPlugins.add('yCursorPlugin', yCursorPlugin(provider.awareness))
     }
