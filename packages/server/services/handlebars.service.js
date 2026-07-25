@@ -1,6 +1,6 @@
 const Handlebars = require('handlebars')
 const { clientUrl, Team, logger } = require('@coko/server')
-const { Group } = require('../models')
+const { Config, Group } = require('../models')
 const { transformEntries } = require('../utils/objectUtils')
 
 const HANDLEBARS_NON_FORM_VARIABLES = [
@@ -30,6 +30,7 @@ const HANDLEBARS_NON_FORM_VARIABLES = [
     type: 'link',
   },
   { label: 'Discussion URL', value: 'discussionUrl', type: 'link' },
+  { label: 'Station Name', value: 'brandName' }, // iplaces: station branding
 ].map(v => ({ ...v, form: 'common', type: v.type || 'text' }))
 
 const EDITORS_DATA_VARIABLES = [
@@ -153,6 +154,12 @@ const processData = async (data, groupId) => {
   const group = await Group.query().findById(groupId)
   const appUrl = `${clientUrl}/${group.name}`
 
+  // iplaces: expose station branding to email templates as {{ brandName }},
+  // falling back to the group slug so the variable is always safe to use.
+  const activeConfig = await Config.getCached(groupId)
+  const brandName =
+    activeConfig?.formData?.groupIdentity?.brandName || group.name
+
   const manuscriptLink = await getManuscriptLink(
     appUrl,
     user?.id,
@@ -195,6 +202,7 @@ const processData = async (data, groupId) => {
 
   return {
     appUrl,
+    brandName,
     user,
     ...rest,
     ...recipientData,

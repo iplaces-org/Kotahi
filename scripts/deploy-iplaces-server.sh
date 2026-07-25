@@ -167,6 +167,15 @@ guard_patch_landed() {
   else fail "funderid NOT found at $CONTAINER_PATCH_PATH (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_brandname_landed() {
+  hdr "Guard: brandName handlebars overlay landed in container"
+  local out n
+  out="$(flycli ssh console --app "$APP" -C "grep -c brandName /home/node/app/services/handlebars.service.js" 2>/dev/null || true)"
+  n="$(printf '%s\n' "$out" | grep -oE '^[0-9]+$' | tail -1)"
+  if [[ -n "$n" && "$n" -ge 3 ]]; then ok "brandName present in-container ($n line(s)) in handlebars.service.js"
+  else fail "brandName NOT found in /home/node/app/services/handlebars.service.js (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+}
+
 guard_cms_endpoint_landed() {
   hdr "Guard: cmsUpload endpoint overlay landed in container"
   # Same parsing discipline as guard_patch_landed: grep -c prints exactly the
@@ -250,6 +259,7 @@ run_guards() {
   wake_machine
   guard_patch_landed
   guard_cms_endpoint_landed
+  guard_brandname_landed
   guard_latest_patch_landed
   guard_lc_writeback_landed
   guard_env_preserved
