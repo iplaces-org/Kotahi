@@ -31,6 +31,8 @@ const HANDLEBARS_NON_FORM_VARIABLES = [
   },
   { label: 'Discussion URL', value: 'discussionUrl', type: 'link' },
   { label: 'Station Name', value: 'brandName' }, // iplaces: station branding
+  { label: 'Submission link (author view)', value: 'manuscriptSubmitLink', type: 'link' }, // iplaces
+  { label: 'Decision link (editor view)', value: 'manuscriptDecisionLink', type: 'link' }, // iplaces
 ].map(v => ({ ...v, form: 'common', type: v.type || 'text' }))
 
 const EDITORS_DATA_VARIABLES = [
@@ -167,6 +169,10 @@ const processData = async (data, groupId) => {
   )
 
   const manuscriptProductionLink = `${appUrl}/versions/${manuscript?.id}/production`
+
+  // iplaces: deterministic per-template links (no role resolution)
+  const manuscriptSubmitUrl = `${appUrl}/versions/${manuscript?.id}/submit`
+  const manuscriptDecisionUrl = `${appUrl}/versions/${manuscript?.id}/decision?tab=metadata`
   const author = manuscript ? await manuscript.getManuscriptAuthor() : {}
 
   const recipientData = {
@@ -198,6 +204,8 @@ const processData = async (data, groupId) => {
       : manuscriptData.manuscriptTitle,
     manuscriptLink: `<a href="${manuscriptLink}" target="_blank">${manuscriptLink}</a>`,
     manuscriptProductionLink: `<a href="${manuscriptProductionLink}" target="_blank">${manuscriptProductionLink}</a>`,
+    manuscriptSubmitLink: `<a href="${manuscriptSubmitUrl}" target="_blank">${manuscriptSubmitUrl}</a>`,
+    manuscriptDecisionLink: `<a href="${manuscriptDecisionUrl}" target="_blank">${manuscriptDecisionUrl}</a>`,
   }
 
   return {
