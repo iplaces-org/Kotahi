@@ -1,8 +1,14 @@
-import { StyledAuthor } from '../style'
+import styled from 'styled-components'
 
 /** All members of the manuscript's author team (not the submitter).
  *  Distinct from the 'author'/'submitter' column, which renders
  *  manuscript.submitter -- a single user. */
+const AuthorList = styled.div`
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+`
+
 const AuthorTeam = ({ manuscript }) => {
   const authorTeam = (manuscript.teams || []).find(
     team => team.role === 'author',
@@ -14,10 +20,7 @@ const AuthorTeam = ({ manuscript }) => {
 
   if (!names.length) return null
 
-  return names.map((name, i) => (
-    /* eslint-disable-next-line react/no-array-index-key */
-    <StyledAuthor key={`${name}-${i}`}>{name}</StyledAuthor>
-  ))
+  return <AuthorList>{names.join(', ')}</AuthorList>
 }
 
 export default AuthorTeam
