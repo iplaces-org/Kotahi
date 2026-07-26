@@ -59,11 +59,6 @@ const User = ({
       scope: 'group',
     },
     {
-      value: 'ROLENAME',
-      label: t('common.roles.Role Label'),
-      scope: 'group',
-    },
-    {
       value: 'submitBlocked',
       label: t('common.roles.Submission Blocked'),
       scope: 'group',
