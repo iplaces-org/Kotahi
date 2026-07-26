@@ -64,6 +64,8 @@ const en = {
         'Group Admin': 'Group Admin',
         'Group Manager': 'Group Manager',
         Member: 'Member',
+        'Role Label': 'Role Label',
+        'Submission Blocked': 'Submission Blocked',
         User: 'User',
       },
       emailUpdate: {
