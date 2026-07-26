@@ -58,6 +58,22 @@ const userIsGroupAdmin = rule({
   return cachedGet(`userIsGroupAdmin:${ctx.userId}:${groupId}`)
 })
 
+// IPLACES-PATCH-15: submitBlocked denylist. Membership in a group's
+// 'submitBlocked' team revokes the default right to create/submit
+// manuscripts. The team is normally absent or empty; when absent, the
+// query finds no row and everyone passes. Grant/revoke via the same
+// team machinery as stationMember.
+const userIsNotSubmitBlocked = rule({
+  cache: 'contextual',
+})(async (parent, args, ctx) => {
+  const groupId = ctx.req.headers['group-id']
+  if (!ctx.userId || !groupId || groupId === 'undefined') return true
+  const blocked = await Team.relatedQuery('members')
+    .for(Team.query().where({ objectId: groupId, role: 'submitBlocked' }))
+    .findOne({ userId: ctx.userId })
+  return !blocked
+})
+
 const userOwnsMessage = rule({ cache: 'contextual' })(async (
   parent,
   args,
@@ -642,15 +658,18 @@ const permissions = {
     createFile: isAuthenticated,
     createForm: or(userIsGroupAdmin, userIsAdmin),
     createCollection: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    createManuscript: isAuthenticated,
+    createManuscript: and(isAuthenticated, userIsNotSubmitBlocked),
     createMessage: userIsAllowedToChat,
     createNewTaskAlerts: or(userIsGm, userIsGroupAdmin, userIsAdmin), // Only used when test code is enabled
-    createNewVersion: or(
-      userIsAuthorOfManuscript,
-      userIsEditor,
-      userIsGm,
-      userIsGroupAdmin,
-      userIsAdmin,
+    createNewVersion: and(
+      or(
+        userIsAuthorOfManuscript,
+        userIsEditor,
+        userIsGm,
+        userIsGroupAdmin,
+        userIsAdmin,
+      ),
+      userIsNotSubmitBlocked,
     ),
     createTeam: or(
       userIsEditorOfAnyManuscript,
@@ -708,12 +727,15 @@ const permissions = {
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    submitManuscript: or(
-      userIsAuthorOfManuscript,
-      userIsEditor,
-      userIsGm,
-      userIsGroupAdmin,
-      userIsAdmin,
+    submitManuscript: and(
+      or(
+        userIsAuthorOfManuscript,
+        userIsEditor,
+        userIsGm,
+        userIsGroupAdmin,
+        userIsAdmin,
+      ),
+      userIsNotSubmitBlocked,
     ),
     submitAuthorProofingFeedback: userIsAuthorOfManuscript,
     unarchiveManuscripts: or(userIsGm, userIsGroupAdmin, userIsAdmin),

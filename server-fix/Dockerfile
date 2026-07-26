@@ -68,4 +68,5 @@ COPY packages/server/services/handlebars.service.js \
 COPY server-fix/overlays/controllers/pdfExport.controllers.js \
      /home/node/app/controllers/pdfExport.controllers.js
 COPY server-fix/overlays/controllers/pdfExport.controllers.js \
-     /home/node/app/dist/controllers/pdfExport.controllers.js
+     /home/node/app/dist/controllers/pdfExport.controllers.jsCOPY packages/server/permissions.js /home/node/app/permissions.js
+COPY packages/server/permissions.js /home/node/app/dist/permissions.js
