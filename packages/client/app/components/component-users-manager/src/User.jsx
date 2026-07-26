@@ -54,6 +54,11 @@ const User = ({
 
   roleOptions.push(
     {
+      value: 'member',
+      label: t('common.roles.Member'),
+      scope: 'group',
+    },
+    {
       value: 'groupManager',
       label: t('common.roles.Group Manager'),
       scope: 'group',

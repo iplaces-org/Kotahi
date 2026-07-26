@@ -63,6 +63,7 @@ const en = {
         Admin: 'Admin',
         'Group Admin': 'Group Admin',
         'Group Manager': 'Group Manager',
+        Member: 'Member',
         User: 'User',
       },
       emailUpdate: {
