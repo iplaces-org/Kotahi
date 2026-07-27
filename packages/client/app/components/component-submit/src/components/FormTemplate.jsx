@@ -277,8 +277,13 @@ const FormTemplate = ({
 
   const createBlankSubmissionBasedOnForm = value => {
     const allBlankedFields = {}
-    const fieldNames = value.children.map(field => field.name)
-    fieldNames.forEach(fieldName => set(allBlankedFields, fieldName, ''))
+    value.children.forEach(field => {
+      const defaultOption = Array.isArray(field.options)
+        ? field.options.find(o => o && o.defaultValue)
+        : null
+
+      set(allBlankedFields, field.name, defaultOption ? defaultOption.value : '')
+    })
     return allBlankedFields
   }
 
@@ -300,6 +305,30 @@ const FormTemplate = ({
   )
 
   useEffect(() => debounceChange.flush, [])
+
+  // Persist option-level defaults (e.g. resourcetype: Project) for fields the
+  // saved record doesn't yet carry. Without this, an untouched Select shows
+  // its default but never writes it, so submission.<field> arrives empty.
+  useEffect(() => {
+    if (!onChange) return
+
+    const getByPath = (obj, p) =>
+      p.split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), obj)
+
+    form.children.forEach(field => {
+      const defaultOption = Array.isArray(field.options)
+        ? field.options.find(o => o && o.defaultValue)
+        : null
+
+      if (!defaultOption) return
+      const existing = getByPath(initialValues || {}, field.name)
+
+      if (existing === undefined || existing === null || existing === '') {
+        onChange(defaultOption.value, field.name)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmitForm = async (values, actions) => {
     setSubmitting(true)
