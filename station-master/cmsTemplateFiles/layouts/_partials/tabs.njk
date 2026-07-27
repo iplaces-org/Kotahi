@@ -1,4 +1,4 @@
-{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "member" %}
+{% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
 <div class="tabbed">
     <input type="radio" id="tab1" name="css-tabs" checked>
     <input type="radio" id="tab2" name="css-tabs">

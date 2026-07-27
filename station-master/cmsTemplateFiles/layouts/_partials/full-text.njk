@@ -1,4 +1,4 @@
-{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "member" %}
+{% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
 <div class="article-content">
             <div class="meta-data">
                 <aside class="toc-wrapper">
