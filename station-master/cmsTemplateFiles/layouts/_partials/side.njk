@@ -1,4 +1,4 @@
-{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "members" %}
+{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "member" %}
 <script> 
   const article = JSON.parse('{% if isGated %}{}{% else %}{{ article | dump | escape }}{% endif %}');
   console.log(article);
