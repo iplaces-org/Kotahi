@@ -1,5 +1,6 @@
+{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "members" %}
 <script> 
-  const article = JSON.parse('{{ article | dump | escape }}');
+  const article = JSON.parse('{% if isGated %}{}{% else %}{{ article | dump | escape }}{% endif %}');
   console.log(article);
  </script>
 
@@ -17,7 +18,7 @@
     <div class="article-actions-container">
       <ul class="article-actions">
         <li class="article-actions__list-item">
-                  {% if article.files and article.files.length > 0 %}
+                  {% if (not isGated) and article.files and article.files.length > 0 %}
                     {% set pdfFiles = [] %}
                     {% for file in article.files %}
                       {% if file.name and file.name.includes('.pdf') %}
@@ -79,6 +80,7 @@
         </div>
       {% endif %}
 
+      {% if not isGated %}
       {# ---- Add supplementary files: title above, button below; sits beneath Local Contexts ---- #}
       <hr />
       <div class="review-timeline-container">
@@ -94,6 +96,7 @@
         </dl>
       </div>
 
+      {% endif %}
       {# ---- Related works: merge inbound + outbound DataCite relations, resolve real titles ---- #}
       <hr />
       <div class="review-timeline-container">

@@ -1,3 +1,4 @@
+{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "members" %}
 <div class="article-content">
             <div class="meta-data">
                 <aside class="toc-wrapper">
@@ -8,6 +9,7 @@
                         </li>
                       </ul>
                     {% endif %}
+                    {% if not isGated %}
                     {{ article.meta.source | addIDtoTitles | toc({"tags":["h2","h3", "figure"]}) | safe }}
                     <ul>
                   
@@ -26,6 +28,7 @@
                     {% endif %}
 
                      </ul>
+                    {% endif %}
                 </aside>
             </div>
             <article>
@@ -36,6 +39,17 @@
                             {{ article.parsedSubmission.$abstract | safe }}
                         </section>
                     {% endif %}
+                    {% if isGated %}
+                        <section id="article" class="article members-gate">
+                            <h3>Full text available to station members</h3>
+                            <p>This record is published with member-restricted content. The full metadata is public and citable; the full text is available to members of this station.</p>
+                            {% if station.gateUrl %}
+                                <a class="members-gate-button" href="{{ station.gateUrl }}?shortId={{ article.shortId }}">Station members: sign in with ORCID</a>
+                            {% else %}
+                                <p>Station members: please contact the station for access.</p>
+                            {% endif %}
+                        </section>
+                    {% else %}
                     {% if article.meta.source %}
                         <section id="article" class="article">
                             {{ article.meta.source | addIDtoTitles | imagesHandler(article.shortId, 'articles', cmsConfig.group, cmsLayout.hexCode) | safe }}
@@ -66,6 +80,7 @@
                                     </div>
                             </section>
                          </div>
+                    {% endif %}
                     {% endif %}
 
                 </section>

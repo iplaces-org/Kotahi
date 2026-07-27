@@ -1,3 +1,4 @@
+{% set isGated = article.parsedSubmission and article.parsedSubmission.accessLevel == "members" %}
 <div class="tabbed">
     <input type="radio" id="tab1" name="css-tabs" checked>
     <input type="radio" id="tab2" name="css-tabs">
@@ -14,7 +15,7 @@
         {% include "_partials/full-text.njk" %}
     </div>
     <div class="tab-content">
-        {% include "_partials/revisions.njk" %}
+        {% if not isGated %}{% include "_partials/revisions.njk" %}{% else %}<div class="article-content"><p>Revision history is available to station members.</p></div>{% endif %}
     </div>
     <div class="tab-content">
         {% include "_partials/connections.njk" %}
