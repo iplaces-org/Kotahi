@@ -45,7 +45,11 @@ const getContributor = author => {
 
   const affiliations = (
     Array.isArray(affiliation) ? [...affiliation] : [affiliation]
-  ).filter(a => a?.value?.includes('ror.org'))
+  // IPLACES_PATCH15_LABEL_ONLY_AFFIL: keep label-only affiliations (no ROR).
+  // Was .filter(a => a?.value?.includes('ror.org')) which silently dropped
+  // free-text orgs (Rahui Center, Pacific Beachcomber, iPlaces Alliance).
+  // Mirrors getMthCreator's .filter(a => a && a.label).
+  ).filter(a => a && a.label)
 
   const contributor = {
     nameType: 'Personal',
@@ -60,14 +64,16 @@ const getContributor = author => {
         },
       ],
     }),
-    affiliation: affiliations.length
-      ? affiliations.map(a => ({
-          affiliationIdentifier: a.value,
-          affiliationIdentifierScheme: 'ROR',
-          schemeUri: 'https://ror.org',
-          name: a.label,
-        }))
-      : [],
+    affiliation: affiliations.map(a =>
+      a.value && a.value.includes('ror.org')
+        ? {
+            affiliationIdentifier: a.value,
+            affiliationIdentifierScheme: 'ROR',
+            schemeUri: 'https://ror.org',
+            name: a.label,
+          }
+        : { name: a.label },
+    ),
   }
 
   return contributor
