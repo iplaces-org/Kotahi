@@ -6,7 +6,8 @@
  * Newest record wins; older records backfill blanks only.
  * Swap point for station_people microservice: replace loadStationPeople.
  */
-import { gql, useApolloClient } from '@apollo/client'
+import { gql } from '@apollo/client'
+import { useApolloClient } from '@apollo/client/react'
 
 const PAGE = 50
 
