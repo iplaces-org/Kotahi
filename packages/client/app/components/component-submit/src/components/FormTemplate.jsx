@@ -37,6 +37,7 @@ import AuthorsInput from './AuthorsInput'
 import RelatedIdentifiersInput from './RelatedIdentifiersInput'
 import ContributorsInput from './ContributorsInput'
 import MoreThanHumanAuthorsInput from './MoreThanHumanAuthorsInput'
+import StationAuthorsInput from './StationAuthorsInput'
 import PublisherInput from './PublisherInput'
 import FundingReferencesInput from './FundingReferencesInput'
 import TitlesInput from './TitlesInput'
@@ -152,6 +153,7 @@ const elements = {
   RelatedIdentifiersInput,
   ContributorsInput,
   MoreThanHumanAuthorsInput,
+  StationAuthorsInput,
 PublisherInput,
 FundingReferencesInput,
   TitlesInput,

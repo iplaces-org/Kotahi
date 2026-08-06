@@ -537,6 +537,10 @@ const getBaseComponentProperties = () => ({
     label: 'More-than-human authors (iPlaces)',
     validate: validateCollection,
   },
+  StationAuthorsInput: {
+    label: 'Authors with station typeahead (iPlaces)',
+    validate: validateCollection,
+  },
   FundingReferencesInput: {
     label: 'Funding (DataCite)',
     validate: validateCollection,
@@ -673,6 +677,12 @@ const genericFieldOptions = [
     isCustom: true,
     fieldType: 'moreThanHumanAuthors',
     component: 'MoreThanHumanAuthorsInput',
+  },
+  {
+    label: 'Authors with station typeahead (iPlaces)',
+    isCustom: true,
+    fieldType: 'stationAuthors',
+    component: 'StationAuthorsInput',
   },
   {
     label: 'Funding (DataCite)',
