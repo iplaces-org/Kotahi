@@ -595,7 +595,7 @@ const FormTemplate = ({
                             element.component === 'Select' &&
                             element.name === 'submission.$customStatus'
                           }
-                          isRoRMulti={element.component === 'AuthorsInput'}
+                          isRoRMulti={['AuthorsInput', 'StationAuthorsInput'].includes(element.component)}
                           key={`validate-${element.id}`}
                           name={element.name}
                           onChange={value => {
@@ -617,8 +617,8 @@ const FormTemplate = ({
                           shouldAllowFieldSpecChanges={[
                             'ThreadedDiscussion',
                           ].includes(element.component)}
-                          showMiddleName={element.component === 'AuthorsInput'}
-                          showOrcidId={element.component === 'AuthorsInput'}
+                          showMiddleName={['AuthorsInput', 'StationAuthorsInput'].includes(element.component)}
+                          showOrcidId={['AuthorsInput', 'StationAuthorsInput'].includes(element.component)}
                           spellCheck
                           threadedDiscussionProps={threadedDiscussionProps}
                           validate={validateFormField(
