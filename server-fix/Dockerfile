@@ -9,7 +9,7 @@
 # the app into /home/node/app/dist (verified: dist copies are identical in
 # logic, reformatted only), and we don't know which copy runs -- so EVERY
 # overlay is COPYed to both the plain path and its dist/ twin.
-FROM cokoapps/kotahi-server:2026.07.03-0
+FROM cokoapps/kotahi-server:2026.08.20-0
 
 # (1) DataCite overlays (see PATCHES.md):
 #   - fieldsTransformers.js (Patch 1): funderIdentifier uses the ROR id (funderid).
