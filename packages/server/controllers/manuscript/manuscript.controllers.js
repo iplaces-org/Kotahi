@@ -34,7 +34,10 @@ const checkIsAbstractValueEmpty = require('../../utils/checkIsAbstractValueEmpty
 const { cachedGet } = require('../../services/queryCache.service')
 const seekEvent = require('../../services/notification.service')
 const sanitizeWaxImages = require('../../utils/sanitizeWaxImages')
-const { publishToDatacite } = require('../../services/publishing/datacite')
+const {
+  publishToDatacite,
+  requestToDatacite,
+} = require('../../services/publishing/datacite')
 const { localContext: fetchLocalContext } = require('../localContext/localContext.controller')
 
 const {
@@ -2234,7 +2237,48 @@ const updateManuscript = async (id, input) => {
   }
 
   // convert to json, otherwise you're bypassing validation
-  return Manuscript.query().updateAndFetchById(id, updatedMs.$toJson())
+  // iplaces Patch 16: unpublish hook. The client's unpublish is a plain
+  // updateManuscript carrying {status:'unpublished', published:null}. On that
+  // transition, after saving: (a) DataCite event 'hide' (findable -> registered,
+  // symmetric with publish's 'publish'), (b) Flax rebuild so the record drops
+  // out of the published-only build. Both non-fatal: unpublish must succeed
+  // even if an external service is down (same posture as publishToDatacite).
+  const isUnpublishTransition =
+    msDelta.status === 'unpublished' &&
+    msDelta.published === null &&
+    ms.status === 'published'
+
+  const saved = await Manuscript.query().updateAndFetchById(
+    id,
+    updatedMs.$toJson(),
+  )
+
+  if (isUnpublishTransition) {
+    const doi = saved.doi || saved.submission?.$doi
+
+    if (doi && activeConfig.formData.publishing?.datacite?.login) {
+      try {
+        await requestToDatacite(
+          'PUT',
+          `dois/${doi}`,
+          { type: 'dois', attributes: { event: 'hide' } },
+          activeConfig,
+        )
+        logger.info(`Patch 16: DataCite hide OK for ${doi}`)
+      } catch (e) {
+        logger.error(`Patch 16: DataCite hide FAILED for ${doi}: ${e.message}`)
+      }
+    }
+
+    try {
+      await rebuildCMSSite(saved.groupId, { manuscriptId: id })
+      logger.info(`Patch 16: Flax rebuild OK after unpublish of ${id}`)
+    } catch (e) {
+      logger.error(`Patch 16: Flax rebuild FAILED after unpublish: ${e.message}`)
+    }
+  }
+
+  return saved
 }
 
 const unarchiveManuscripts = async ids => {

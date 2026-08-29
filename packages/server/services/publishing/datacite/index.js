@@ -285,6 +285,7 @@ const checkPayload = async (manuscript, activeConfig) => {
 }
 
 module.exports = {
+  requestToDatacite,
   publishToDatacite,
   getDoi,
   doiIsAvailable,
