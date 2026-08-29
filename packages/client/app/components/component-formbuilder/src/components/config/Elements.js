@@ -1070,6 +1070,11 @@ const getFieldOptions = formCategory => {
       propertiesOrder.forEach(propName => {
         if (opt[propName] === null) return // to skip the property
 
+        // A scalar override (e.g. editDate's isReadOnly: 'true') forces the
+        // saved value directly; it isn't a component descriptor, so don't turn
+        // it into an editable control in the field settings.
+        if (opt[propName] && typeof opt[propName] !== 'object') return
+
         const prop =
           opt[propName] || baseProps[propName] || prototypeProps[propName]
 
@@ -1091,7 +1096,6 @@ const getFieldOptions = formCategory => {
       value: opt.fieldType, // To work with Select component
       isReadOnly: opt.isReadOnly,
       isS3Component: opt.isS3Component,
-      readonly: opt.readonly,
       componentOptions,
     })
   })
