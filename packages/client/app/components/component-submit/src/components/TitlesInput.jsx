@@ -18,7 +18,6 @@ import { PlusCircle } from 'react-feather'
 import Select from 'react-select'
 import { Button } from '../../../pubsweet'
 import { DeleteControl, TextInput } from '../../../shared'
-import theme, { color } from '../../../../theme'
 import { FlexRow } from '../../../../globals'
 import { getTitleFields } from '../../../../shared/dataciteFieldDefinitions'
 
@@ -37,8 +36,8 @@ const Wrapper = styled.div`
 `
 
 const RowContainer = styled.div`
-  border: 1px solid ${color.gray80};
-  border-radius: ${theme.borderRadius};
+  border: 1px solid ${th('color.gray80')};
+  border-radius: ${th('borderRadius')};
   display: flex;
   max-width: 1000px;
   padding: ${grid(2)};

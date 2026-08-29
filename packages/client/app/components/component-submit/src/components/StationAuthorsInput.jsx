@@ -18,7 +18,6 @@ import {
   validateAuthors,
 } from '../../../../shared/authorsFieldDefinitions'
 
-import theme, { color } from '../../../../theme'
 import { FlexRow } from '../../../../globals'
 import useAuthorsFieldQueries from './hooks/useAuthorsInputQueries'
 import useStationPeople, { bareOrcid } from './hooks/useStationPeople'
@@ -42,8 +41,8 @@ const Wrapper = styled.div`
 `
 
 const AuthorContainer = styled.div`
-  border: 1px solid ${color.gray80};
-  border-radius: ${theme.borderRadius};
+  border: 1px solid ${th('color.gray80')};
+  border-radius: ${th('borderRadius')};
   display: flex;
   ${({ fullWidth }) => (fullWidth ? 'width: 100%' : 'max-width: 1000px')};
   padding: ${grid(2)};

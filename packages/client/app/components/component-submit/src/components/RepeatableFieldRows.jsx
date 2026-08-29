@@ -22,7 +22,6 @@ import Select from 'react-select'
 import AsyncCreatableSelect from 'react-select/async-creatable'
 import { Button } from '../../../pubsweet'
 import { DeleteControl, TextInput } from '../../../shared'
-import theme, { color } from '../../../../theme'
 import { FlexRow } from '../../../../globals'
 import useAuthorsFieldQueries from './hooks/useAuthorsInputQueries'
 
@@ -41,8 +40,8 @@ const Wrapper = styled.div`
 `
 
 const RowContainer = styled.div`
-  border: 1px solid ${color.gray80};
-  border-radius: ${theme.borderRadius};
+  border: 1px solid ${th('color.gray80')};
+  border-radius: ${th('borderRadius')};
   display: flex;
   max-width: 1000px;
   padding: ${grid(2)};
