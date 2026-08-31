@@ -1,0 +1,413 @@
+---
+layout: base.njk
+class: section-latest
+permalink: "/browse/index.html"
+---
+
+<style>
+  body.section-latest .page-content { padding-left: 0 !important; padding-right: 0 !important; }
+  .browse { max-width: 1120px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .browse h1 { font-family: Georgia, "Times New Roman", serif; font-size: 1.8rem; font-weight: 600; margin: 0 0 0.35rem; }
+  .browse-sub { color: #8a8a83; font-size: 0.9rem; margin: 0 0 1.5rem; }
+  .browse-search { width: 100%; box-sizing: border-box; padding: 0.75rem 0.9rem; font-size: 1rem; border: 1px solid #cfccc3; border-radius: 6px; }
+  .browse-cols { display: flex; gap: 2.5rem; align-items: flex-start; margin-top: 1.5rem; }
+  .browse-side { flex: 0 0 250px; }
+  .browse-main { flex: 1 1 auto; min-width: 0; }
+
+  .facet { border-bottom: 1px solid #e9e7df; padding: 0 0 0.9rem; margin-bottom: 0.9rem; }
+  .facet:last-child { border-bottom: 0; }
+  .facet-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #7a7a72; font-weight: 700; margin: 0 0 0.55rem; }
+  .facet-opt { display: block; font-size: 0.85rem; color: #3a3a36; padding: 0.16rem 0; cursor: pointer; line-height: 1.35; }
+  .facet-opt input { margin-right: 0.45rem; vertical-align: baseline; }
+  .facet-opt.is-zero { opacity: 0.35; }
+  .facet-opt .n { color: #9a9a92; font-size: 0.78rem; }
+  .facet-opt.is-hidden { display: none; }
+  .facet-find { width: 100%; box-sizing: border-box; font-size: 0.8rem; padding: 0.32rem 0.5rem; border: 1px solid #ddd9cf; border-radius: 4px; margin-bottom: 0.5rem; }
+  .facet-more { font-size: 0.78rem; color: #185fa5; cursor: pointer; display: inline-block; margin-top: 0.35rem; }
+
+  .browse-pills { margin: 0 0 0.9rem; }
+  .pill { display: inline-block; font-size: 0.76rem; padding: 0.22rem 0.55rem; margin: 0 0.35rem 0.35rem 0; border-radius: 999px; background: #1b1b1a; color: #fff; cursor: pointer; }
+  .pill span { opacity: 0.65; margin-left: 0.35rem; }
+  .browse-count { font-size: 0.82rem; color: #8a8a83; margin: 0 0 0.9rem; }
+  .browse-clear { color: #185fa5; cursor: pointer; margin-left: 0.6rem; }
+
+  .browse-list { list-style: none; margin: 0; padding: 0; }
+  .browse-item { padding: 0.95rem 0; border-bottom: 1px solid #e9e7df; }
+  .browse-item.is-hidden { display: none; }
+  .browse-item-title { display: block; font-size: 1.05rem; font-weight: 600; line-height: 1.35; color: #1b1b1a; text-decoration: none; }
+  .browse-item-title:hover { text-decoration: underline; }
+  .browse-item-meta { display: block; font-size: 0.85rem; color: #57574f; margin-top: 0.3rem; }
+  .browse-item-tags { display: block; margin-top: 0.4rem; }
+  .btag { display: inline-block; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; padding: 0.1rem 0.45rem; margin-right: 0.35rem; border-radius: 3px; background: #f0eee6; color: #57574f; }
+  .btag-place { background: #fdf0e3; color: #8a5320; }
+  .btag-notice { background: #f3e9f5; color: #5a3a86; }
+  .btag-label { background: #e8f0f8; color: #1e5182; }
+  .btag-geome { background: #e1f5ee; color: #0f6e56; }
+  .browse-empty { color: #8a8a83; font-style: italic; padding: 1rem 0; }
+  .browse-api { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e9e7df; font-size: 0.78rem; color: #8a8a83; }
+  .browse-api code { background: #f6f5f0; padding: 0.15rem 0.35rem; border-radius: 3px; word-break: break-all; }
+
+  @media (max-width: 860px) {
+    .browse-cols { display: block; }
+    .browse-side { margin-bottom: 2rem; }
+    .browse { padding: 1.5rem 1.1rem 3rem; }
+  }
+</style>
+
+<div class="browse">
+  <h1>Browse iPlaces</h1>
+  <p class="browse-sub">Search and filter published works. Combine filters to narrow results.</p>
+
+  <input type="text" class="browse-search" id="browse-search" placeholder="Search titles, authors, institutions…">
+
+  <div class="browse-cols">
+    <div class="browse-side" id="browse-facets"></div>
+
+    <div class="browse-main">
+      <div class="browse-pills" id="browse-pills"></div>
+      <p class="browse-count" id="browse-count"></p>
+
+      <ul class="browse-list" id="browse-list">
+        {% for article in articleQuery.articles %}
+          {%- set ps = article.parsedSubmission -%}
+
+          {%- set authorNames = [] -%}
+          {%- set instNames = [] -%}
+          {%- for a in article.headerInfo.authorNames -%}
+            {%- set nm = a.firstName + " " + a.lastName -%}
+            {%- if not (nm in authorNames) -%}{% set authorNames = authorNames.concat([nm]) %}{%- endif -%}
+            {%- if a.ror and a.ror.length -%}
+              {%- for r in a.ror -%}
+                {%- if r.label and not (r.label in instNames) -%}{% set instNames = instNames.concat([r.label]) %}{%- endif -%}
+              {%- endfor -%}
+            {%- endif -%}
+          {%- endfor -%}
+
+          {%- set rtype = (ps.resourcetype | default("")) | string -%}
+          {%- set dpub = (ps.datePublished | default("")) | string -%}
+          {%- set yr = dpub | truncate(4, true, "") -%}
+          {%- set cat = (ps.topics | default("")) | join(", ") -%}
+          {%- set place = (ps.geolocation | default("")) | string -%}
+
+          {%- set lc = ps["$localContext"] | default("") -%}
+
+          {%- set noticeTypes = [] -%}
+          {%- if lc and lc.notice and lc.notice.length -%}
+            {%- for n in lc.notice -%}
+              {%- if n.noticeType and not (n.noticeType in noticeTypes) -%}
+                {%- set noticeTypes = noticeTypes.concat([n.noticeType]) -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+
+          {%- set lcLabels = [] -%}
+          {%- if lc and lc.label and lc.label.length -%}
+            {%- for b in lc.label -%}
+              {%- if b.name and not (b.name in lcLabels) -%}
+                {%- set lcLabels = lcLabels.concat([b.name]) -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+
+          {%- set hasGeome = "" -%}
+          {%- set gm = ps.GEOME | default("") -%}
+          {%- if gm and gm.length and gm[0].url -%}{%- set hasGeome = "GEOME field data" -%}{%- endif -%}
+
+          <li class="browse-item"
+              data-type="{{ rtype }}"
+              data-place="{{ place }}"
+              data-year="{{ yr }}"
+              data-category="{{ cat }}"
+              data-notices="{{ noticeTypes | join('|') }}"
+              data-labels="{{ lcLabels | join('|') }}"
+              data-geome="{{ hasGeome }}"
+              data-authors="{{ authorNames | join('|') }}"
+              data-institutions="{{ instNames | join('|') }}"
+              data-search="{{ article.headerInfo.title | striptags }} {{ authorNames | join(' ') }} {{ instNames | join(' ') }} {{ place }}">
+            <a class="browse-item-title" href="{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">{{ article.headerInfo.title | safe }}</a>
+            <span class="browse-item-meta">{{ authorNames | join(', ') }}</span>
+            <span class="browse-item-tags">
+              {% if rtype %}<span class="btag">{{ rtype }}</span>{% endif %}
+              {% if yr %}<span class="btag">{{ yr }}</span>{% endif %}
+              {% if place %}<span class="btag btag-place">{{ place }}</span>{% endif %}
+              {% for nt in noticeTypes %}<span class="btag btag-notice">{{ nt }}</span>{% endfor %}
+              {% for lb in lcLabels %}<span class="btag btag-label">{{ lb }}</span>{% endfor %}
+              {% if hasGeome %}<span class="btag btag-geome">GEOME</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <p class="browse-empty" id="browse-empty" style="display:none;">No matching works. Try removing a filter.</p>
+
+      <div class="browse-api">
+        Machine-readable: the same metadata is queryable live at DataCite —
+        <code id="browse-api-url">https://api.datacite.org/dois?prefix=10.60950</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TOP_N = 8;   // options shown per facet before "show all"
+
+  var search   = document.getElementById('browse-search');
+  var list     = document.getElementById('browse-list');
+  var sideWrap = document.getElementById('browse-facets');
+  var pillWrap = document.getElementById('browse-pills');
+  var countEl  = document.getElementById('browse-count');
+  var emptyEl  = document.getElementById('browse-empty');
+  var apiEl    = document.getElementById('browse-api-url');
+  if (!list) return;
+
+  function split(v) { return (v || '').split('|').filter(Boolean); }
+
+  var recs = Array.prototype.slice.call(list.querySelectorAll('.browse-item')).map(function (el) {
+    return {
+      el: el,
+      text: (el.getAttribute('data-search') || '').toLowerCase(),
+      type: el.getAttribute('data-type') || '',
+      place: el.getAttribute('data-place') || '',
+      year: el.getAttribute('data-year') || '',
+      category: el.getAttribute('data-category') || '',
+      geome: el.getAttribute('data-geome') || '',
+      notices: split(el.getAttribute('data-notices')),
+      labels: split(el.getAttribute('data-labels')),
+      authors: split(el.getAttribute('data-authors')),
+      institutions: split(el.getAttribute('data-institutions'))
+    };
+  });
+
+  var FACETS = [
+    { key: 'place',        label: 'Place',                  multi: true,  find: false },
+    { key: 'type',         label: 'Type',                   multi: false, find: false },
+    { key: 'year',         label: 'Year',                   multi: false, find: false },
+    { key: 'category',     label: 'Category',               multi: false, find: false },
+    { key: 'notices',      label: 'Local Contexts Notices', multi: true,  find: false },
+    { key: 'labels',       label: 'Local Contexts Labels',  multi: true,  find: false },
+    { key: 'geome',        label: 'Field data',             multi: false, find: false },
+    { key: 'authors',      label: 'Author',                 multi: true,  find: true  },
+    { key: 'institutions', label: 'Institution',            multi: true,  find: true  }
+  ];
+
+  var state = { text: '' };
+  FACETS.forEach(function (f) { state[f.key] = []; });
+
+  function valuesOf(rec, key, multi) {
+    var v = rec[key];
+    if (Array.isArray(v)) return v;
+    return v ? [v] : [];
+  }
+
+  // passes all active filters; ignoreKey lets a facet count itself as if unset
+  function passes(rec, ignoreKey) {
+    if (state.text && rec.text.indexOf(state.text) === -1) return false;
+    for (var i = 0; i < FACETS.length; i++) {
+      var f = FACETS[i];
+      if (f.key === ignoreKey) continue;
+      var sel = state[f.key];
+      if (!sel.length) continue;
+      var vals = valuesOf(rec, f.key, f.multi);
+      var hit = sel.some(function (s) { return vals.indexOf(s) !== -1; });
+      if (!hit) return false;
+    }
+    return true;
+  }
+
+  function countsFor(f) {
+    var c = {};
+    recs.forEach(function (rec) {
+      if (!passes(rec, f.key)) return;
+      valuesOf(rec, f.key, f.multi).forEach(function (v) { c[v] = (c[v] || 0) + 1; });
+    });
+    return c;
+  }
+
+  // full value set per facet, so options never disappear entirely
+  var universe = {};
+  FACETS.forEach(function (f) {
+    var seen = {};
+    recs.forEach(function (rec) {
+      valuesOf(rec, f.key, f.multi).forEach(function (v) { seen[v] = true; });
+    });
+    universe[f.key] = Object.keys(seen);
+  });
+
+  function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+
+  function buildFacets() {
+    var html = '';
+    FACETS.forEach(function (f) {
+      if (!universe[f.key].length) return;
+      html += '<div class="facet" data-facet="' + f.key + '">';
+      html += '<p class="facet-label">' + f.label + '</p>';
+      if (f.find) html += '<input type="text" class="facet-find" placeholder="Filter ' + f.label.toLowerCase() + '…">';
+      html += '<div class="facet-opts"></div>';
+      html += '<span class="facet-more" style="display:none;"></span>';
+      html += '</div>';
+    });
+    sideWrap.innerHTML = html;
+  }
+
+  var expanded = {};
+
+  function renderFacetOptions() {
+    FACETS.forEach(function (f) {
+      var box = sideWrap.querySelector('.facet[data-facet="' + f.key + '"]');
+      if (!box) return;
+      var counts = countsFor(f);
+      var sel = state[f.key];
+
+      var vals = universe[f.key].slice().sort(function (a, b) {
+        if (f.key === 'year') return b.localeCompare(a);
+        return (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b);
+      });
+      vals.sort(function (a, b) { return (sel.indexOf(b) !== -1) - (sel.indexOf(a) !== -1); });
+
+      var showAll = expanded[f.key] || vals.length <= TOP_N;
+      var html = '';
+      vals.forEach(function (v, i) {
+        var n = counts[v] || 0;
+        var checked = sel.indexOf(v) !== -1;
+        var hidden = (!showAll && i >= TOP_N) ? ' is-hidden' : '';
+        html += '<label class="facet-opt' + (n === 0 && !checked ? ' is-zero' : '') + hidden + '" data-value="' + esc(v) + '">' +
+          '<input type="checkbox" data-facet="' + f.key + '" data-value="' + esc(v) + '"' + (checked ? ' checked' : '') + '>' +
+          esc(v) + ' <span class="n">(' + n + ')</span></label>';
+      });
+      box.querySelector('.facet-opts').innerHTML = html;
+
+      var more = box.querySelector('.facet-more');
+      if (vals.length > TOP_N) {
+        more.style.display = '';
+        more.textContent = showAll ? 'Show fewer' : 'Show all ' + vals.length;
+      } else {
+        more.style.display = 'none';
+      }
+
+      var find = box.querySelector('.facet-find');
+      if (find && find.value) applyFind(box, find.value);
+    });
+  }
+
+  function applyFind(box, term) {
+    var t = (term || '').toLowerCase();
+    box.querySelectorAll('.facet-opt').forEach(function (o) {
+      var v = (o.getAttribute('data-value') || '').toLowerCase();
+      o.classList.toggle('is-hidden', t && v.indexOf(t) === -1);
+    });
+  }
+
+  function renderPills() {
+    var html = '';
+    FACETS.forEach(function (f) {
+      state[f.key].forEach(function (v) {
+        html += '<span class="pill" data-facet="' + f.key + '" data-value="' + esc(v) + '">' + esc(v) + '<span>&times;</span></span>';
+      });
+    });
+    if (state.text) html += '<span class="pill" data-facet="text"><em>' + esc(state.text) + '</em><span>&times;</span></span>';
+    pillWrap.innerHTML = html;
+  }
+
+  function renderApi() {
+    var parts = [];
+    if (state.year.length) parts.push('publicationYear:' + state.year[0]);
+    if (state.place.length) parts.push('geoLocations.geoLocationPlace:' + JSON.stringify(state.place[0]));
+    if (state.text) parts.push('titles.title:' + state.text);
+    var url = 'https://api.datacite.org/dois?prefix=10.60950';
+    if (parts.length) url += '&query=' + parts.join('+AND+');
+    apiEl.textContent = url;
+  }
+
+  function apply() {
+    var visible = 0, total = recs.length;
+    recs.forEach(function (rec) {
+      var show = passes(rec, null);
+      rec.el.classList.toggle('is-hidden', !show);
+      if (show) visible++;
+    });
+
+    var active = state.text || FACETS.some(function (f) { return state[f.key].length; });
+    countEl.innerHTML = visible + ' of ' + total + ' works' +
+      (active ? ' <span class="browse-clear" id="browse-clear">Clear all</span>' : '');
+    emptyEl.style.display = visible === 0 ? '' : 'none';
+
+    var clear = document.getElementById('browse-clear');
+    if (clear) clear.addEventListener('click', clearAll);
+
+    renderFacetOptions();
+    renderPills();
+    renderApi();
+    syncUrl();
+  }
+
+  function clearAll() {
+    state.text = '';
+    FACETS.forEach(function (f) { state[f.key] = []; });
+    search.value = '';
+    sideWrap.querySelectorAll('.facet-find').forEach(function (i) { i.value = ''; });
+    apply();
+  }
+
+  function syncUrl() {
+    var p = new URLSearchParams();
+    if (state.text) p.set('q', state.text);
+    FACETS.forEach(function (f) { if (state[f.key].length) p.set(f.key, state[f.key].join('|')); });
+    var qs = p.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+  }
+
+  function readUrl() {
+    var p = new URLSearchParams(window.location.search);
+    state.text = (p.get('q') || '').toLowerCase();
+    if (state.text) search.value = p.get('q');
+    FACETS.forEach(function (f) {
+      var v = p.get(f.key);
+      state[f.key] = v ? v.split('|').filter(Boolean) : [];
+    });
+  }
+
+  search.addEventListener('input', function () { state.text = search.value.toLowerCase(); apply(); });
+
+  sideWrap.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.type !== 'checkbox' || !t.getAttribute('data-facet')) return;
+    var key = t.getAttribute('data-facet');
+    var val = t.getAttribute('data-value');
+    var f = FACETS.filter(function (x) { return x.key === key; })[0];
+    var sel = state[key];
+    var i = sel.indexOf(val);
+    if (i !== -1) sel.splice(i, 1);
+    else if (f && f.multi === false) state[key] = [val];
+    else sel.push(val);
+    apply();
+  });
+
+  sideWrap.addEventListener('input', function (e) {
+    if (!e.target.classList.contains('facet-find')) return;
+    applyFind(e.target.closest('.facet'), e.target.value);
+  });
+
+  sideWrap.addEventListener('click', function (e) {
+    if (!e.target.classList.contains('facet-more')) return;
+    var key = e.target.closest('.facet').getAttribute('data-facet');
+    expanded[key] = !expanded[key];
+    renderFacetOptions();
+  });
+
+  pillWrap.addEventListener('click', function (e) {
+    var pill = e.target.closest('.pill');
+    if (!pill) return;
+    var key = pill.getAttribute('data-facet');
+    if (key === 'text') { state.text = ''; search.value = ''; apply(); return; }
+    var val = pill.getAttribute('data-value');
+    var i = state[key].indexOf(val);
+    if (i !== -1) state[key].splice(i, 1);
+    apply();
+  });
+
+  buildFacets();
+  readUrl();
+  apply();
+})();
+</script>

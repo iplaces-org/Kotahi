@@ -28,8 +28,10 @@
                     {% endif %}
 
                      
-                    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
-                    
+                    {% set authorResponse = null %}
+{% if article.decisions.length and article.decisions[0].jsonData %}
+    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
+{% endif %} 
                     {%  if authorResponse != null %}
                          <li>
                             <a href="#authorResponse" class="toc-link">Author Response</a>

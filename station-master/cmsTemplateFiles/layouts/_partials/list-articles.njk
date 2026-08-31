@@ -1,110 +1,61 @@
 <style>
   body.section-latest .page-content { padding-left: 0 !important; padding-right: 0 !important; }
-  .gump-journal { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
-  .gump-journal .issue { margin: 0 0 2.75rem; }
-  .gump-journal .issue-label {
+  .iplaces-journal { width: 100%; max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .iplaces-journal .issue { margin: 0 0 2.75rem; }
+  .iplaces-journal .issue-label {
     font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
     color: #7a7a72; margin: 0 0 0.15rem;
   }
-  .gump-journal .issue-year {
+  .iplaces-journal .issue-year {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 2rem; font-weight: 600; line-height: 1; margin: 0 0 1.1rem;
     padding-bottom: 0.55rem; border-bottom: 2px solid #1b1b1a; color: #1b1b1a;
   }
-  .gump-journal .issue-past .issue-year { font-size: 1.45rem; border-bottom-width: 1px; }
-  .gump-journal .toc { list-style: none; margin: 0; padding: 0; }
-  .gump-journal .toc-item { padding: 0.9rem 0; border-bottom: 1px solid #e9e7df; }
-  .gump-journal .toc-item:last-child { border-bottom: none; }
-  .gump-journal .toc-title {
+  .iplaces-journal .issue-past .issue-year { font-size: 1.45rem; border-bottom-width: 1px; }
+  .iplaces-journal .toc { list-style: none; margin: 0; padding: 0; }
+  .iplaces-journal .toc-item { padding: 0.9rem 0; border-bottom: 1px solid #e9e7df; }
+  .iplaces-journal .toc-item:last-child { border-bottom: none; }
+  .iplaces-journal .toc-title {
     display: block; font-size: 1.08rem; font-weight: 600; line-height: 1.35;
     color: #1b1b1a; text-decoration: none;
   }
-  .gump-journal .toc-title:hover { text-decoration: underline; }
-  .gump-journal .toc-authors { display: block; font-size: 0.9rem; color: #57574f; margin-top: 0.25rem; }
-  .gump-journal .tag {
+  .iplaces-journal .toc-title:hover { text-decoration: underline; }
+  .iplaces-journal .toc-authors { display: block; font-size: 0.9rem; color: #57574f; margin-top: 0.25rem; }
+  .iplaces-journal .tag {
     float: right; margin: 0.15rem 0 0 0.75rem; font-size: 0.62rem; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 3px;
     white-space: nowrap;
   }
-  .gump-journal .tag-class    { background: #f3ecd8; color: #7a5410; }
-  .gump-journal .tag-research { background: #e6f1fb; color: #185fa5; }
-  .gump-journal .tag-conf     { background: #ece4f5; color: #5a3a86; }
-  .gump-journal .tag-outreach { background: #e1f5ee; color: #0f6e56; }
-  .gump-journal .archive-head {
+  .iplaces-journal .tag-class    { background: #f3ecd8; color: #7a5410; }
+  .iplaces-journal .tag-research { background: #e6f1fb; color: #185fa5; }
+  .iplaces-journal .tag-conf     { background: #ece4f5; color: #5a3a86; }
+  .iplaces-journal .tag-outreach { background: #e1f5ee; color: #0f6e56; }
+  .iplaces-journal .archive-head {
     font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: #7a7a72;
     margin: 3.5rem 0 1.75rem; padding-top: 1.5rem; border-top: 2px solid #1b1b1a;
   }
-  .gump-filters { max-width: 720px; margin: 2.5rem auto 0; padding: 0 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .gump-filters button {
+  .iplaces-filters { width: 100%; max-width: 720px; margin: 2.5rem auto 0; padding: 0 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .iplaces-filters button {
     font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
     padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid #cfccc3;
     background: #fff; color: #57574f; cursor: pointer;
   }
-  .gump-filters button.active { background: #1b1b1a; color: #fff; border-color: #1b1b1a; }
-  .gump-journal .issue.is-hidden, .gump-journal .archive-head.is-hidden, .gump-journal .toc-item.is-hidden { display: none; }
-  @media (max-width: 700px) { .gump-journal { padding: 1.5rem 1.1rem 3rem; } .gump-filters { padding: 0 1.1rem; } }
+  .iplaces-filters button.active { background: #1b1b1a; color: #fff; border-color: #1b1b1a; }
+  .iplaces-journal .issue.is-hidden, .iplaces-journal .archive-head.is-hidden, .iplaces-journal .toc-item.is-hidden { display: none; }
+  @media (max-width: 700px) { .iplaces-journal { padding: 1.5rem 1.1rem 3rem; } .iplaces-filters { padding: 0 1.1rem; } }
 </style>
-
-<div class="gump-filters">
+<div class="iplaces-filters">
   <button data-filter="all" class="active">All</button>
   <button data-filter="class">Class</button>
   <button data-filter="research">Research</button>
   <button data-filter="conference">Conference/Workshop</button>
   <button data-filter="outreach">Outreach</button>
 </div>
-
-<div class="gump-journal">
-{% if articleQuery.articles.length > 0 %}
-{% set sortedArticles = articleQuery.articles | sort(true, false, 'parsedSubmission.datePublished') %}
-{% set currentYear = sortedArticles[0].parsedSubmission.datePublished %}
-{% for article in sortedArticles %}
-    {% set y = article.parsedSubmission.datePublished %}
-    {% set prevY = "" %}
-    {% if not loop.first %}{% set prevY = sortedArticles[loop.index0 - 1].parsedSubmission.datePublished %}{% endif %}
-    {% set nextY = "" %}
-    {% if not loop.last %}{% set nextY = sortedArticles[loop.index0 + 1].parsedSubmission.datePublished %}{% endif %}
-    {% if y != currentYear and prevY == currentYear %}
-        <p class="archive-head">Archives</p>
-    {% endif %}
-    {% if y != prevY %}
-        <section class="issue {% if y != currentYear %}issue-past{% endif %}">
-            {% if y == currentYear %}<p class="issue-label">Current issue</p>{% endif %}
-            <h2 class="issue-year">{{ y }}</h2>
-            <ol class="toc">
-    {% endif %}
-            {% set type = (article.parsedSubmission.topics if article.parsedSubmission else "") | string | lower %}
-            {% set filterkey = "" %}
-            {% if "class" in type %}{% set filterkey = "class" %}
-            {% elif "research" in type %}{% set filterkey = "research" %}
-            {% elif "conference" in type or "workshop" in type %}{% set filterkey = "conference" %}
-            {% elif "outreach" in type %}{% set filterkey = "outreach" %}{% endif %}
-            <li class="toc-item" data-type="{{ filterkey }}">
-                {% if "class" in type %}<span class="tag tag-class">Class</span>
-                {% elif "research" in type %}<span class="tag tag-research">Research</span>
-                {% elif "conference" in type %}<span class="tag tag-conf">Conference/Workshop</span>
-                {% elif "workshop" in type %}<span class="tag tag-conf">Conference/Workshop</span>
-                {% elif "outreach" in type %}<span class="tag tag-outreach">Outreach</span>{% endif %}
-                <a class="toc-title" href="{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">{{ article.headerInfo.title | safe }}</a>
-                <span class="toc-authors">
-{% for a in article.headerInfo.authorNames %}{{ a.firstName }} {{ a.lastName }}{% if not loop.last %}, {% endif %}{% endfor %}
-</span>
-            </li>
-    {% if y != nextY %}
-            </ol>
-        </section>
-    {% endif %}
-{% endfor %}
-{% else %}
-    <p>No articles published yet.</p>
-{% endif %}
-</div>
-
-<script>
-(function () {
-  var buttons = document.querySelectorAll('.gump-filters button');
-  var journal = document.querySelector('.gump-journal');
+<div class="iplaces-journal">{% set kept = [] %}{% for a in articleQuery.articles %}{% if 'ConferencePaper' not in a.submission %}{% set _ = kept.push(a) %}{% endif %}{% endfor %}{% set sortedArticles = kept | sort(true, false, 'parsedSubmission.datePublished') %}{% if sortedArticles.length > 0 %}{% set currentYear = sortedArticles[0].parsedSubmission.datePublished %}{% for article in sortedArticles %}    {% set y = article.parsedSubmission.datePublished %}    {% set prevY = "" %}    {% if not loop.first %}{% set prevY = sortedArticles[loop.index0 - 1].parsedSubmission.datePublished %}{% endif %}    {% set nextY = "" %}    {% if not loop.last %}{% set nextY = sortedArticles[loop.index0 + 1].parsedSubmission.datePublished %}{% endif %}    {% if y != currentYear and prevY == currentYear %}        <p class="archive-head">Archives</p>    {% endif %}    {% if y != prevY %}        <section class="issue {% if y != currentYear %}issue-past{% endif %}">            {% if y == currentYear %}<p class="issue-label">Current issue</p>{% endif %}            <h2 class="issue-year">{{ y }}</h2>            <ol class="toc">    {% endif %}            {% set type = (article.parsedSubmission.topics if article.parsedSubmission else "") | string | lower %}            {% set filterkey = "" %}            {% if "class" in type %}{% set filterkey = "class" %}            {% elif "research" in type %}{% set filterkey = "research" %}            {% elif "conference" in type or "workshop" in type %}{% set filterkey = "conference" %}            {% elif "outreach" in type %}{% set filterkey = "outreach" %}{% endif %}            <li class="toc-item" data-type="{{ filterkey }}">                {% if "class" in type %}<span class="tag tag-class">Class</span>                {% elif "research" in type %}<span class="tag tag-research">Research</span>                {% elif "conference" in type %}<span class="tag tag-conf">Conference/Workshop</span>                {% elif "workshop" in type %}<span class="tag tag-conf">Conference/Workshop</span>                {% elif "outreach" in type %}<span class="tag tag-outreach">Outreach</span>{% endif %}                <a class="toc-title" href="{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">{{ article.headerInfo.title | safe }}</a>                <span class="toc-authors">{% for a in article.headerInfo.authorNames %}{{ a.firstName }} {{ a.lastName }}{% if not loop.last %}, {% endif %}{% endfor %}</span>            </li>    {% if y != nextY %}            </ol>        </section>    {% endif %}{% endfor %}{% else %}    <p>No articles published yet.</p>{% endif %}</div>
+<script>(function () {
+  var buttons = document.querySelectorAll('.iplaces-filters button');
+  var journal = document.querySelector('.iplaces-journal');
   if (!buttons.length || !journal) return;
-
   function apply(filter) {
     journal.querySelectorAll('.toc-item').forEach(function (item) {
       var match = filter === 'all' || item.getAttribute('data-type') === filter;
@@ -120,7 +71,6 @@
       archiveHead.classList.toggle('is-hidden', !pastVisible);
     }
   }
-
   buttons.forEach(function (btn) {
     btn.addEventListener('click', function () {
       buttons.forEach(function (b) { b.classList.remove('active'); });
@@ -128,5 +78,4 @@
       apply(btn.getAttribute('data-filter'));
     });
   });
-})();
-</script>
+})();</script>

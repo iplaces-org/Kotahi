@@ -1,11 +1,11 @@
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="{% if lang %}{{lang}}{% else %} {{site.lang}}{% endif %}" class="no-js">
 
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-        <title>{% if article.parsedSubmission.$title %}{{ article.parsedSubmission.$title | safe }}{% else %}iPlaces Gump Station{% endif %}</title>
+<!-- issuedebug: [{{ issue.slug }}] [{{ issue.label }}] -->
+        <title>{% if article.parsedSubmission.$title %}{{ article.parsedSubmission.$title | safe }}{% else %}{{ station.title or cmsLayout.publishConfig.title or cmsConfig.group.name }}{% endif %}</title>
         <script type="module">
             document
                 .documentElement
@@ -19,22 +19,134 @@
         <meta name="description" content="">
         <meta property="og:title" content="{{ article.parsedSubmission.$title | safe }}">
         <meta property="og:description" content="">
-        <meta property="og:image" content="https://iplaces-test-flax.fly.dev/{{ cmsConfig.group.name }}/{{cmsConfig.defaultImagesDirectory}}/logo.png?{{cmsLayout.logo.id}}">
+       <meta property="og:image" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultImagesDirectory }}logo.png?{{cmsLayout.logo.id}}">
         <meta property="og:locale" content="en_US">
         <meta property="og:type" content="website">
         <meta name="twitter:card" content="summary_large_image">
-        <meta property="og:url" content="https://iplaces-test-flax.fly.dev/{{ cmsConfig.group.name }}/{{ article.shortId }}/index.html">
+      <meta property="og:url" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">
+      
 
-        <script type="application/ld+json">
+{% macro lcLabelGraphs(lc) %}{% if lc and lc.label %}{% for lbl in lc.label %}{
+"@type": "CreativeWork",
+"identifier": {"@type":"PropertyValue","propertyID":"Local Contexts Label Identifier","value":{{ lbl.id | dump | safe }},"url":"https://localcontextshub.org/labels/{{ lbl.id }}"},
+"isBasedOn": "https://localcontexts.org/label/{{ lbl.labelType | replace('_','-') }}/",
+"name": [{"@language":{{ (lbl.languageTag or 'en') | dump | safe }},"@value":{{ lbl.name | dump | safe }}}],
+"text": [{"@language":{{ (lbl.languageTag or 'en') | dump | safe }},"@value":{{ lbl.labelText | dump | safe }}}],
+"url": "{{ lc.url }}#labels"{% if lbl.imgUrl or lbl.svgUrl %},
+"image": [{% if lbl.imgUrl %}{"@type":"ImageObject","url":"{{ lbl.imgUrl }}","encodingFormat":"image/png"}{% endif %}{% if lbl.imgUrl and lbl.svgUrl %},{% endif %}{% if lbl.svgUrl %}{"@type":"ImageObject","url":"{{ lbl.svgUrl }}","encodingFormat":"image/svg+xml"}{% endif %}]{% endif %}
+}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endmacro %}
+{% macro lcConditionsOfAccess(lc) %}{% set parts = [] %}{% if lc and lc.label %}{% for lbl in lc.label %}{% set _ = parts.push(lbl.name + ': ' + (lbl.labelText | striptags | trim) + ' ' + lc.url + '#labels') %}{% endfor %}{% endif %}{{ parts | join(' | ') }}{% endmacro %}
+  <script type="application/ld+json">
+        {% if article.parsedSubmission.resourcetype == "Project" %}
         {
-          "@context": {
-          "@vocab": "https://schema.org/"
-        },
-            "@type": "WebSite",
-            "description": "Repo description ... ",
-            "title": "{{ article.parsedSubmission.$title | safe }}",
-            "url": "https://iplaces-test-flax.fly.dev/{{ cmsConfig.group.name }}/{{ article.shortId }}/index.html"
+          "@context": { "@vocab": "https://schema.org/" },
+          "@graph": [
+            {
+              "@type": "ScholarlyArticle",
+              "@id": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html#article",
+              "headline": "{{ article.parsedSubmission.$title | safe }}",
+              "name": "{{ article.parsedSubmission.$title | safe }}",
+              "abstract": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
+              "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
+              {% if article.parsedSubmission.datePublished %}"datePublished": "{{ article.parsedSubmission.datePublished }}",{% endif %}
+              "author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],
+              "identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
+              "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",
+              "isPartOf": { "@type": "Periodical", "name": "{{ station.title }}" },
+              "about": { "@id": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html#project" },
+              "publisher": {
+                "@type": "Organization",
+                "name": "{{ station.hostOrg.name }}"{% if station.hostOrg.url %},"url": "{{ station.hostOrg.url }}"{% endif %}{% if station.hostOrg.ror %},"@id": "{{ station.hostOrg.ror }}"{% endif %}{% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %},"ethicsPolicy": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}]{% endif %}
+              }
+            },
+            {
+              "@type": "ResearchProject",
+              "@id": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html#project",
+              "name": "{{ article.parsedSubmission.$title | safe }}",
+              "description": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
+              "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html"{% if article.parsedSubmission.geolocation %},
+              "spatialCoverage": { "@type": "Place", "name": "{{ article.parsedSubmission.geolocation }}" }{% endif %}{% if station.hostOrg %},
+              "parentOrganization": {
+                "@type": "Organization",
+                "name": "{{ station.hostOrg.name }}"{% if station.hostOrg.ror %},"@id": "{{ station.hostOrg.ror }}"{% endif %}
+              }{% endif %}{% if article.parsedSubmission.Funding %},
+              "funder": {
+                "@type": "Organization",
+                "name": "{{ article.parsedSubmission.Funding | trim }}"{% if article.parsedSubmission.funderid %},"@id": "{{ article.parsedSubmission.funderid }}"{% endif %}
+              }{% endif %}{% if article.parsedSubmission.awardnumber %},
+              "funding": {
+                "@type": "MonetaryGrant",
+                "identifier": "{{ article.parsedSubmission.awardnumber }}"{% if article.parsedSubmission.awardtitle %},"name": "{{ article.parsedSubmission.awardtitle }}"{% endif %}{% if article.parsedSubmission.awarduri %},"url": "{{ article.parsedSubmission.awarduri }}"{% endif %}{% if article.parsedSubmission.Funding %},
+                "funder": { "@type": "Organization", "name": "{{ article.parsedSubmission.Funding | trim }}"{% if article.parsedSubmission.funderid %},"@id": "{{ article.parsedSubmission.funderid }}"{% endif %} }{% endif %}
+              }{% endif %}{% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %},
+              "usageInfo": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
+              "publishingPrinciples": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
+              "conditionsOfAccess": {{ (lcConditionsOfAccess(article.parsedSubmission.$localContext) + '') | dump | safe }}{% endif %}
+            }
+          ]
         }
+        {% elif article.parsedSubmission.$title %}
+        {
+          "@context": { "@vocab": "https://schema.org/" },
+          "@type": "ScholarlyArticle",
+          "headline": "{{ article.parsedSubmission.$title | safe }}",
+          "name": "{{ article.parsedSubmission.$title | safe }}",
+          "abstract": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
+          "description": "{{ (article.parsedSubmission.$abstract | striptags | trim) or station.mission }}",
+          "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
+          {% if article.parsedSubmission.datePublished %}"datePublished": "{{ article.parsedSubmission.datePublished }}",{% endif %}
+          {% if article.headerInfo.authorNames.length %}"author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
+          {% if article.parsedSubmission.$doi %}"identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
+          "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",{% endif %}
+          {% if article.parsedSubmission.geolocation %}"spatialCoverage": { "@type": "Place", "name": "{{ article.parsedSubmission.geolocation }}" },{% endif %}
+          {% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %}"usageInfo": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
+          "publishingPrinciples": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
+          "conditionsOfAccess": {{ (lcConditionsOfAccess(article.parsedSubmission.$localContext) + '') | dump | safe }},{% endif %}
+          "isPartOf": {
+            "@type": "Periodical",
+            "name": "{{ station.title }}"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "{{ station.hostOrg.name }}"{% if station.hostOrg.url %},
+            "url": "{{ station.hostOrg.url }}"{% endif %}{% if station.hostOrg.ror %},
+            "@id": "{{ station.hostOrg.ror }}"{% endif %}{% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %},"ethicsPolicy": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}]{% endif %}
+          }
+        }
+        {% elif issue %}
+        {
+          "@context": { "@vocab": "https://schema.org/" },
+          "@type": "PublicationIssue",
+          "name": "{{ issue.label }}",
+          "url": "{{ station.baseUrl }}/{{ station.pathSlug }}/issue/{{ issue.slug }}/"{% if issue.dateline %},
+          "datePublished": "{{ issue.slug }}"{% endif %},
+          "isPartOf": {
+            "@type": "Periodical",
+            "name": "{{ station.title }}"{% if station.hostOrg.ror %},
+            "@id": "{{ station.hostOrg.ror }}"{% endif %}
+          }{% if station.hostOrg %},
+          "publisher": {
+            "@type": "Organization",
+            "name": "{{ station.hostOrg.name }}"{% if station.hostOrg.url %},
+            "url": "{{ station.hostOrg.url }}"{% endif %}{% if station.hostOrg.ror %},
+            "@id": "{{ station.hostOrg.ror }}"{% endif %}
+          }{% endif %}
+        }
+                                                 {% else %}
+        {
+          "@context": { "@vocab": "https://schema.org/" },
+          "@type": "WebSite",
+          "name": "{{ station.title }}",
+          "description": "{{ station.mission }}",
+          "url": "{{ station.baseUrl }}/{{ station.pathSlug }}/"{% if station.hostOrg %},
+          "publisher": {
+            "@type": "Organization",
+            "name": "{{ station.hostOrg.name }}"{% if station.hostOrg.url %},
+            "url": "{{ station.hostOrg.url }}"{% endif %}{% if station.hostOrg.ror %},
+            "@id": "{{ station.hostOrg.ror }}"{% endif %}
+          }{% endif %}
+        }
+        {% endif %}
         </script>
         <script type="module">
            document.addEventListener('DOMContentLoaded', () => {
@@ -122,7 +234,7 @@
                 const offset = window.visualViewport.width > 768 ? 100 : 40
                 window.scrollTo({ 
                   top: content.offsetTop - offset,
-                  behavior: 'instant',
+                  behavior: 'instant',)
                 })
               })  
             })

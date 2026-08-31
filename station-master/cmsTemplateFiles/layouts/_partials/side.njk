@@ -1,56 +1,206 @@
-{% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
-<script> 
-  const article = JSON.parse('{% if isGated %}{}{% else %}{{ article | dump | escape }}{% endif %}');
-  console.log(article);
- </script>
+<style>
+/* ---- Sidebar readability pass (scoped to .side-section) ---- */
+
+/* Reset the blanket bold: everything normal weight by default */
+aside.side-section,
+aside.side-section p,
+aside.side-section dd,
+aside.side-section li,
+aside.side-section span {
+  font-weight: 400 !important;
+  color: #1b1b1a;
+}
+
+/* Section headings (dt): keep as anchors, but calmer — small caps style */
+aside.side-section dt.review-timeline__event {
+  font-weight: 700 !important;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #57574f;
+  margin-bottom: 0.5rem;
+}
+
+/* Curated intro line at top of About: quieter */
+aside.side-section .about-this__intro {
+  font-size: 0.9rem;
+  color: #57574f;
+  line-height: 1.45;
+  margin: 0 0 0.9rem;
+}
+
+/* Links: colored, never bold, underline on hover only */
+aside.side-section a:not(.button) {
+  font-weight: 400 !important;
+  color: var(--color-primary, #087cca);
+  text-decoration: none;
+}
+aside.side-section a:not(.button):hover {
+  text-decoration: underline;
+}
+
+/* About-this rows: label above value, label gray uppercase, value dark normal */
+aside.side-section .about-this__row {
+  margin: 0 0 0.7rem;
+}
+aside.side-section .about-this__label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a7a72;
+  margin-bottom: 0.1rem;
+}
+aside.side-section .about-this__value {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* DOI: muted, and long-string safe (the page-width lesson) */
+aside.side-section .about-this__doi a {
+  color: #8a8a82;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.85rem;
+}
+
+/* Button row inside About (Download / Cite / Share) */
+aside.side-section .about-this__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+/* Related works: compressed list, no separators */
+aside.side-section .related-works {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+aside.side-section .related-works__item {
+  padding: 0.22rem 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+aside.side-section .related-works__more {
+  margin-top: 0.7rem;
+}
+
+/* Section separators: lighter than default hr */
+aside.side-section hr {
+  border: 0;
+  border-top: 1px solid #e9e7df;
+  margin: 1.25rem 0;
+}
+
+/* Buttons: pinned white style, independent of theme container scoping */
+aside.side-section .button {
+  font-weight: 600 !important;
+  background: #ffffff !important;
+  border: 1px solid #d9d6cd !important;
+  border-radius: 6px !important;
+  color: #1d3f6e !important;
+  padding: 0.45rem 0.9rem !important;
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.2;
+}
+aside.side-section .button:hover {
+  background: #f5f4f0 !important;
+}
+</style>
+
+{# ---- Gate: normalize accessLevel (tolerates string / {label,value} object / absent) ---- #}
+{% set alRaw = article.parsedSubmission.accessLevel %}
+{% set alVal = alRaw.value | default(alRaw) %}
+{% set al = (alVal | default("")) | string | lower | trim %}
+{% set isGated = (al != "") and (al != "public") %}
+
+{# ---- ROR badge macro (bare id -> DataCite Commons, jsDelivr icon, size pinned inline) ---- #}
+{% macro rorBadge(rorUrl) %}
+  {% set rorId = (rorUrl | string) | replace("https://ror.org/", "") | replace("http://ror.org/", "") | trim %}
+  {% if rorId %}
+    <a class="ror-badge" href="https://commons.datacite.org/ror.org/{{ rorId }}" target="_blank" rel="noopener noreferrer"><img src="https://cdn.jsdelivr.net/gh/ror-community/ror-logos@main/ror-icon-rgb.svg" alt="ROR" class="ror-badge__icon" style="height: 0.95em; width: auto; vertical-align: -0.1em; margin-left: 0.25em; display: inline;" /></a>
+  {% endif %}
+{% endmacro %}
 
 <aside class="side-section">
   <div class="article-status">
-    <div class="review-timeline-container">
-      <dl class="review-timeline" id="review-timeline" aria-label="Version history">
-        <dt class="review-timeline__event review-timeline__event--revised">Curated article</dt>
-        <dd class="review-timeline__detail review-timeline__event--revised">
-          <p>Gump Station has curated this project application.</p>
-          <a class="review-timeline__link" href="https://www.moorea.berkeley.edu/">About Gump Station’s process</a>
-        </dd>
-      </dl>
-    </div>
     <div class="article-actions-container">
-      <ul class="article-actions">
-        <li class="article-actions__list-item">
-                  {% if (not isGated) and article.files and article.files.length > 0 %}
-                    {% set pdfFiles = [] %}
-                    {% for file in article.files %}
-                      {% if file.name and file.name.includes('.pdf') %}
-                        {% set pdfFiles = (pdfFiles.push(file), pdfFiles) %}
-                      {% endif %}
-                    {% endfor %}
-                    
-                    {% if pdfFiles.length > 0 %}
-                      {% set lastPdf = pdfFiles[pdfFiles.length - 1] %}
-                      {% if lastPdf and lastPdf.storedObjects and lastPdf.storedObjects[0] %}
-                        {% set linkUrl = lastPdf.storedObjects[0].url %}
-                        {% set linkText = 'Download' %}
-                        {{ ('<a class="button button--icon-download button--action"  id="download-button" rel="nofollow" href="' + linkUrl + '" download="' + article.parsedSubmission.$title +'" target="_blank">' + linkText + '</a>') | linkHandler(article.shortId, 'supplementary-files', cmsConfig.group, cmsLayout.hexCode) | safe }}
-                      {% endif %}
-                    {% endif %}
-                  {% endif %}   
-        </li>
-        <li class="article-actions__list-item">
-          <a class="button button--icon-citation button--action"  id="cite-button" rel="nofollow">Cite</a>
-        </li>
-        <li class="article-actions__list-item">
-          <a class="button button--icon-share button--action" id="share-button" rel="nofollow">Share</a>
-        </li>
-      </ul>
 
-      {# ---- Local Contexts: resolve the data first, then render the whole block only if it exists ---- #}
-      {% set lc = 
-        (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.$localContext) 
-        or (article.parsedSubmission and article.parsedSubmission.$localContext) 
+      {# ---- About this [type]: curated intro, Published, Funding, Coverage, DOI, action buttons ----
+           Stays OUTSIDE the gate: this metadata IS the tombstone. Heading set
+           client-side from DataCite types.resourceTypeGeneral. #}
+      <div class="review-timeline-container about-this-container">
+        <dl class="review-timeline" aria-label="About this article">
+          <dt class="review-timeline__event review-timeline__event--revised" id="about-this-heading">About this article</dt>
+          <dd class="review-timeline__detail review-timeline__event--revised">
+            <div class="about-this">
+              <p class="about-this__intro">{{ station.shortName | default(station.title) }} has curated this project application. <a href="{{ station.hostOrg.url | default("#") }}">About {{ station.shortName | default(station.title) }}’s process</a></p>
+
+              {% if article.headerInfo.publishedOn %}
+              <div class="about-this__row">
+                <span class="about-this__label">Published</span>
+                <span class="about-this__value">{{ (article.headerInfo.publishedOn | string).split('T')[0] }}</span>
+              </div>
+              {% endif %}
+
+              {% set frefs = article.parsedSubmission.fundingReferences | default([]) %}
+              {% if frefs.length > 0 %}
+              <div class="about-this__row">
+                <span class="about-this__label">Funding</span>
+                {% for f in frefs %}
+                <span class="about-this__value about-this__funding">
+                  {{ f.funder.label | default(f.funder.value) | default(f.funder) | default("") }}
+                  {% if f.funder.value and ("ror.org" in (f.funder.value | string)) %}{{ rorBadge(f.funder.value) }}{% endif %}
+                  {% if f.awardTitle %}<span class="about-this__award-title">{{ f.awardTitle }}</span>{% endif %}
+                  {% if f.awardNumber %}
+                    {% if f.awardUri %}<a href="{{ f.awardUri }}" target="_blank" rel="noopener noreferrer">Award {{ f.awardNumber }}</a>{% else %}<span>Award {{ f.awardNumber }}</span>{% endif %}
+                  {% endif %}
+                </span>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if article.parsedSubmission.geolocation %}
+              <div class="about-this__row">
+                <span class="about-this__label">Coverage</span>
+                <span class="about-this__value">{{ article.parsedSubmission.geolocation }}</span>
+              </div>
+              {% endif %}
+
+              {% if article.parsedSubmission.$doi %}
+              <div class="about-this__row">
+                <span class="about-this__label">DOI</span>
+                <span class="about-this__value about-this__doi"><a href="https://doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener noreferrer">{{ article.parsedSubmission.$doi }}</a></span>
+              </div>
+              {% endif %}
+
+              <div class="about-this__buttons">
+                {% if not isGated %}
+                <a class="button button--icon-download button--action" id="download-button" rel="nofollow"
+                   href="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ article.shortId }}"
+                   target="_blank">Download</a>
+                {% endif %}
+                <a class="button button--icon-citation button--action" id="cite-button" rel="nofollow">Cite</a>
+                <a class="button button--icon-share button--action" id="share-button" rel="nofollow">Share</a>
+              </div>
+            </div>
+          </dd>
+        </dl>
+      </div>
+
+      {# ---- Local Contexts (stays OUTSIDE the gate: rights info is tombstone-visible) ---- #}
+      {% set lc =
+        (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.$localContext)
+        or (article.parsedSubmission and article.parsedSubmission.$localContext)
       %}
 
-      {% if lc and lc.url and (lc.label or lc.notice) %}
+            {% if lc and lc.url and (lc.label or lc.notice) %}
         <hr />
         <div class="review-timeline-container local-context-container">
           <dl class="review-timeline" aria-label="Local Contexts">
@@ -75,13 +225,15 @@
                   {% endfor %}
                 </div>
               {% endif %}
+
+              {% if station.otc %}<p class="local-context__about"><a href="{{ station.baseUrl | default("") }}/{{ cmsConfig.group.name }}/local-contexts/index.html">About Local Contexts at {{ station.shortName | default(station.title) }}</a></p>{% endif %}
             </dd>
           </dl>
         </div>
       {% endif %}
 
       {% if not isGated %}
-      {# ---- Add supplementary files: title above, button below; sits beneath Local Contexts ---- #}
+      {# ---- Add supplementary files (gated: file actions are member-only on restricted items) ---- #}
       <hr />
       <div class="review-timeline-container">
         <dl class="review-timeline" aria-label="Add supplementary files">
@@ -95,8 +247,8 @@
           </dd>
         </dl>
       </div>
-
       {% endif %}
+
       {# ---- Related works: merge inbound + outbound DataCite relations, resolve real titles ---- #}
       <hr />
       <div class="review-timeline-container">
@@ -104,9 +256,15 @@
           <dt class="review-timeline__event review-timeline__event--revised">Related works</dt>
           <dd class="review-timeline__detail review-timeline__event--revised">
             <ul class="related-works" id="related-works"><li>Loading…</li></ul>
+            {% if article.parsedSubmission.$doi %}
+            <div class="related-works__more">
+              <a class="button button--action" href="https://commons.datacite.org/doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener noreferrer">DataCite Commons</a>
+            </div>
+            {% endif %}
           </dd>
         </dl>
       </div>
+
       <script>
       (function () {
         var doi = "{{ article.parsedSubmission.$doi }}";
@@ -160,6 +318,27 @@
           var inbound = res[0], outbound = res[1];
           var seen = {}, rows = [];
 
+          var outAttr = (outbound && outbound.data && outbound.data.attributes) || {};
+
+          // dynamic "About this [type]" heading from the MINTED DataCite type
+          var heading = document.getElementById("about-this-heading");
+          if (heading) {
+            var rtg = ((outAttr.types || {}).resourceTypeGeneral || "");
+            var TYPE_LABELS = {
+              journalarticle: "article",
+              text: "article",
+              project: "project",
+              dataset: "dataset",
+              conferencepaper: "conference paper",
+              conferenceproceeding: "conference proceeding",
+              event: "event",
+              report: "report",
+              audiovisual: "recording"
+            };
+            var label = TYPE_LABELS[rtg.toLowerCase()] || "article";
+            heading.textContent = "About this " + label;
+          }
+
           // inbound: full records, already have titles + dates, newest first
           var inItems = (inbound && inbound.data) || [];
           inItems.forEach(function (d) {
@@ -175,7 +354,6 @@
           });
 
           // outbound: identifier + relation only; resolve DOI titles, label ARKs
-          var outAttr = (outbound && outbound.data && outbound.data.attributes) || {};
           (outAttr.relatedIdentifiers || []).forEach(function (ri) {
             var rawId = ri.relatedIdentifier || "";
             var id = bare(rawId);
@@ -196,7 +374,6 @@
 
           var shown = rows.slice(0, 5);
 
-          // resolve a real title for each displayed row (extra call per outbound DOI)
           var jobs = shown.map(function (row) {
             if (row.ready) return Promise.resolve({ title: row.title, href: row.href });
             if (row.isDoi) {
@@ -204,7 +381,6 @@
                 return { title: t, href: row.href };
               });
             }
-            // non-DOI (e.g. GEOME ARK): no DataCite title exists, label by relation
             return Promise.resolve({
               title: relationLabel(row.relation) + ": " + row.rawId,
               href: row.href
@@ -228,17 +404,6 @@
         });
       })();
       </script>
-
-<!--
-      <div class="dates">
-        <span class="title">Curated version</span>
-        <span class="time">{{ article.parsedSubmission.curateddate | safe }}</span><br/>
-        <span class="title">Peer reviewed</span>
-        <span class="time">{{ article.parsedSubmission.peerreviewdate | safe }}</span><br/>
-        <span class="title">Preprint posted</span>
-        <span class="time">{{ article.parsedSubmission.preprintposteddate | safe }}</span>
-      </div>
--->
     </div>
   </div>
 </aside>
@@ -259,8 +424,8 @@
         {% endfor %}
         {% set pubYear = article.headerInfo.publishedOn.split('-')[0] %}
         ({{ pubYear }}).
-        <span style="font-style: italic;">{{ article.parsedSubmission.$title or 'Untitled' }}</span>. 
-        iPlaces Gump. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
+        <span style="font-style: italic;">{{ article.parsedSubmission.$title or 'Untitled' }}</span>.
+        {{ station.title | default("iPlaces") }}. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
       </div>
 
       <ol class="cite-downloads__list">
@@ -331,21 +496,21 @@ closeShareModal.onclick = function() {
 
 function copyToClipboard() {
   const div = document.getElementById("citedArea");
-  
+
   // Create a temporary textarea element
   const tempTextArea = document.createElement("textarea");
   tempTextArea.value = div.innerText || div.textContent; // Get the div content
-  
+
   // Append it to the body
   document.body.appendChild(tempTextArea);
-  
+
   // Select the content
   tempTextArea.select();
   tempTextArea.setSelectionRange(0, 99999); // For mobile devices
-  
+
   // Copy the content to clipboard
   document.execCommand("copy");
-  
+
   // Remove the temporary textarea
   document.body.removeChild(tempTextArea);
 
@@ -361,21 +526,21 @@ function copyToClipboard() {
 
 function copyToClipboardDoi () {
   const div = document.getElementById("copydoi");
-  
+
   // Create a temporary textarea element
   const tempTextArea = document.createElement("textarea");
   tempTextArea.value = div.innerText || div.textContent || div.value; // Get the div content
-  
+
   // Append it to the body
   document.body.appendChild(tempTextArea);
-  
+
   // Select the content
   tempTextArea.select();
   tempTextArea.setSelectionRange(0, 99999); // For mobile devices
-  
+
   // Copy the content to clipboard
   document.execCommand("copy");
-  
+
   // Remove the temporary textarea
   document.body.removeChild(tempTextArea);
 
@@ -389,4 +554,4 @@ function copyToClipboardDoi () {
   }, 2000);
 }
 
-</script> 
+</script>

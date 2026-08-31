@@ -1,0 +1,47 @@
+---
+layout: base.njk
+class: section-latest
+permalink: "/archive/index.html"
+---
+<style>
+  body.section-latest .page-content { padding-left: 0 !important; padding-right: 0 !important; }
+  .arch { max-width: 940px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .arch-title { font-family: Georgia, "Times New Roman", serif; font-size: 2rem; font-weight: 600; margin: 0 0 0.4rem; color: #1b1b1a; }
+  .arch-intro { font-size: 0.9rem; color: #57534e; line-height: 1.55; margin: 0 0 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid #1b1b1a; }
+  .arch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 2rem 1.5rem; }
+  .arch-tile { text-decoration: none; display: block; }
+  .arch-cover { width: 100%; aspect-ratio: 3 / 4; background: #f5f5f4; border: 1px solid #d6d3d1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .arch-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .arch-cover-fallback { font-family: Georgia, serif; font-size: 1.6rem; font-weight: 600; color: #a8a29e; }
+  .arch-tile:hover .arch-cover { border-color: #1b1b1a; }
+  .arch-label { margin-top: 0.6rem; }
+  .arch-label-main { font-size: 0.95rem; font-weight: 600; color: #1b1b1a; }
+  .arch-label-sub { font-size: 0.8rem; color: #78716c; margin-top: 0.1rem; }
+  .arch-tile:hover .arch-label-main { color: #185fa5; }
+  @media (max-width: 700px) {
+    .arch { padding: 1.5rem 1.1rem 3rem; }
+    .arch-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1.5rem 1rem; }
+  }
+</style>
+<div class="arch">
+  <h1 class="arch-title">Archive</h1>
+  <p class="arch-intro">All issues of {{ station.title | default("iPlaces") }}, published by {{ station.hostOrg.name | default("") }}.</p>
+  <div class="arch-grid">
+    {% for issue in issues.list %}
+    <a class="arch-tile" href="/issue/{{ issue.slug }}/">
+      <div class="arch-cover">
+        {% if issue.cover %}
+        <img src="{{ issue.cover }}" alt="{{ issue.label }} cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="arch-cover-fallback" style="display:none;">{{ issue.slug | upper }}</span>
+        {% else %}
+        <span class="arch-cover-fallback">{{ issue.slug | upper }}</span>
+        {% endif %}
+      </div>
+      <div class="arch-label">
+        <div class="arch-label-main">{{ issue.label }}</div>
+        {% if issue.subtitle %}<div class="arch-label-sub">{{ issue.subtitle }}</div>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>

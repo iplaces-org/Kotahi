@@ -36,6 +36,7 @@ COPY station-master/cmsTemplateFiles/ \
      /home/node/app/config/cmsTemplateFiles/
 COPY station-master/cmsTemplateFiles/ \
      /home/node/app/dist/config/cmsTemplateFiles/
+RUN find /home/node/app/config/cmsTemplateFiles /home/node/app/dist/config/cmsTemplateFiles -name .DS_Store -delete
 
 # (3) cmsUpload endpoint overlay: await + try/catch around uploadCms so upload
 #     errors surface as HTTP 500 instead of vanishing.

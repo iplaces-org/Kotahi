@@ -401,10 +401,12 @@
     <a href="/collections/" aria-current="page">
       <span>Collections</span>
     </a>
+   {#
     <a href="/about/" aria-current="page">
       <span>About</span>
     </a>
-<a href="https://iplaces-test-client.fly.dev/{{ cmsConfig.group.name }}/login" aria-current="page">
+#}
+<a href="{{ station.editorUrl }}/{{ cmsConfig.group.name }}/login" {% if page.url == '/login' %}aria-current="page"{% endif %}>
       <span>Log in</span>
     </a>
   </nav>

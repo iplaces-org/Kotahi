@@ -1,0 +1,24 @@
+---
+permalink: "/sitemap.xml"
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{{ station.baseUrl }}/{{ station.pathSlug }}/</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+{% for issue in issues.list %}
+  <url>
+    <loc>{{ station.baseUrl }}/{{ station.pathSlug }}/issue/{{ issue.slug }}/index.html</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+{% endfor %}
+{% for article in articleQuery.articles %}
+  <url>
+    <loc>{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html</loc>
+    {% if article.parsedSubmission.$editDate %}<lastmod>{{ article.parsedSubmission.$editDate }}</lastmod>{% endif %}
+    <changefreq>monthly</changefreq>
+  </url>
+{% endfor %}
+</urlset>

@@ -1,5 +1,12 @@
-{% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
-<div class="article-content">
+{% set authorResponse = null %}
+{% if article.decisions.length and article.decisions[0].jsonData %}
+    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
+{% endif %}{% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
+{% set hasBody = (article.meta.source | default("")) | striptags | trim | length > 0 %}
+{% set hasExtras = article.supplementaryFiles.length >= 1 or authorResponse != null %}
+{% set showToc = (not isGated) and (hasBody or hasExtras) %}
+<div class="article-content{% if not showToc %} no-toc{% endif %}">
+        {% if showToc %}
             <div class="meta-data">
                 <aside class="toc-wrapper">
                     {% if article.parsedSubmission.$abstract != 'undefined'  %}
@@ -9,18 +16,15 @@
                         </li>
                       </ul>
                     {% endif %}
-                    {% if not isGated %}
                     {{ article.meta.source | addIDtoTitles | toc({"tags":["h2","h3", "figure"]}) | safe }}
                     <ul>
-                  
+
                     {% if article.supplementaryFiles.length >= 1 %}
                         <li>
                             <a href="#supplementary" onclick="highlightLink(this)">Supplementary Files</a>
                         </li>
                     {% endif %}
-                     
-                    {% set authorResponse = article.decisions[0].jsonData | findElement('field.component', 'ThreadedDiscussion') %}
-                    
+
                     {%  if authorResponse != null %}
                          <li>
                             <a href="#authorResponse" onclick="highlightLink(this)">Author Response</a>
@@ -28,9 +32,9 @@
                     {% endif %}
 
                      </ul>
-                    {% endif %}
                 </aside>
             </div>
+        {% endif %}
             <article>
                 <section class="manuscript">
                     {% if article.parsedSubmission.$abstract != 'undefined'  %}
@@ -85,4 +89,4 @@
 
                 </section>
             </article>
-        </div> 
+        </div>

@@ -1,142 +1,50 @@
 {
   "name": "Research Object Submission Form",
-  "description": "<p>Please fill out the form below to complete your submission.</p>",
-  "haspopup": "true",
-  "popuptitle": "By submitting the manuscript, you agree to the following statements.",
-  "popupdescription": "<p>The corresponding author confirms that all co-authors are included, and that everyone listed as a co-author agrees to that role and all the following requirements and acknowledgements:</p><p></p><p>The submission represents original work and sources are given proper attribution. The journal employs CrossCheck to compare submissions against a large and growing database of published scholarly content. If in the judgment of a senior editor a submission is genuinely suspected of plagiarism, it will be returned to the author(s) with a request for explanation.</p><p></p><p>The research was conducted in accordance with ethical principles.</p><p></p><p>There is a Data Accessibility Statement, containing information about the location of open data and materials, in the manuscript.</p><p></p><p>A conflict of interest statement is present in the manuscript, even if to state no conflicts of interest.</p>",
   "children": [
     {
       "id": "47fd802f-ed30-460d-9617-c8a9b9025e95",
-      "component": "TextField",
       "name": "submission.$title",
       "title": "Title",
+      "aiPrompt": "Main title of the manuscript",
+      "component": "TextField",
       "placeholder": "Enter the manuscript's title",
-      "hideFromReviewers": "false",
       "permitPublishing": "always",
-      "aiPrompt": "Main title of the manuscript"
+      "hideFromReviewers": "false"
     },
     {
       "id": "d76e5b3c-eeaa-4168-9318-95d43a31e3e4",
-      "component": "AuthorsInput",
       "name": "submission.$authors",
       "title": "Author names",
-      "hideFromReviewers": "false",
+      "aiPrompt": "Authors of the manuscript",
+      "component": "StationAuthorsInput",
       "permitPublishing": "always",
-      "aiPrompt": "Authors of the manuscript"
+      "hideFromReviewers": "false"
+    },
+    {
+      "id": "06e09d3f-6f6c-4027-9f09-6352d3f99e21",
+      "name": "submission.moreThanHumanAuthors",
+      "title": "More than human authors",
+      "component": "MoreThanHumanAuthorsInput",
+      "isReadOnly": "false",
+      "validateValue": null,
+      "hideFromAuthors": "false",
+      "permitPublishing": "always",
+      "hideFromReviewers": "false"
     },
     {
       "id": "d80b2c88-6144-4003-b671-63990b9b2793",
-      "component": "AbstractEditor",
       "name": "submission.$abstract",
       "title": "Abstract",
+      "aiPrompt": "Abstract",
+      "component": "AbstractEditor",
       "description": "<p>Please provide a short summary of your submission</p>",
-      "shortDescription": "Abstract",
       "placeholder": "Input your abstract...",
-      "hideFromReviewers": "false",
       "permitPublishing": "always",
-      "aiPrompt": "Abstract"
-    },
-    {
-      "id": "6bfdc237-814d-4af8-b0f0-064099d679ba",
-      "component": "TextField",
-      "name": "submission.Funding",
-      "title": "Funder Name",
-      "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
-    },
-    {
-      "id": "c8fbfdf0-ace0-4970-a6b2-5bc23f08f7db",
-      "component": "Select",
-      "name": "submission.funderIdentifierType",
-      "title": "Funder Identifier Type",
-      "options": [
-        {
-          "id": "4f476cb6-0e29-4b1a-bf0a-b227551135bc",
-          "label": "ROR",
-          "value": "ROR"
-        },
-        {
-          "id": "2a0b9863-d48f-4911-944e-1822ae61003a",
-          "label": "Crossref Funder ID ",
-          "value": "Crossref Funder ID"
-        },
-        {
-          "id": "89fc012e-d8da-4be1-bd63-611269682bbe",
-          "label": "GRID",
-          "value": "GRID"
-        },
-        {
-          "id": "32b00e4f-d192-4dbe-9816-7d245f9ab9d9",
-          "label": "ISNI",
-          "value": "ISNI"
-        },
-        {
-          "id": "24853cf3-f47c-4862-b3c0-8c2b32eb703d",
-          "label": "Other",
-          "value": "Other"
-        }
-      ],
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
-    },
-    {
-      "id": "46e723a4-6b4f-4e80-a562-e472828d386f",
-      "component": "TextField",
-      "name": "submission.funderid",
-      "title": "Funder Identifier URL",
-      "description": "<p class=\"paragraph\">e.g. ROR ID</p>",
-      "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
-    },
-    {
-      "id": "7097cdab-ca25-41e8-ae8e-81df158a6dee",
-      "component": "TextField",
-      "name": "submission.awardtitle",
-      "title": "Award Title",
-      "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
-    },
-    {
-      "id": "dd637978-210d-4ead-bb6d-90dbe3450919",
-      "component": "TextField",
-      "name": "submission.awardnumber",
-      "title": "Award Number ",
-      "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
-    },
-    {
-      "id": "a45001b1-96af-484d-85ee-f36190db9ed9",
-      "component": "TextField",
-      "name": "submission.awarduri",
-      "title": "Award URL",
-      "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
-      "hideFromAuthors": "false",
-      "permitPublishing": "false",
-      "isReadOnly": "false"
+      "shortDescription": "Abstract",
+      "hideFromReviewers": "false"
     },
     {
       "id": "da411391-1d0a-4d61-a488-3f998247cb66",
-      "component": "Select",
       "name": "submission.resourcetype",
       "title": "Resource Type",
       "options": [
@@ -302,26 +210,26 @@
           "value": "Other"
         }
       ],
-      "hideFromReviewers": "false",
+      "component": "Select",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "e454fa35-b2ce-4935-9b4b-a132397ce87f",
-      "component": "TextField",
       "name": "submission.ifother",
       "title": "Resource type if 'Other'",
+      "component": "TextField",
+      "isReadOnly": "false",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "62ca72ad-04b0-41fc-85d1-415469d7e895",
-      "component": "CheckboxGroup",
       "name": "submission.topics",
       "title": "Topics",
       "options": [
@@ -347,35 +255,36 @@
           "value": "Outreach"
         }
       ],
-      "hideFromReviewers": "false",
+      "component": "CheckboxGroup",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "3cfc7988-d39c-4dd4-9d92-224f127dd549",
-      "component": "TextField",
       "name": "submission.geolocation",
       "title": "Geo location ",
+      "component": "TextField",
+      "isReadOnly": "false",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "66469976-314f-4949-b2ff-702039b262c0",
-      "component": "ManuscriptFile",
       "name": "manuscriptFile",
       "title": "Manuscript File",
+      "component": "ManuscriptFile",
       "permitPublishing": "false"
     },
     {
       "id": "bf2f9b4a-377b-4303-8f51-70d836eb1456",
-      "component": "RadioGroup",
       "name": "submission.datacode",
       "title": "Field Station Data Policy Agreement",
+      "inline": "false",
       "options": [
         {
           "id": "26c6d4b3-cf8d-4e2f-8236-b56a792d4c83",
@@ -388,110 +297,109 @@
           "value": "no"
         }
       ],
+      "component": "RadioGroup",
+      "isReadOnly": "false",
       "placeholder": "Enter your data and code availability statement",
-      "inline": "false",
-      "hideFromReviewers": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "e1456388-2ebf-42e1-9f3b-37aff725c4c9",
-      "component": "LocalContext",
       "name": "submission.$localContext",
       "title": "Local Context Project URL ",
-      "hideFromReviewers": "false",
+      "component": "LocalContext",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "always",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "4e8d1a9e-af45-4611-aa77-5cd6261859e2",
-      "component": "AbstractEditor",
       "name": "submission.dmp",
       "title": "Research Output Management Plan ",
-      "hideFromReviewers": "false",
+      "component": "AbstractEditor",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "338b710d-d441-4c2e-a0ad-243cbd70eb02",
-      "component": "DoisInput",
       "name": "submission.$dois",
       "title": "Project Output DOIs",
+      "component": "DoisInput",
+      "isReadOnly": "false",
       "doiValidation": "true",
-      "hideFromReviewers": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "always",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "79b3039b-304a-4120-a715-8d13964ffbcf",
-      "component": "LinksInput",
       "name": "submission.GEOME",
       "title": "GEOME",
+      "component": "LinksInput",
+      "isReadOnly": "false",
       "description": "<p class=\"paragraph\">Project URL or expedition ARK</p>",
-      "hideFromReviewers": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "12bc00e0-717a-4d2b-ab13-75d49b73af5e",
-      "component": "LinksInput",
       "name": "submission.xdrive",
       "title": "XDrive Project Link",
-      "hideFromReviewers": "false",
+      "component": "LinksInput",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false"
     },
     {
       "id": "b769b4d5-f9b3-48d3-a6d5-77bb6a9e95b0",
-      "component": "SupplementaryFiles",
       "name": "fileName",
       "title": "Upload supplementary materials",
-      "uploadAttachmentSource": "internal",
-      "hideFromReviewers": "false",
+      "component": "SupplementaryFiles",
+      "isReadOnly": "false",
       "hideFromAuthors": "false",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "false",
+      "uploadAttachmentSource": "internal"
     },
     {
       "id": "6deaacc6-759a-4a68-b494-c38c664bb665",
-      "component": "TextField",
       "name": "submission.dateReceived",
       "title": "Date received ",
+      "component": "TextField",
       "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>",
       "permitPublishing": "false"
     },
     {
       "id": "8b858adc-5f65-4385-9f79-5c5af1f67bd5",
-      "component": "TextField",
       "name": "submission.dateAccepted",
       "title": "Date accepted",
+      "component": "TextField",
       "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>",
       "permitPublishing": "false"
     },
     {
       "id": "f6e46890-4b96-4c90-ab48-b4fc5abb9b40",
-      "component": "TextField",
       "name": "submission.datePublished",
       "title": "Date published ",
+      "component": "TextField",
       "description": "<p class=\"paragraph\">preferred format: DD.MM.YYYY e.g. 07.01.2021</p>",
       "permitPublishing": "false"
     },
     {
       "id": "7f5aa395-3486-4067-b636-ae204d472c16",
-      "component": "TextField",
       "name": "submission.AuthorCorrespondence",
       "title": "Author correspondence ",
+      "component": "TextField",
       "permitPublishing": "false"
     },
     {
       "id": "fa0c39ca-0486-4e29-ba24-f86f7d375c3f",
-      "component": "Select",
       "name": "submission.objectType",
       "title": "Type of Research Object",
       "options": [
@@ -661,125 +569,309 @@
           "value": "Other"
         }
       ],
-      "hideFromReviewers": "true",
+      "component": "Select",
+      "isReadOnly": "false",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "347dc171-f008-45ac-8433-ca0711bf213c",
-      "component": "AbstractEditor",
       "name": "submission.cover",
       "title": "Cover letter",
+      "component": "AbstractEditor",
+      "isReadOnly": "false",
       "description": "<p>Cover letter describing submission, relevant implications, and timely information to consider</p>",
       "placeholder": "Enter your cover letter",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "14b8da7d-5924-4098-8d1f-e528c7c440b9",
-      "component": "TextField",
       "name": "submission.EditorsEvaluation",
       "title": "Editors evaluation ",
+      "component": "TextField",
+      "isReadOnly": "false",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "fa5e5b75-4b6f-4a2d-9113-c2b4db73ef8a",
-      "component": "AbstractEditor",
       "name": "submission.competingInterests",
       "title": "Competing interests",
-      "hideFromReviewers": "true",
+      "component": "AbstractEditor",
+      "isReadOnly": "false",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "b127ecb1-4862-4662-a958-3266eb284353",
-      "component": "TextField",
       "name": "submission.authorContributions",
       "title": "Author contributions ",
+      "component": "TextField",
+      "isReadOnly": "false",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "6342cff7-c57a-4fd9-b91d-c4cf77b4c309",
-      "component": "AbstractEditor",
       "name": "submission.DecisionLetter",
       "title": "Decision letter and author response",
-      "hideFromReviewers": "true",
+      "component": "AbstractEditor",
+      "isReadOnly": "false",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "e8af0c63-e46f-46a8-bc90-5023fe50a541",
-      "component": "AbstractEditor",
       "name": "submission.references",
       "title": "References ",
-      "hideFromReviewers": "true",
+      "component": "AbstractEditor",
+      "isReadOnly": "false",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "ebe75cec-0ba8-4f00-9024-20e77ed94f1c",
-      "component": "AuthorsInput",
       "name": "submission.reviewingEditor",
       "title": "Reviewing editors name ",
-      "hideFromReviewers": "true",
+      "component": "AuthorsInput",
+      "isReadOnly": "false",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true"
     },
     {
       "id": "6871680a-2278-40b3-80c6-7de06f21aafb",
-      "component": "TextField",
       "name": "submission.copyrightHolder",
       "title": "Copyright holder",
+      "component": "TextField",
+      "isReadOnly": "false",
       "description": "<p class=\"paragraph\">e.g. British Medical Journal </p>",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "1e9ff636-f850-4d20-b079-36af49fa4ad1",
-      "component": "TextField",
       "name": "submission.copyrightStatement",
       "title": "Copyright statement ",
+      "component": "TextField",
+      "isReadOnly": "false",
       "description": "<p class=\"paragraph\">e.g. This article is distributed under the terms of the Creative Commons Attribution License, which permits unrestricted use and redistribution provided that the original author and source are credited.</p>",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true",
+      "doiUniqueSuffixValidation": "false"
     },
     {
       "id": "7617c919-4413-4306-b709-ef78c3110c3f",
-      "component": "TextField",
       "name": "submission.copyrightYear",
       "title": "Copyright year ",
+      "component": "TextField",
+      "isReadOnly": "false",
       "description": "<p class=\"paragraph\">e.g. 2022</p>",
       "doiValidation": "false",
-      "doiUniqueSuffixValidation": "false",
-      "hideFromReviewers": "true",
       "hideFromAuthors": "true",
       "permitPublishing": "false",
-      "isReadOnly": "false"
+      "hideFromReviewers": "true",
+      "doiUniqueSuffixValidation": "false"
+    },
+    {
+      "id": "8a6af4b0-48d1-4480-bb30-3b45f5392096",
+      "name": "submission.relatedIdentifiers",
+      "title": "Related identifiers",
+      "component": "RelatedIdentifiersInput",
+      "shortDescription": "Related identifiers"
+    },
+    {
+      "id": "1160954f-f5d8-4921-abd5-af84c61d7971",
+      "name": "submission.contributors",
+      "title": "Contributors",
+      "component": "ContributorsInput",
+      "shortDescription": "Contributors"
+    },
+    {
+      "id": "f91b5464-cac1-4bd7-a2fb-bc1a1646128b",
+      "name": "submission.publisher",
+      "title": "Publisher (optional — search ROR; empty = the station)",
+      "component": "PublisherInput",
+      "shortDescription": "Publisher"
+    },
+    {
+      "id": "16bfd715-ffbf-4460-a2c7-5522019e9b52",
+      "name": "submission.fundingReferences",
+      "title": "Funding",
+      "component": "FundingReferencesInput",
+      "shortDescription": "Funding"
+    },
+    {
+      "id": "1174860b-ee76-4f18-8af4-23163cc00835",
+      "name": "submission.keywords",
+      "title": "Keywords (comma-separated, optional)",
+      "component": "TextField",
+      "shortDescription": "Keywords"
+    },
+    {
+      "id": "7fa1f468-c360-4539-b274-382ddc560da6",
+      "name": "submission.titles",
+      "title": "Alternate Titles",
+      "component": "TitlesInput",
+      "isReadOnly": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
+    },
+    {
+      "id": "d89e628f-5b22-4f96-b6a7-d78e74c8bf2c",
+      "name": "submission.alternateIdentifiers",
+      "title": "Alternate Identifiers",
+      "component": "AlternateIdentifiersInput",
+      "isReadOnly": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
+    },
+    {
+      "id": "0818ec3f-a36c-4294-8051-bf8b7edf86ad",
+      "name": "submission.language",
+      "title": "Language",
+      "component": "TextField",
+      "isReadOnly": "false",
+      "placeholder": "BCP-47 tag, e.g. en, fr, ty",
+      "doiValidation": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false",
+      "doiUniqueSuffixValidation": "false"
+    },
+    {
+      "id": "e48e451a-8732-4453-bbad-20565e12595b",
+      "name": "submission.version",
+      "title": "Version",
+      "component": "TextField",
+      "isReadOnly": "false",
+      "doiValidation": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false",
+      "doiUniqueSuffixValidation": "false"
+    },
+    {
+      "id": "0f0607b7-e1aa-41ee-8a73-2ae51403a0dd",
+      "name": "submission.license",
+      "title": "License",
+      "options": [
+        {
+          "id": "879a2088-9cf5-4abc-8d7a-cf826d6b7309",
+          "label": "CC BY 4.0",
+          "value": "CC-BY-4.0"
+        },
+        {
+          "id": "319ddf76-311a-4afe-a91a-189df53c4b85",
+          "label": "CC BY-SA 4.0",
+          "value": "CC-BY-SA-4.0"
+        },
+        {
+          "id": "93610db6-7a22-4f67-b093-4f83b622f2f5",
+          "label": "CC BY-NC 4.0",
+          "value": "CC-BY-NC-4.0"
+        },
+        {
+          "id": "a99fa23e-e18b-4ff1-aedd-1019f8b50567",
+          "label": "CC BY-NC-SA 4.0",
+          "value": "CC-BY-NC-SA-4.0"
+        },
+        {
+          "id": "070fb05a-7fe0-4e0b-b1ab-6eb6bcd90216",
+          "label": "CC BY-ND 4.0",
+          "value": "CC-BY-ND-4.0"
+        },
+        {
+          "id": "7c7b346f-80f1-4604-9f5a-9223b0252395",
+          "label": "CC BY-NC-ND 4.0",
+          "value": "CC-BY-NC-ND-4.0"
+        },
+        {
+          "id": "116b8cd9-f51b-4beb-814a-46dae6974753",
+          "label": "CC0 (public domain)",
+          "value": "CC0-1.0"
+        },
+        {
+          "id": "ec21dfda-0f0e-4b95-a054-d7a9b4413cf3",
+          "label": "MIT (software)",
+          "value": "MIT"
+        },
+        {
+          "id": "e7c96f05-329b-4e32-bf15-67f222644685",
+          "label": "Apache 2.0 (software)",
+          "value": "Apache-2.0"
+        },
+        {
+          "id": "eedb8338-02f7-47fc-a150-3aa805051461",
+          "label": "All rights reserved",
+          "value": "All rights reserved"
+        }
+      ],
+      "component": "Select",
+      "isReadOnly": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
+    },
+    {
+      "id": "ffe82e07-5711-4005-b9e3-f697341af0b3",
+      "name": "submission.coverageDate",
+      "title": "Temporal coverage",
+      "component": "TextField",
+      "isReadOnly": "false",
+      "description": "<p class=\"paragraph\">Date or date range covered by the work, RKMS-ISO8601: e.g. 2003-08/2003-12, or open-ended 2026-03/</p>",
+      "doiValidation": "false",
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false",
+      "doiUniqueSuffixValidation": "false"
+    },
+    {
+      "id": "4814b6d6-7607-4b8c-a72d-32a816f95c84",
+      "name": "submission.accessLevel",
+      "title": "Access level",
+      "options": [
+        {
+          "id": "bd65bfa4-ec63-48d1-9b34-90a1d8417d27",
+          "label": "public",
+          "value": "public",
+          "defaultValue": 1
+        },
+        {
+          "id": "1ca411e9-8e33-4c5d-ac97-0a5d2e19b5fd",
+          "label": "members",
+          "value": "members"
+        }
+      ],
+      "component": "Select",
+      "isReadOnly": "false",
+      "validateValue": null,
+      "hideFromAuthors": "false",
+      "permitPublishing": "false",
+      "hideFromReviewers": "false"
     }
-  ]
+  ],
+  "haspopup": "true",
+  "popuptitle": "By submitting the manuscript, you agree to the following statements.",
+  "description": "<p>Please fill out the form below to complete your submission.</p>",
+  "popupdescription": "<p>The corresponding author confirms that all co-authors are included, and that everyone listed as a co-author agrees to that role and all the following requirements and acknowledgements:</p><p></p><p>The submission represents original work and sources are given proper attribution. The journal employs CrossCheck to compare submissions against a large and growing database of published scholarly content. If in the judgment of a senior editor a submission is genuinely suspected of plagiarism, it will be returned to the author(s) with a request for explanation.</p><p></p><p>The research was conducted in accordance with ethical principles.</p><p></p><p>There is a Data Accessibility Statement, containing information about the location of open data and materials, in the manuscript.</p><p></p><p>A conflict of interest statement is present in the manuscript, even if to state no conflicts of interest.</p>"
 }

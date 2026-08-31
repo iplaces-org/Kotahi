@@ -1,27 +1,115 @@
 {% extends '../layouts/base.njk' %}
 {% set currentPage = article %}
 {% set title = article.meta.title %}
+
+{% macro rorBadge(rorUrl) %}
+  {%- set rid = rorUrl | replace("https://ror.org/", "") | replace("http://ror.org/", "") | replace("https://ror.org", "") | trim -%}
+  {%- if rid -%}
+  <a class="ror-link" href="https://commons.datacite.org/ror.org/{{ rid }}" target="_blank" rel="noopener" title="View {{ rid }} on DataCite Commons"><img class="ror-logo" src="https://cdn.jsdelivr.net/gh/ror-community/ror-logos@main/ror-icon-rgb.svg" alt="ROR" width="14" height="14" /></a>
+  {%- endif -%}
+{% endmacro %}
+
+{% macro mthBadge(mth) %}
+  {# ================= MTH BADGE ICON ================= #}
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="More-than-human author" style="vertical-align: middle; margin-left: 0.25em;">
+    <g fill="none" stroke="#1e2a44" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 12 C 10.5 8 8 4.5 5 5 C 2 5.5 1.5 9 3 10.5 C 4.2 11.7 6 11.8 7.5 11 M 12 12 C 10.8 12.8 8.5 13 6.8 14.2 C 5 15.5 5.2 18 7 18.5 C 9.2 19.1 11.2 17 12 14.5"/>
+      <path d="M 12 12 C 13.5 8 16 4.5 19 5 C 22 5.5 22.5 9 21 10.5 C 19.8 11.7 18 11.8 16.5 11 M 12 12 C 13.2 12.8 15.5 13 17.2 14.2 C 19 15.5 18.8 18 17 18.5 C 14.8 19.1 12.8 17 12 14.5"/>
+      <ellipse cx="12" cy="13" rx="0.9" ry="3"/>
+      <path d="M 11.4 9.5 C 10.6 8 9.6 7 8.4 6.6 M 12.6 9.5 C 13.4 8 14.4 7 15.6 6.6"/>
+    </g>
+  </svg>
+  {# =============== END MTH BADGE ICON =============== #}
+{% endmacro %}
+
+{% macro mthAuthorLi(mth, rorArray) %}
+  <li class="author metadata mth-author">
+    <span class="author-name">
+      {{- mth.name -}}
+      {% for r in rorArray %}
+        {% set supIndex = loop.index %}
+        {% if mth.custodialAffiliation %}
+          {% if mth.custodialAffiliation.label %}
+            {% if mth.custodialAffiliation.label == r %}<sup>{{ supIndex }}&nbsp;</sup>{% endif %}
+          {% elif mth.custodialAffiliation.length %}
+            {% for ca in mth.custodialAffiliation %}
+              {% if ca.label == r %}<sup>{{ supIndex }}&nbsp;</sup>{% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </span>
+    {% if mth.identifier %}
+      <a class="mth-badge" target="_blank" rel="noopener" href="{{ mth.identifier }}" title="More-than-human author{% if mth.entityKind %} ({{ mth.entityKind }}){% endif %}">{{ mthBadge(mth) }}</a>
+    {% else %}
+      <span class="mth-badge" title="More-than-human author{% if mth.entityKind %} ({{ mth.entityKind }}){% endif %}">{{ mthBadge(mth) }}</span>
+    {% endif %}
+  </li>
+{% endmacro %}
+
 {% block content %}
-
-
 {% set rorArray = [] %}
+{% set rorPairs = [] %}
+
+{# helper accumulation: rorPairs holds {label, value} so affiliations can show a ROR badge.
+   rorArray stays labels-only so the superscript-matching logic below is unchanged. #}
+
+{# MTH authors in First position contribute their custodial affiliations first #}
+{% for mth in article.parsedSubmission.moreThanHumanAuthors %}
+  {% if mth.position == 'First' and mth.custodialAffiliation %}
+    {% if mth.custodialAffiliation.label %}
+      {% if not (mth.custodialAffiliation.label in rorArray) %}
+        {% set rorArray = rorArray.concat([mth.custodialAffiliation.label]) %}
+        {% set rorPairs = rorPairs.concat([{ label: mth.custodialAffiliation.label, value: mth.custodialAffiliation.value }]) %}
+      {% endif %}
+    {% elif mth.custodialAffiliation.length %}
+      {% for ca in mth.custodialAffiliation %}
+        {% if ca.label and not (ca.label in rorArray) %}
+          {% set rorArray = rorArray.concat([ca.label]) %}
+          {% set rorPairs = rorPairs.concat([{ label: ca.label, value: ca.value }]) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{# then human author affiliations #}
 {% for authorRor in article.headerInfo.authorNames %}
   {% if authorRor.ror and authorRor.ror.length %}
     {% for rorItem in authorRor.ror %}
       {% if rorItem.label and not (rorItem.label in rorArray) %}
         {% set rorArray = rorArray.concat([rorItem.label]) %}
+        {% set rorPairs = rorPairs.concat([{ label: rorItem.label, value: rorItem.value }]) %}
       {% endif %}
     {% endfor %}
   {% else %}
     {% if authorRor.ror and authorRor.ror.label and not (authorRor.ror.label in rorArray) %}
       {% set rorArray = rorArray.concat([authorRor.ror.label]) %}
+      {% set rorPairs = rorPairs.concat([{ label: authorRor.ror.label, value: authorRor.ror.value }]) %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{# finally MTH authors in Last position #}
+{% for mth in article.parsedSubmission.moreThanHumanAuthors %}
+  {% if mth.position != 'First' and mth.custodialAffiliation %}
+    {% if mth.custodialAffiliation.label %}
+      {% if not (mth.custodialAffiliation.label in rorArray) %}
+        {% set rorArray = rorArray.concat([mth.custodialAffiliation.label]) %}
+        {% set rorPairs = rorPairs.concat([{ label: mth.custodialAffiliation.label, value: mth.custodialAffiliation.value }]) %}
+      {% endif %}
+    {% elif mth.custodialAffiliation.length %}
+      {% for ca in mth.custodialAffiliation %}
+        {% if ca.label and not (ca.label in rorArray) %}
+          {% set rorArray = rorArray.concat([ca.label]) %}
+          {% set rorPairs = rorPairs.concat([{ label: ca.label, value: ca.value }]) %}
+        {% endif %}
+      {% endfor %}
     {% endif %}
   {% endif %}
 {% endfor %}
 
 <div id="main-container">
- <main>
-
    <div class="article-preview-header">
             <span class="topics">
                 {{ article.headerInfo.topics }}
@@ -29,13 +117,23 @@
             <span class="article-title">
                 {{ article.headerInfo.title }}</span>
             <ul class="authors metadata">
+                {% for mth in article.parsedSubmission.moreThanHumanAuthors %}
+                    {% if mth.position == 'First' %}{{ mthAuthorLi(mth, rorArray) }}{% endif %}
+                {% endfor %}
                 {% for author in article.headerInfo.authorNames %}
                     <li class="author metadata">
                         <span class="author-name">
                           {{- author.firstName -}}{% if author.middleName %}&nbsp;{{- author.middleName -}}{% endif %}&nbsp;{{- author.lastName -}}
                           {% for r in rorArray %}
-                            {% if author.ror.label == r  %}
-                              <sup>{{ loop.index }}&nbsp;</sup>
+                            {% set supIndex = loop.index %}
+                            {% if author.ror %}
+                              {% if author.ror.label %}
+                                {% if author.ror.label == r %}<sup>{{ supIndex }}&nbsp;</sup>{% endif %}
+                              {% elif author.ror.length %}
+                                {% for ri in author.ror %}
+                                  {% if ri.label == r %}<sup>{{ supIndex }}&nbsp;</sup>{% endif %}
+                                {% endfor %}
+                              {% endif %}
                             {% endif %}
                          {% endfor %}
                         </span>
@@ -43,32 +141,30 @@
                             <a class="email" href="mailto:{{ author.email }}"></a>
                         {% endif %}
                         {% if author.orcid %}
-                            <a class="orcid" target="_blank" href="https://orcid.org/{{ author.orcid }}"></a>
+                            <a class="orcid" target="_blank" style="vertical-align: middle;" href="https://orcid.org/{{ author.orcid }}"></a>
                         {% endif %}
                     </li>
                 {% endfor %}
+                {% for mth in article.parsedSubmission.moreThanHumanAuthors %}
+                    {% if mth.position != 'First' %}{{ mthAuthorLi(mth, rorArray) }}{% endif %}
+                {% endfor %}
             </ul>
-
-            {% if article.headerInfo.authorNames %}
-              <ol id="affiliations-list">
-                {% for re in rorArray %}
-                <li style="margin-left: 0px;">
-                    {{ re | safe }}
-                </li>
-                {% endfor %} 
-              </ol>  
+            <div id="contributors-inline" class="contributors-inline" style="display:none;">
+              <span class="contributors-inline__label">Contributors</span>
+              <ul class="contributors-inline__list" id="contributors-inline-list"></ul>
+            </div>
+            {% if article.headerInfo.authorNames or article.parsedSubmission.moreThanHumanAuthors %}
+              <details id="affiliations-details">
+                <summary>Affiliations</summary>
+                <ol id="affiliations-list">
+                  {% for re in rorArray %}
+                  <li data-aff="{{ re }}">{{ re | safe }}{% for p in rorPairs %}{% if p.label == re and p.value %}{{ rorBadge(p.value) }}{% endif %}{% endfor %}</li>
+                  {% endfor %}
+                </ol>
+              </details>
             {% endif %}
             
            <span class="header-doi-and-licenses">
-                <a href="https://doi.org/{{ article.parsedSubmission.$doi }}">
-                    DOI of the submitted work: {{ article.parsedSubmission.$doi }}
-                </a>
-                {% if article.parsedSubmission.$doi %}
-                    <a href="https://commons.datacite.org/doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener">
-                        View record on DataCite Commons →
-                    </a>
-                {% endif %}
-
                 {% if cmsLayout.publishConfig.licenseUrl %}
                     <a href="{{cmsLayout.publishConfig.licenseUrl}}">
                         {{cmsLayout.publishConfig.licenseUrl}}
@@ -76,18 +172,104 @@
                 {% endif %}
             </span>
 
-            {% if article.headerInfo.publishedOn %}
-                <p class="published-date">
-                    Published on <time datetime="article.headerInfo.publishedOn">{{ article.headerInfo.publishedOn | replace('Z','') | postDate }}</time>
-                </p>
-            {% endif %}
-        </div>
+           <script>
+           (function () {
+             var doi = "{{ article.parsedSubmission.$doi }}";
+             if (!doi) return;
 
-        {% include "_partials/tabs.njk" %}
-  
-    </main>
+             function esc(s) {
+               return String(s == null ? "" : s)
+                 .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+             }
+             function bareRor(v) { return String(v || "").replace(/^https?:\/\/ror\.org\//i, "").trim(); }
+             function rorBadge(rid) {
+               if (!rid) return "";
+               return ' <a class="ror-link" href="https://commons.datacite.org/ror.org/' + esc(rid) +
+                 '" target="_blank" rel="noopener" title="View ' + esc(rid) + ' on DataCite Commons">' +
+                 '<img class="ror-logo" src="https://cdn.jsdelivr.net/gh/ror-community/ror-logos@main/ror-icon-rgb.svg" alt="ROR" width="14" height="14" /></a>';
+             }
+             function nameOf(c) {
+               if (c.name) return c.name;
+               return ((c.givenName || "").trim() + " " + (c.familyName || "").trim()).trim();
+             }
+             function orcidOf(c) {
+               var ids = c.nameIdentifiers || [];
+               for (var i = 0; i < ids.length; i++) {
+                 if ((ids[i].nameIdentifierScheme || "").toUpperCase() === "ORCID")
+                   return (ids[i].nameIdentifier || "").replace(/^https?:\/\/orcid\.org\//i, "").trim();
+               }
+               return "";
+             }
+             function rorFromIds(ids) {
+               ids = ids || [];
+               for (var i = 0; i < ids.length; i++) {
+                 var scheme = (ids[i].nameIdentifierScheme || "").toUpperCase();
+                 var val = ids[i].nameIdentifier || "";
+                 if (scheme === "ROR" || /ror\.org/i.test(val)) return bareRor(val);
+               }
+               return "";
+             }
 
-  {% include "_partials/side.njk" %}
+             fetch("https://api.datacite.org/dois/" + encodeURIComponent(doi), {
+               headers: { Accept: "application/vnd.api+json" }
+             })
+             .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+             .then(function (json) {
+               var attr = (json && json.data && json.data.attributes) || {};
 
-</div>     
+               // ---- Contributors under the byline ----
+               var contribs = attr.contributors || [];
+               var block = document.getElementById("contributors-inline");
+               var list  = document.getElementById("contributors-inline-list");
+               if (block && list) {
+                 contribs.forEach(function (c) {
+                   var name = nameOf(c);
+                   if (!name) return;
+                   var html = esc(name);
+                   if (c.contributorType) html += ' <span class="contrib-type">(' + esc(c.contributorType) + ')</span>';
+                   var rid = rorFromIds(c.nameIdentifiers);
+                   if (rid) html += rorBadge(rid);
+                   var orcid = orcidOf(c);
+                   if (orcid) html += ' <a class="orcid" href="https://orcid.org/' + esc(orcid) + '" target="_blank" rel="noopener" title="ORCID"></a>';
+                   var li = document.createElement("li");
+                   li.innerHTML = html;
+                   list.appendChild(li);
+                 });
+                 if (list.children.length) block.style.display = "";
+               }
+
+               // ---- Set the sidebar "About this…" heading from DataCite's minted type ----
+               var g = (attr.types && attr.types.resourceTypeGeneral || "").toLowerCase();
+               var LABELS = {
+                 project: "About this project",
+                 dataset: "About this dataset",
+                 event: "About this event",
+                 conferencepaper: "About this conference paper",
+                 conferenceproceeding: "About these proceedings",
+                 book: "About this book",
+                 bookchapter: "About this chapter",
+                 journalarticle: "About this article",
+                 preprint: "About this preprint",
+                 report: "About this report",
+                 software: "About this software",
+                 text: "About this text",
+                 image: "About this image",
+                 collection: "About this collection",
+                 other: "About this record"
+               };
+               var heading = document.getElementById("about-this-heading");
+               if (heading && LABELS[g]) heading.textContent = LABELS[g];
+             })
+             .catch(function (e) { console.error("Header DataCite fetch failed:", e); });
+           })();
+           </script>
+   </div>
+
+   <div id="article-body">
+     <main>
+       {% include "_partials/tabs.njk" %}
+     </main>
+     {% include "_partials/side.njk" %}
+   </div>
+</div>
 {% endblock %}
