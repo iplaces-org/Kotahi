@@ -3,6 +3,14 @@ permalink: /assets/css/theme/mobile.css
 ---
 
 
+/* =======================================================================
+   iPlaces mobile / responsive theme.
+   @import-ed into main.css alongside default, one-column, custom, elife.
+   Mobile rules live in the max-width:768px block — REMEMBER the breakpoint
+   is max-width, so test at <=768px (a real phone or DevTools width ~390);
+   above 768px these rules do not apply and you'll see the desktop layout.
+   ======================================================================= */
+
 /* Hamburger Menu Styles */
 .hamburger {
   display: none;
@@ -10,7 +18,6 @@ permalink: /assets/css/theme/mobile.css
   gap: 5px;
   cursor: pointer;
 }
-
 .hamburger div {
   width: 25px;
   height: 3px;
@@ -19,33 +26,146 @@ permalink: /assets/css/theme/mobile.css
 #menu {
   width: fit-content;
 }
-/* Responsive Styles */
+
+/* Manuscript body media: never wider than the column (same fix as the PDF
+   template this morning — unconstrained images force page width and cause
+   horizontal sliding on mobile). Applies at all widths. */
+
+section.manuscript figure {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 1em auto !important;   /* centered, with vertical breathing room */
+  overflow: visible;
+  text-align: center;
+  box-sizing: border-box !important;
+}
+
+section.manuscript figure img,
+.article-content article img {
+  width: 100% !important;         /* pin to the figure's width */
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto;
+  box-sizing: border-box !important;  /* THE FIX: the theme gives figure imgs
+                                         ~96px of padding+border; border-box puts
+                                         that inside the 100% instead of on top,
+                                         so the painted image stops overhanging */
+}
+
+.article-content article img,
+section.manuscript img,
+section.manuscript figure,
+section.manuscript table {
+  max-width: 100% !important;
+  min-width: 0 !important;     /* min-width legally overrides max-width — kill it */
+  width: auto !important;      /* neutralize any inline/attr width from the editor */
+  height: auto !important;
+}
+section.manuscript table {
+  display: table !important;      /* real table layout — fixed algorithm now applies */
+  width: 100% !important;         /* fill the column */
+  max-width: 100% !important;
+  table-layout: fixed;            /* columns share the width evenly; reflow on resize */
+  box-sizing: border-box !important;
+}
+section.manuscript table td,
+section.manuscript table th {
+  overflow-wrap: anywhere;        /* long cell content wraps instead of forcing width */
+}
+
+/* Long unbreakable strings (DOI URLs in reference lists) force the page
+   wider than the viewport. Allow them to wrap anywhere. Applies at all
+   widths — long links shouldn't blow out desktop either. */
+section.manuscript a,
+.article-content article a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* ---- Responsive (mobile) ------------------------------------------- */
+
 @media screen and (max-width: 768px) {
 
-  #main-container {
-    flex-direction: column;
+  /* Root-cause overflow fix: one-column.css sets body { width:100dvw },
+     which on mobile Safari is wider than the usable width and shifts
+     content so the header band/logo fall off the left edge. */
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ROOT CAUSE of all right-edge overflow: the CMS-embedded page styles set
+     width:100% PLUS horizontal padding with content-box sizing, making
+     #topbar, #sticky-menu, and the homepage .iplaces-journal column wider
+     than the viewport (cut titles, missing right gutter, band overshoot).
+     border-box makes padding subtract from the width instead. */
+  #topbar,
+  #sticky-menu,
+  .iplaces-journal,
+  .iplaces-filters {
+    box-sizing: border-box !important;
+  }
+
+  /* the CMS-embedded slide-out menu uses 100dvw (wider than usable width) */
+  #menu {
     width: 100% !important;
   }
 
-  main {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
+  /* logo: keep it within the 60px mobile menu bar. The embedded CSS caps it
+     at max-width:75%, which is 75% of the menu width (~290px) — too big.
+     Cap by HEIGHT instead so it fits the bar. */
+  .logo img {
+    max-height: 84px !important;
+    width: auto !important;
+    max-width: none !important;
   }
 
+  /* Layout: everything stacks to a single full-width column */
+#main-container {
+    padding: 0;
+    box-sizing: border-box;
+  }
+.article-content article,
+  .article-preview-header {
+    padding: 0 16px !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+  main,
   .article-preview main {
     display: flex;
     flex-direction: column;
-    width: 100%;    
+    width: 100%;
+    box-sizing: border-box !important;   /* main has 24px side padding; border-box
+                                            keeps it at viewport width instead of
+                                            overhanging 24px off the right */
+    max-width: 100% !important;
   }
 
-  .tabs {
-    top: 60px;
-    > .tab > label {
-      font-size: 10px !important;
-    }
+  /* Article body: the base theme lays .article-content out as a two-column
+     CSS GRID (sidebar + article). Flex props don't affect a grid, so we
+     drop it out of grid entirely with display:block. !important is needed
+     because the base grid rule is scoped through .tabbed > .tab-content and
+     out-specifies a plain .article-content selector. */
+  .article-preview .article-content,
+  .article-content {
+    display: block !important;
+    border: 0 !important;                 /* strip the sidebar border-left artifact */
+  }
+  /* Hide every child of the row except the article — this removes the TOC
+     aside AND its .meta-data wrapper (which otherwise reserves a gutter).
+     Supersedes the older `aside.toc-wrapper, .meta-data { display:none }`
+     and `.article-content > * { width:100% }` rules. */
+  .article-content > *:not(article) {
+    display: none !important;
+  }
+  .article-content article {
+    border: 0 !important;
   }
 
+  /* Any other aside (e.g. side-section): un-stick and full-width on mobile */
   aside {
     width: 100%;
     position: relative;
@@ -53,66 +173,56 @@ permalink: /assets/css/theme/mobile.css
     right: unset;
   }
 
-  aside.toc-wrapper {
-    display: none;
+  /* Tabs */
+  .tabs {
+    top: 60px;
+  }
+  .tabs > .tab > label {
+    font-size: 10px !important;
   }
 
   #sticky-menu {
-    height: 60px;  
+    height: 60px;
   }
 
-  .article-preview .article-content {
-    flex-direction: column;
+  .article-preview-header .article-title {
+    font-size: 26px !important;
   }
 
   .fullwidth-box {
     padding: 0px;
   }
 
-  .fusion-layout-column .fusion-column-wrapper {
-    margin-left: 0px;
-    margin-right: 0px;
-  }
-  
-  .fusion-flex-container .fusion-row .fusion-flex-column {
-    width: 100%;
-  }
-  
-  .awb-menu__main-ul_row {
-    flex-direction: column;  
-  }
-  
+  /* --- Site menu / hamburger (WordPress-origin markup) --------------- */
   nav {
-    display: none; /* Hide menu by default */
+    display: none;                         /* hidden until hamburger toggles */
     flex-direction: column;
     position: fixed;
     top: 60px;
     right: 0;
     background-color: var(--awb-color1);
-    width: 100dvw;
+    width: 100%;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
-
   nav ul {
     flex-direction: column;
     gap: 10px;
   }
-  
-  .hamburger {
-    display: flex; /* Show hamburger menu */
-  }
-
   nav.show {
-    display: flex; /* Show menu when toggled */
-    width: 100dvw !important;
+    display: flex;
+    width: 100% !important;
     position: fixed !important;
     left: 0;
   }
-
+  .hamburger {
+    display: flex;
+  }
+  .awb-menu__main-ul_row {
+    flex-direction: column;
+  }
   .awb-menu__main-li {
     flex-direction: column;
   }
-
   .awb-menu_dropdown .awb-menu__sub-ul {
     z-index: unset;
     width: 100%;
@@ -121,20 +231,107 @@ permalink: /assets/css/theme/mobile.css
     visibility: visible;
     opacity: 1;
   }
-
   .awb-menu__sub-a {
     justify-content: center;
   }
-  .article-preview-header .article-title {
-    font-size: 26px !important;
+
+  /* --- Fusion layout resets (kept: may be referenced by other pages) - */
+  .fusion-layout-column .fusion-column-wrapper {
+    margin-left: 0px;
+    margin-right: 0px;
   }
-  tabs > .tab > label {
-    font-size: 10px;
+  .fusion-flex-container .fusion-row .fusion-flex-column {
+    width: 100%;
   }
+
   .modal-content {
     width: 95%;
   }
-  
-}
 
- 
+  /* --- COSMETIC, UNVERIFIED — activate only after Inspect ------------ *
+     The blue header band overshoots on the right at <=768px. It's likely
+     #topbar / #sticky-menu / a header::before bleed sized for desktop.
+     Inspect the overshooting blue element, confirm its selector + whether
+     the overshoot is the element or its ::before, then uncomment/adjust:
+
+  #topbar,
+  #sticky-menu {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden;
+  }
+  header::before {
+    right: 0 !important;
+  }
+  * -------------------------------------------------------------------- */
+}
+/* =======================================================================
+   GUTTER CONSOLIDATION (append at very end of mobile.css)
+   Problem: at narrow widths the title, abstract, and sidebar each landed at
+   a different left edge (measured: 40 / 0 / 24) because main.css, custom.css,
+   and mobile.css each padded different elements by different amounts.
+   Fix: one single gutter on every top-level content block, high specificity
+   so it wins over all three files. Covers phone (<=768) AND the stacked
+   narrow-desktop range up to 1100 (where main.css flips the grid to block).
+   ======================================================================= */
+
+@media screen and (max-width: 1100px) {
+
+  /* Stack the article layout out of the grid across the whole narrow range,
+     not just <=768 — closes the 769-1100 dead zone. */
+  html body .article-preview .article-content,
+  html body .article-content {
+    display: block !important;
+    border: 0 !important;
+    grid-template-columns: none !important;
+  }
+
+  /* Hide the TOC rail + its wrapper across the whole narrow range. */
+  html body .article-content > *:not(article) {
+    display: none !important;
+  }
+
+  /* ONE gutter for every top-level content block. 20px both sides.
+     These are the four things that were misaligning: header (title/authors),
+     the article/abstract column, and the sidebar. */
+  html body #main-container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  html body .article-preview-header,
+  html body #article-body > main,
+  html body #article-body > aside,
+  html body aside.side-section,
+  html body .article-content > article,
+  html body .article-content article {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    text-align: left !important;      /* main.css centers the header; undo it */
+  }
+
+  /* The header h1/authors inherit centering + auto margins from main.css —
+     force them left and flush to the header's own padding. */
+  html body .article-preview-header .article-title,
+  html body .article-preview-header .authors,
+  html body .article-preview-header h1 {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+    width: auto !important;
+  }
+
+  /* The abstract sits inside <article>; it was at left:0 because it had no
+     padding of its own and article's padding wasn't reaching it. With article
+     now padded 20px above, zero any inner offset so it aligns, not double-pads. */
+  html body .manuscript,
+  html body .abstract,
+  html body section.abstract {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+}
