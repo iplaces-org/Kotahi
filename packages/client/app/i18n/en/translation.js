@@ -1009,7 +1009,7 @@ const en = {
     },
     loginPage: {
       kotahiUses:
-        'Kotahi uses ORCID <0>icon</0> to identify authors and staff.',
+        'iPlaces uses ORCID <0>icon</0> to identify authors and staff.',
       'Login with ORCID': 'Login with ORCID',
       'Register with ORCID': 'Register with ORCID',
     },
