@@ -73,5 +73,5 @@ COPY server-fix/overlays/controllers/pdfExport.controllers.js \
 COPY packages/server/permissions.js /home/node/app/dist/permissions.js
 COPY packages/server/permissions.js /home/node/app/permissions.js
 
-COPY overlays/controllers/user.controllers.js /home/node/app/controllers/user.controllers.js
-COPY overlays/controllers/user.controllers.js /home/node/app/dist/controllers/user.controllers.js
+COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/controllers/user.controllers.js
+COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/dist/controllers/user.controllers.js
