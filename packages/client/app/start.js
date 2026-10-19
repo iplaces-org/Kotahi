@@ -132,7 +132,11 @@ const groupLink = setContext((_, { headers }) => {
   return {
     headers: {
       ...headers,
-      'group-id': localStorage.getItem('groupId') || null,
+      // iplaces: prefer this tab's group (sessionStorage) over the shared localStorage value
+      'group-id':
+        sessionStorage.getItem('groupId') ||
+        localStorage.getItem('groupId') ||
+        null,
     },
   }
 })

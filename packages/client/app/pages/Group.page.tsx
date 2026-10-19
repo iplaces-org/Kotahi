@@ -96,6 +96,8 @@ const GroupPage = (): ReactNode => {
   }
 
   window.localStorage.setItem('groupId', currentGroup.id)
+  // iplaces: per-tab copy so another tab on a different group can't redirect this tab's requests
+  window.sessionStorage.setItem('groupId', currentGroup.id)
 
   // TO DO - should yjs provider wrap the whole group?
   return (
