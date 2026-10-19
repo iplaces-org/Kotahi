@@ -5,6 +5,7 @@
 import { useEffect, useState, useContext } from 'react'
 import { useParams } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { CombinedGraphQLErrors } from '@apollo/client'
 import {
   useApolloClient,
   useMutation,
@@ -65,6 +66,7 @@ import {
 import { validateDoi, validateSuffix } from '../../../../shared/commsUtils'
 
 import useChat from '../../../../hooks/useChat'
+import { collapseTimeMs } from '../../../../ui/constants'
 
 import { getCurrentUserReview } from './review/util'
 import { getRoles } from '../../../../shared/manuscriptUtils'
@@ -161,6 +163,23 @@ const DecisionPage = () => {
   ]
 
   const chatProps = useChat(channels)
+
+  const initialChatExpanded =
+    localStorage.getItem('chatPanelExpanded:decision') === 'true'
+
+  const onDiscussionVisibilityChange = expanded => {
+    // Deferred past the panel's own collapse/expand transition so refetching
+    // unread data doesn't compete with it for frames.
+    setTimeout(() => {
+      chatProps.refreshUnreadData()
+
+      try {
+        localStorage.setItem('chatPanelExpanded:decision', String(expanded))
+      } catch {
+        // ignore
+      }
+    }, collapseTimeMs)
+  }
 
   const [selectedEmail, setSelectedEmail] = useState('')
   const [externalEmail, setExternalEmail] = useState('')
@@ -442,7 +461,10 @@ const DecisionPage = () => {
   if ((loading && !data) || !currentUser) return <Spinner />
 
   if (error) {
-    if (error.graphQLErrors?.find(e => e.message === 'Not Authorised!')) {
+    if (
+      CombinedGraphQLErrors.is(error) &&
+      error.errors.some(e => e.message === 'Not Authorised!')
+    ) {
       return <AccessErrorPage message={t('decisionPage.unauthorized')} />
     }
 
@@ -527,6 +549,7 @@ const DecisionPage = () => {
 
   if (
     !(
+      currentUser.globalRoles.includes('admin') ||
       currentUser.groupRoles.includes('groupManager') ||
       currentUser.groupRoles.includes('groupAdmin') ||
       ['seniorEditor', 'handlingEditor', 'editor'].some(editorRole =>
@@ -623,6 +646,14 @@ const DecisionPage = () => {
     deletePendingComment,
     currentUser,
     firstVersionManuscriptId: manuscript.parentId || manuscript.id,
+    // Mirrors userCanAddComment in threadedDiscussion.controllers.js, which
+    // only applies once a discussion exists. Global admins are deliberately excluded.
+    userCanAddThread:
+      currentUser.groupRoles.includes('groupManager') ||
+      currentUser.groupRoles.includes('groupAdmin') ||
+      ['seniorEditor', 'handlingEditor', 'editor'].some(editorRole =>
+        currentUserRoles.includes(editorRole),
+      ),
   }
 
   return (
@@ -650,10 +681,12 @@ const DecisionPage = () => {
       form={form}
       handleChange={handleChange}
       hideChat={hideAuthorChat && hideDiscussionFromEditorsReviewersAuthors}
+      initialChatExpanded={initialChatExpanded}
       isCoarLoading={coarLoading}
       lockUnlockReview={lockUnlockReview}
       makeDecision={makeDecision}
       manuscript={manuscript}
+      onDiscussionVisibilityChange={onDiscussionVisibilityChange}
       onRefreshAdaStatus={refreshAdaStatus}
       publishManuscript={handlePublishManuscript}
       queryAI={queryAI}

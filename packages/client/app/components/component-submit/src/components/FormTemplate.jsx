@@ -14,7 +14,6 @@ import { grid, th } from '@coko/client'
 import { useTranslation } from 'react-i18next'
 
 import {
-  ColorBadge,
   Section as Container,
   Select,
   FilesUpload,
@@ -27,6 +26,7 @@ import {
   RadioGroup,
   DatePicker,
 } from '../../../shared'
+import Badge from '../../../../ui/shared/Badge'
 import {
   FullWaxField,
   CollaborativeTextField,
@@ -415,9 +415,9 @@ const FormTemplate = ({
               />
               {isCollaborative && (
                 <CollaborativeBadge>
-                  <ColorBadge color={config.groupIdentity.primaryColor}>
+                  <Badge small variant="primary">
                     {t('reviewPage.isCollaborative')}
-                  </ColorBadge>
+                  </Badge>
                 </CollaborativeBadge>
               )}
             </header>
@@ -464,7 +464,7 @@ const FormTemplate = ({
                         .filter(f => f.startsWith(`${element.name}:`))
                         .map(f => f.split(':')[1]),
                       setShouldPublishComment,
-                      userCanAddThread: true,
+                      userCanAddThread: tdProps.userCanAddThread ?? true,
                     }
                   }
 

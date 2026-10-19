@@ -1,4 +1,3 @@
-// const { execSync } = require('child_process')
 const path = require('path')
 const { readFileSync } = require('fs')
 
@@ -8,6 +7,26 @@ const { resetDbAndApplyDump } = require('../../../scripts/resetDb')
 const { applyDump } = require('../../../scripts/resetDb')
 const createToken = require('../../../scripts/cypress/createToken')
 const seedForms = require('../../../scripts/cypress/seedForms')
+
+const {
+  createGroup,
+  deleteGroup,
+  deleteGroupsByPrefix,
+  createManuscripts,
+  assignRole,
+  setReviewerStatus,
+  createReview,
+  createDecision,
+  createGroupUser,
+  updateGroupConfig,
+  updateFormFields,
+  updateManuscriptSubmission,
+  patchManuscript,
+  setManuscriptCreated,
+  deleteSharedUsers,
+  addManuscriptFile,
+  createThreadedDiscussion,
+} = require('./actions')
 
 const dumpFile = name => path.join(__dirname, 'dumps', `${name}.sql`)
 
@@ -62,4 +81,285 @@ module.exports = app => {
       res.sendStatus(500)
     }
   })
+
+  app.post('/api/e2e/testGroup/:groupName', async (req, res) => {
+    const { groupName } = req.params
+
+    try {
+      const result = await createGroup(groupName)
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/deleteTestGroup/:groupName', async (req, res) => {
+    const { groupName } = req.params
+
+    try {
+      await deleteGroup(groupName)
+      res.sendStatus(200)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/deleteTestGroupsByPrefix/:prefix', async (req, res) => {
+    const { prefix } = req.params
+
+    try {
+      const result = await deleteGroupsByPrefix(prefix)
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/deleteSharedUsers', async (req, res) => {
+    try {
+      const result = await deleteSharedUsers()
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/groupUser/:groupName/:name', async (req, res) => {
+    const { groupName, name } = req.params
+
+    try {
+      const result = await createGroupUser({ groupName, name })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post(
+    '/api/e2e/createDecision/:manuscriptId/:username',
+    async (req, res) => {
+      const { manuscriptId, username } = req.params
+      const { jsonData } = req.query
+
+      try {
+        const result = await createDecision({
+          manuscriptId,
+          username,
+          ...(jsonData !== undefined && { jsonData: JSON.parse(jsonData) }),
+        })
+
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
+
+  app.post('/api/e2e/testGroupConfig/:groupName', async (req, res) => {
+    const { groupName } = req.params
+
+    try {
+      const patch = JSON.parse(req.query.patch)
+      const result = await updateGroupConfig({ groupName, patch })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post(
+    '/api/e2e/updateFormFields/:groupName/:purpose/:category',
+    async (req, res) => {
+      const { groupName, purpose, category } = req.params
+
+      try {
+        const fields = JSON.parse(req.query.fields)
+
+        const result = await updateFormFields({
+          groupName,
+          purpose,
+          category,
+          fields,
+        })
+
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
+
+  app.post(
+    '/api/e2e/updateManuscriptSubmission/:manuscriptId',
+    async (req, res) => {
+      const { manuscriptId } = req.params
+
+      try {
+        const patch = JSON.parse(req.query.patch)
+        const result = await updateManuscriptSubmission({
+          manuscriptId,
+          patch,
+        })
+
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
+
+  app.post('/api/e2e/patchManuscript/:manuscriptId', async (req, res) => {
+    const { manuscriptId } = req.params
+
+    try {
+      const patch = JSON.parse(req.query.patch)
+      const result = await patchManuscript({ manuscriptId, patch })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/setManuscriptCreated/:manuscriptId', async (req, res) => {
+    const { manuscriptId } = req.params
+    const { created } = req.query
+
+    try {
+      const result = await setManuscriptCreated({ manuscriptId, created })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post(
+    '/api/e2e/setReviewerStatus/:manuscriptId/:username',
+    async (req, res) => {
+      const { manuscriptId, username } = req.params
+      const { status, isShared } = req.query
+
+      try {
+        const result = await setReviewerStatus({
+          manuscriptId,
+          username,
+          status,
+          ...(isShared !== undefined && { isShared: isShared === 'true' }),
+        })
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
+
+  app.post(
+    '/api/e2e/createReview/:manuscriptId/:username',
+    async (req, res) => {
+      const { manuscriptId, username } = req.params
+      const { isHiddenFromAuthor, isHiddenReviewerName, jsonData } = req.query
+
+      try {
+        const result = await createReview({
+          manuscriptId,
+          username,
+          ...(isHiddenFromAuthor !== undefined && {
+            isHiddenFromAuthor: isHiddenFromAuthor === 'true',
+          }),
+          ...(isHiddenReviewerName !== undefined && {
+            isHiddenReviewerName: isHiddenReviewerName === 'true',
+          }),
+          ...(jsonData !== undefined && { jsonData: JSON.parse(jsonData) }),
+        })
+
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
+
+  app.post('/api/e2e/assignRole/:username/:role', async (req, res) => {
+    const { username, role } = req.params
+
+    const manuscriptIds = (req.query.manuscriptIds || '')
+      .split(',')
+      .filter(Boolean)
+
+    try {
+      const result = await assignRole({ manuscriptIds, username, role })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/testManuscripts/:groupName/:count', async (req, res) => {
+    const { groupName, count } = req.params
+    const { submitterUsername } = req.query
+
+    try {
+      const result = await createManuscripts({
+        groupName,
+        count: Number(count),
+        submitterUsername,
+      })
+
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post('/api/e2e/addManuscriptFile/:manuscriptId', async (req, res) => {
+    const { manuscriptId } = req.params
+    const { filename } = req.query
+
+    try {
+      const result = await addManuscriptFile({ manuscriptId, filename })
+      res.status(200).json(result)
+    } catch (err) {
+      logger.error(err)
+      res.status(500).json({ error: err.message })
+    }
+  })
+
+  app.post(
+    '/api/e2e/createThreadedDiscussion/:manuscriptId',
+    async (req, res) => {
+      const { manuscriptId } = req.params
+
+      try {
+        const { fieldName, comments, pendingComments } = JSON.parse(
+          req.query.discussion,
+        )
+
+        const result = await createThreadedDiscussion({
+          manuscriptId,
+          fieldName,
+          comments,
+          pendingComments,
+        })
+
+        res.status(200).json(result)
+      } catch (err) {
+        logger.error(err)
+        res.status(500).json({ error: err.message })
+      }
+    },
+  )
 }

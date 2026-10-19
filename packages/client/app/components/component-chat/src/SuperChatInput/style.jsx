@@ -130,7 +130,6 @@ export const ChatInputWrapper = styled.div`
   display: flex;
   flex-direction: row;
   margin-bottom: ${grid(2)};
-  padding: 8px 4px 0;
   width: 100%;
 
   @media (max-width: ${MEDIA_BREAK}px) {
@@ -147,7 +146,6 @@ export const Form = styled.form`
   border-radius: 24px;
   display: flex;
   flex: auto;
-  margin-left: 4px;
   max-width: 100%;
   min-width: 1px;
   position: relative;
@@ -172,7 +170,6 @@ export const InputWrapper = styled.div`
   display: flex;
   flex: auto;
   flex-direction: column;
-  margin-right: 8px;
   min-height: 40px;
   transition: border 0.3s ease-out;
 
@@ -204,7 +201,6 @@ export const MediaLabel = styled.label`
   border-radius: 4px;
   color: ${theme.text.alt};
   display: inline-block;
-  outline: 0;
   padding: 4px;
   position: relative;
   top: 2px;
@@ -213,6 +209,11 @@ export const MediaLabel = styled.label`
   &:hover {
     color: ${theme.brand.default};
     cursor: pointer;
+  }
+
+  &:focus-within {
+    outline: 2px solid ${theme.brand.default};
+    outline-offset: 2px;
   }
 `
 
@@ -224,7 +225,6 @@ export const RemovePreviewButton = styled.button`
   cursor: pointer;
   max-height: 24px;
   max-width: 24px;
-  outline: none;
   padding: 4px;
   position: absolute;
   right: 0;

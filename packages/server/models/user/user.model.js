@@ -114,7 +114,6 @@ class User extends BaseModel {
         },
         recentTab: { type: ['string', 'null'] },
         preferredLanguage: { type: ['string', 'null'] },
-        chatExpanded: { type: 'boolean' },
       },
     }
   }
@@ -184,6 +183,14 @@ class User extends BaseModel {
       .modifyGraph('identities', builder => builder.where('type', identityType))
 
     return user
+  }
+
+  static async findByUsernamePrefix(prefix, options = {}) {
+    const { trx } = options
+    // Escape LIKE wildcards so the prefix is matched literally
+    const escapedPrefix = prefix.replace(/[\\%_]/g, '\\$&')
+
+    return this.query(trx).where('username', 'like', `${escapedPrefix}%`)
   }
 
   static get modifiers() {

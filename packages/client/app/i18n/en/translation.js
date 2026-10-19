@@ -38,6 +38,7 @@ const en = {
       No: 'No',
       Save: 'Save',
       Update: 'Update',
+      next: 'Next',
       Activate: 'Activate',
       Create: 'Create',
       Deactivate: 'Deactivate',
@@ -46,8 +47,6 @@ const en = {
       Delete: 'Delete',
       View: 'View',
       'Enter search terms...': 'Enter search terms...',
-      surroundMultiword:
-        'Surround multi-word phrases with quotes "". Exclude a term by prefixing with -. Specify alternate matches using OR. Use * as wildcard for word endings. Wrap subexpressions in parentheses ().',
       noOption: 'No option',
       danteRangeCalendar: {
         Presets: 'Presets',
@@ -163,6 +162,8 @@ const en = {
       Email: 'Email',
       Language: 'Language',
       Change: 'Change',
+      enterEmail: 'Enter Email',
+      enterYourEmail: 'Enter your email',
       usernameWarn:
         'Cannot begin with a numeral or start or end with space characters',
       userPrivilegeAlert: `User Privileges Required
@@ -177,7 +178,17 @@ const en = {
     manuscriptsTable: {
       'No matching manuscripts were found':
         'No matching manuscripts were found',
+      searchChip: 'Search: {{query}}',
+      searchTipsHeader: 'Tips for using search',
+      searchTips: [
+        'Surround multi-word phrases with quotes "".',
+        'Exclude a term by prefixing with -.',
+        'Specify alternate matches using OR.',
+        'Use * as wildcard for word endings.',
+        'Press / anywhere on the page to jump to search.',
+      ],
       'Manuscript number': 'Manuscript number',
+      'No.': 'No.',
       Created: 'Created',
       Updated: 'Updated',
       lastReviewerStatusUpdate: 'Last Reviewer Status Update',
@@ -194,6 +205,21 @@ const en = {
       Production: 'Production',
       'No results found': 'No results found',
       pagination: `Showing <strong>{{firstResult}}</strong> to <strong>{{lastResult}}</strong> of <strong>{{totalCount}}</strong> results`,
+      removeFilter: 'Remove filter',
+      compactView: 'Compact view',
+      overdueTasks: 'Overdue tasks',
+      noAbstract: 'No abstract provided',
+      abstractHeader: 'Abstract',
+      showAbstract: 'Show abstract',
+      selectedCount: '{{count}} selected',
+      confirmArchive: 'Archive {{count}} manuscripts?',
+      confirmUnarchive: 'Unarchive {{count}} manuscripts?',
+      confirmReviewAccept: 'Accept this review invitation?',
+      confirmReviewReject: 'Decline this review invitation?',
+      confirmPublish: 'Publish this manuscript?',
+      detailedView: 'Detailed view',
+      reviewerStatusColumnTip:
+        'Each block represents a reviewer and the color represents their status. Hover over the blocks for details.',
       reviewAccept: 'Accept',
       reviewReject: 'Decline',
       reviewDo: 'Do Review',
@@ -222,7 +248,7 @@ const en = {
     },
     dashboardPage: {
       Dashboard: 'Dashboard',
-      'New submission': '+ New submission',
+      'New submission': 'New submission',
       'New Alerts': 'New Alerts',
       'My Submissions': 'My Submissions',
       'To Review': 'Review Assignments',
@@ -400,7 +426,8 @@ const en = {
     },
     editorSection: {
       noFileLoaded: 'No manuscript file loaded',
-      noSupportedView: 'No supported view of the file',
+      noSupportedView:
+        'Unsupported file uploaded, or editor has not been enabled',
     },
     reviewDecisionSection: {
       noDecisionUpdated: 'No decision has been updated for this manuscript yet',
@@ -526,7 +553,8 @@ const en = {
       'read-only': ' (read-only)',
       'Previous Feedback Submissions': 'Previous Feedback Submissions',
       'No feedback submissions': 'No feedback submissions',
-      'No supported view of the file': 'No supported view of the file',
+      noSupportedView:
+        'Unsupported file uploaded, or editor has not been enabled',
       Download: 'Download',
       Editor: 'Editor',
       'PDF CSS': 'PDF CSS',
@@ -543,6 +571,11 @@ const en = {
       accepted: 'Accepted {{invitationType}} invitation',
     },
     configPage: {
+      colorPicker: {
+        poorContrastTitle: 'Colour has poor accessibility',
+        poorContrastDescription:
+          'Colour selected fails to meet WCAG AA accessibility standard. Users may have difficulty with usability and navigation. Please consider a different colour.',
+      },
       generalTab: 'General',
       workflowTab: 'Workflow',
       productionTab: 'Production',
@@ -729,9 +762,9 @@ const en = {
       editorsCanPublish: 'Editors can Publish articles/reviews',
       editorsDeleteReviews: 'Editors can delete submitted reviews',
       Reports: 'Reports',
-      reportShowInMenu: 'Group Manager and admin can access Reports',
+      reportShowInMenu: 'Show Reports option in the menu',
       'User Management': 'User Management',
-      userIsAdmin: 'All users are assigned Group Manager and Admin roles',
+      userIsAdmin: 'All users are assigned Admin and Group Admin roles',
       kotahiApis: 'Kotahi APIs',
       tokens: 'Tokens',
       Update: 'Update',
@@ -1353,7 +1386,8 @@ const en = {
       acceptedFiletypes: 'Accepted file types: pdf, epub, zip, docx, latex',
       converting:
         'Your manuscript is being converted into a directly editable version. This might take a few seconds.',
-      'Submit a URL instead': 'Submit a URL instead',
+      skipManuscriptUpload:
+        'Skip manuscript upload, and proceed to the submission form',
       errorUploading: '{{error}}',
     },
     formBuilder: {

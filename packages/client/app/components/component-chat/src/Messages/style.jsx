@@ -211,13 +211,13 @@ export const UnreadLabelContainer = styled(ChatLabelContainer)`
   border-top: 2px solid ${th('color.brand1.tint25')};
 `
 export const UnreadLabel = styled(ChatLabel)`
-  background-color: ${th('color.brand1.tint25')};
+  background-color: ${th('color.brand1.base')};
   color: #fff;
 `
 
 export const DateLabelContainer = styled(ChatLabelContainer)`
   border-top: 2px solid #6c6c6c;
-  margin: 40px 0 30px;
+  margin: ${grid(5)} ${grid(2)};
 `
 export const DateLabel = styled(ChatLabel)`
   background-color: #fff;

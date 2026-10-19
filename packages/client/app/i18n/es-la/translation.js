@@ -38,6 +38,7 @@ const esLa = {
       No: 'No',
       Save: 'Guardar',
       Update: 'Actualizar',
+      next: 'Siguiente',
       Activate: 'Activar',
       Deactivate: 'Desactivar',
       Modified: 'Modificado',
@@ -46,8 +47,6 @@ const esLa = {
       Delete: 'Eliminar',
       View: 'Ver',
       'Enter search terms...': 'Ingrese términos de búsqueda...',
-      surroundMultiword:
-        'Agrupe frases de varias palabras entre comillas "". Excluya un término anteponiendo -. Especifique coincidencias alternativas usando O. Use * como comodín para el final de las palabras. Encierre subexpresiones entre paréntesis ().',
       noOption: 'Sin opción',
       danteRangeCalendar: {
         Presets: 'Preajustes',
@@ -161,6 +160,8 @@ const esLa = {
       Email: 'Correo Electrónico',
       Language: 'Idioma',
       Change: 'Cambiar',
+      enterEmail: 'Ingresar correo electrónico',
+      enterYourEmail: 'Ingrese su correo electrónico',
       usernameWarn:
         'No puede comenzar con un número ni empezar o terminar con espacios en blanco',
       userPrivilegeAlert: `Se Requieren Privilegios de Usuario
@@ -175,7 +176,17 @@ const esLa = {
     manuscriptsTable: {
       'No matching manuscripts were found':
         'No se encontraron manuscritos coincidentes',
+      searchChip: 'Búsqueda: {{query}}',
+      searchTipsHeader: 'Consejos para usar la búsqueda',
+      searchTips: [
+        'Agrupe frases de varias palabras entre comillas "".',
+        'Excluya un término anteponiendo -.',
+        'Especifique coincidencias alternativas usando O.',
+        'Use * como comodín para el final de las palabras.',
+        'Presione / en cualquier parte de la página para ir a la búsqueda.',
+      ],
       'Manuscript number': 'Número de Manuscrito',
+      'No.': 'N.º',
       Created: 'Creado',
       Updated: 'Actualizado',
       lastReviewerStatusUpdate: 'Actualización del estado del último revisor',
@@ -192,6 +203,21 @@ const esLa = {
       Production: 'Producción',
       'No results found': 'No se encontraron resultados',
       pagination: `Mostrando <strong>{{firstResult}}</strong> a <strong>{{lastResult}}</strong> de <strong>{{totalCount}}</strong> resultados`,
+      removeFilter: 'Eliminar filtro',
+      compactView: 'Vista compacta',
+      overdueTasks: 'Tareas vencidas',
+      noAbstract: 'No se proporcionó ningún resumen',
+      abstractHeader: 'Resumen',
+      showAbstract: 'Mostrar resumen',
+      selectedCount: '{{count}} seleccionados',
+      confirmArchive: '¿Archivar {{count}} manuscritos?',
+      confirmUnarchive: '¿Desarchivar {{count}} manuscritos?',
+      confirmReviewAccept: '¿Aceptar esta invitación de revisión?',
+      confirmReviewReject: '¿Rechazar esta invitación de revisión?',
+      confirmPublish: '¿Publicar este manuscrito?',
+      detailedView: 'Vista detallada',
+      reviewerStatusColumnTip:
+        'Cada bloque representa a un revisor y el color representa su estado. Pasa el cursor sobre los bloques para ver más detalles.',
       reviewAccept: 'Aceptar',
       reviewReject: 'Rechazar',
       reviewDo: 'Hacer Revisión',
@@ -221,7 +247,7 @@ const esLa = {
     },
     dashboardPage: {
       Dashboard: 'Tablero',
-      'New submission': '+ Nueva presentación',
+      'New submission': 'Nueva presentación',
       'New Alerts': 'Nuevas Alertas',
       'My Submissions': 'Mis presentaciones',
       'To Review': 'Asignaciones de revisión',
@@ -402,7 +428,8 @@ const esLa = {
     },
     editorSection: {
       noFileLoaded: 'No se ha cargado ningún archivo de manuscrito',
-      noSupportedView: 'No hay vista admitida del archivo',
+      noSupportedView:
+        'Se cargó un archivo no admitido o el editor no está habilitado',
     },
     reviewDecisionSection: {
       noDecisionUpdated:
@@ -522,7 +549,8 @@ const esLa = {
       submittedOn: '{{submitterName}} presentado el {{date}}',
       'read-only': ' (solo lectura)',
       'Previous Feedback Submissions': 'Envíos de comentarios anteriores',
-      'No supported view of the file': 'No hay una vista admitida del archivo',
+      noSupportedView:
+        'Se cargó un archivo no admitido o el editor no está habilitado',
       'No feedback submissions': 'No hay envíos de comentarios',
       Download: 'Descargar',
       Editor: 'Editor',
@@ -540,6 +568,11 @@ const esLa = {
       accepted: 'Invitación {{invitationType}} aceptada',
     },
     configPage: {
+      colorPicker: {
+        poorContrastTitle: 'El color tiene baja accesibilidad',
+        poorContrastDescription:
+          'El color seleccionado no cumple con el estándar de accesibilidad WCAG AA. Los usuarios pueden tener dificultades de uso y navegación. Considere elegir otro color.',
+      },
       generalTab: 'General',
       workflowTab: 'Flujo de trabajo',
       productionTab: 'Producción',
@@ -741,11 +774,10 @@ const esLa = {
       editorsDeleteReviews:
         'Los editores pueden eliminar las revisiones enviadas.',
       Reports: 'Reportes',
-      reportShowInMenu:
-        'El Gerente de Grupo y el administrador pueden acceder a los Reportes',
+      reportShowInMenu: 'Mostrar la opción Informes en el menú',
       'User Management': 'Gestión de Usuarios',
       userIsAdmin:
-        'Todos los usuarios tienen roles de Gerente de Grupo y Administrador',
+        'Todos los usuarios tienen roles de Administrador y Administrador de grupo',
       kotahiApis: 'API de Kotahi',
       tokens: 'Tokens',
       Update: 'Actualizar',
@@ -1381,7 +1413,8 @@ const esLa = {
         'Tipos de archivo aceptados: pdf, epub, zip, docx, latex',
       converting:
         'Tu manuscrito se está convirtiendo en una versión directamente editable. Esto podría tomar unos segundos.',
-      'Submit a URL instead': 'Enviar una URL en su lugar',
+      skipManuscriptUpload:
+        'Omitir la carga del manuscrito y continuar al formulario de envío',
       errorUploading: '{{error}}',
     },
     formBuilder: {

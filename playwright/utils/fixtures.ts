@@ -1,0 +1,314 @@
+import { basename } from 'path'
+import { test as base, type APIResponse, type Page } from '@playwright/test'
+
+export const jsonOrThrow = async (
+  response: APIResponse | Promise<APIResponse>,
+): Promise<any> => {
+  const resolved = await response
+
+  if (!resolved.ok()) {
+    throw new Error(
+      `${resolved.url()} returned ${resolved.status()}: ${await resolved.text()}`,
+    )
+  }
+
+  return resolved.json()
+}
+
+type LoginAs = (username: string) => Promise<void>
+
+type NavigateTo = (path: string) => ReturnType<Page['goto']>
+
+// Opens a new, independent browser context (its own cookies/localStorage -
+// what `loginAs` writes the token into) logged in as a different user, for
+// tests that need two real, simultaneous sessions (eg. one user seeing
+// another's message arrive live). Contexts are closed automatically when
+// the test ends.
+type OpenPageAs = (username: string) => Promise<Page>
+
+type TestGroup = {
+  groupName: string
+  adminUsername: string
+  groupAdminUsername: string
+  groupManagerUsername: string
+  userWithOrcidUsername: string
+  usernames: string[]
+}
+
+type FormFieldOption = {
+  label: string
+  value: string
+  labelColor?: string
+}
+
+type FormField = {
+  name: string
+  component: string
+  title?: string
+  options: FormFieldOption[]
+}
+
+type Api = {
+  createManuscripts: (opts: {
+    amount: number
+    submitter?: string
+  }) => Promise<{ manuscriptIds: string[] }>
+  assignRole: (opts: {
+    username: string
+    role: string
+    manuscriptIds: string[]
+  }) => Promise<{ manuscriptCount: number }>
+  setReviewerStatus: (opts: {
+    manuscriptId: string
+    username: string
+    status: string
+    isShared?: boolean
+  }) => Promise<unknown>
+  createReview: (opts: {
+    manuscriptId: string
+    username: string
+    isHiddenFromAuthor?: boolean
+    isHiddenReviewerName?: boolean
+    jsonData?: Record<string, unknown>
+  }) => Promise<{ id: string }>
+  // A user with no role outside this test's group - see createGroupUser in
+  // packages/server/api/rest/e2e/actions.js
+  createGroupUser: (name: string) => Promise<{ username: string }>
+  createDecision: (opts: {
+    manuscriptId: string
+    username: string
+    jsonData?: Record<string, unknown>
+  }) => Promise<{ id: string }>
+  updateGroupConfig: (patch: Record<string, unknown>) => Promise<unknown>
+  updateFormFields: (opts: {
+    purpose: string
+    category: string
+    fields: FormField[]
+  }) => Promise<unknown>
+  updateManuscriptSubmission: (opts: {
+    manuscriptId: string
+    patch: Record<string, unknown>
+  }) => Promise<unknown>
+  patchManuscript: (opts: {
+    manuscriptId: string
+    patch: Record<string, unknown>
+  }) => Promise<unknown>
+  setManuscriptCreated: (opts: {
+    manuscriptId: string
+    created: string
+  }) => Promise<unknown>
+  addManuscriptFile: (opts: {
+    manuscriptId: string
+    filename?: string
+  }) => Promise<{ id: string }>
+  createThreadedDiscussion: (opts: {
+    manuscriptId: string
+    fieldName: string
+    comments?: { username: string; comment: string }[]
+    pendingComments?: {
+      username: string
+      comment: string
+      commentIndex?: number
+    }[]
+  }) => Promise<{
+    threadedDiscussionId: string
+    threadId: string
+    commentIds: string[]
+  }>
+}
+
+export const test = base.extend<{
+  apiUrl: string
+  loginAs: LoginAs
+  testGroup: TestGroup
+  api: Api
+  navigateTo: NavigateTo
+  openPageAs: OpenPageAs
+}>({
+  // No default - always set via `use: { apiUrl }` in playwright.config.ts.
+  apiUrl: ['', { option: true }],
+
+  loginAs: async ({ page, request, apiUrl }, use) => {
+    await use(async username => {
+      const { token } = await jsonOrThrow(
+        request.post(`${apiUrl}/createToken/${encodeURIComponent(username)}`),
+      )
+
+      await page.addInitScript(
+        /* eslint-disable-next-line no-undef */
+        tokenValue => window.localStorage.setItem('token', tokenValue),
+        token,
+      )
+    })
+  },
+
+  openPageAs: async ({ browser, apiUrl }, use) => {
+    const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = []
+
+    await use(async username => {
+      const context = await browser.newContext()
+      contexts.push(context)
+
+      const { token } = await jsonOrThrow(
+        context.request.post(
+          `${apiUrl}/createToken/${encodeURIComponent(username)}`,
+        ),
+      )
+
+      const page = await context.newPage()
+
+      await page.addInitScript(
+        /* eslint-disable-next-line no-undef */
+        tokenValue => window.localStorage.setItem('token', tokenValue),
+        token,
+      )
+
+      return page
+    })
+
+    await Promise.all(contexts.map(context => context.close()))
+  },
+
+  testGroup: async ({ request, apiUrl }, use, testInfo) => {
+    const specName = basename(testInfo.file, '.spec.ts')
+    const groupName = `pw-${specName}-${testInfo.testId}`
+
+    const group: TestGroup = await jsonOrThrow(
+      request.post(`${apiUrl}/testGroup/${groupName}`),
+    )
+
+    await use(group)
+  },
+
+  api: async ({ request, apiUrl, testGroup }, use) => {
+    await use({
+      createManuscripts: ({ amount, submitter }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/testManuscripts/${testGroup.groupName}/${amount}${
+              submitter
+                ? `?submitterUsername=${encodeURIComponent(submitter)}`
+                : ''
+            }`,
+          ),
+        ),
+
+      assignRole: ({ username, role, manuscriptIds }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/assignRole/${encodeURIComponent(username)}/${role}?manuscriptIds=${manuscriptIds.join(',')}`,
+          ),
+        ),
+
+      patchManuscript: ({ manuscriptId, patch }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/patchManuscript/${manuscriptId}?patch=${encodeURIComponent(JSON.stringify(patch))}`,
+          ),
+        ),
+
+      setReviewerStatus: ({ manuscriptId, username, status, isShared }) => {
+        const params = new URLSearchParams({ status })
+        if (isShared !== undefined) params.set('isShared', String(isShared))
+
+        return jsonOrThrow(
+          request.post(
+            `${apiUrl}/setReviewerStatus/${manuscriptId}/${encodeURIComponent(username)}?${params.toString()}`,
+          ),
+        )
+      },
+
+      createReview: ({
+        manuscriptId,
+        username,
+        isHiddenFromAuthor,
+        isHiddenReviewerName,
+        jsonData,
+      }) => {
+        const params = new URLSearchParams()
+        if (jsonData) params.set('jsonData', JSON.stringify(jsonData))
+
+        if (isHiddenFromAuthor !== undefined)
+          params.set('isHiddenFromAuthor', String(isHiddenFromAuthor))
+
+        if (isHiddenReviewerName !== undefined)
+          params.set('isHiddenReviewerName', String(isHiddenReviewerName))
+
+        return jsonOrThrow(
+          request.post(
+            `${apiUrl}/createReview/${manuscriptId}/${encodeURIComponent(username)}?${params.toString()}`,
+          ),
+        )
+      },
+
+      createGroupUser: name =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/groupUser/${testGroup.groupName}/${encodeURIComponent(name)}`,
+          ),
+        ),
+
+      createDecision: ({ manuscriptId, username, jsonData }) => {
+        const params = new URLSearchParams()
+        if (jsonData) params.set('jsonData', JSON.stringify(jsonData))
+
+        return jsonOrThrow(
+          request.post(
+            `${apiUrl}/createDecision/${manuscriptId}/${encodeURIComponent(username)}?${params.toString()}`,
+          ),
+        )
+      },
+
+      updateGroupConfig: patch =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/testGroupConfig/${testGroup.groupName}?patch=${encodeURIComponent(JSON.stringify(patch))}`,
+          ),
+        ),
+
+      updateFormFields: ({ purpose, category, fields }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/updateFormFields/${testGroup.groupName}/${purpose}/${category}?fields=${encodeURIComponent(JSON.stringify(fields))}`,
+          ),
+        ),
+
+      updateManuscriptSubmission: ({ manuscriptId, patch }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/updateManuscriptSubmission/${manuscriptId}?patch=${encodeURIComponent(JSON.stringify(patch))}`,
+          ),
+        ),
+
+      setManuscriptCreated: ({ manuscriptId, created }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/setManuscriptCreated/${manuscriptId}?created=${encodeURIComponent(created)}`,
+          ),
+        ),
+
+      addManuscriptFile: ({ manuscriptId, filename }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/addManuscriptFile/${manuscriptId}${
+              filename ? `?filename=${encodeURIComponent(filename)}` : ''
+            }`,
+          ),
+        ),
+
+      createThreadedDiscussion: ({ manuscriptId, ...discussion }) =>
+        jsonOrThrow(
+          request.post(
+            `${apiUrl}/createThreadedDiscussion/${manuscriptId}?discussion=${encodeURIComponent(JSON.stringify(discussion))}`,
+          ),
+        ),
+    })
+  },
+
+  navigateTo: async ({ page, testGroup }, use) => {
+    await use(path => page.goto(`/${testGroup.groupName}${path}`))
+  },
+})
+
+export { expect } from '@playwright/test'
+export type { APIRequestContext, APIResponse, Page } from '@playwright/test'

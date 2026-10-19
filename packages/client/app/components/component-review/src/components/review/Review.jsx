@@ -102,7 +102,7 @@ const Review = ({
         <Heading>
           <strong>{review.user.username}</strong>
         </Heading>
-        {review.user.defaultIdentity.identifier}
+        {review.user.defaultIdentity?.identifier}
       </div>
     )
 
@@ -136,7 +136,7 @@ const Review = ({
 
           <LooseRow>
             <Icon
-              color="#9e9e9e"
+              color="#6b7280"
               onClick={() => setOpen(prevOpen => !prevOpen)}
             >
               {open ? 'chevron-up' : 'chevron-down'}

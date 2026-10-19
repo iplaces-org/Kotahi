@@ -107,14 +107,6 @@ const defaultIdentity = async user => {
   return cachedGet(`defaultIdentityOfUser:${user.id}`)
 }
 
-const expandChat = async (userId, state) => {
-  const user = await User.query().patchAndFetchById(userId, {
-    chatExpanded: state,
-  })
-
-  return user
-}
-
 const deleteUser = async (id, groupId) => {
   return User.transaction(async trx => {
     const user = await User.query(trx).findById(id)
@@ -304,7 +296,8 @@ const getUsers = async groupId => {
     .withGraphFetched('defaultIdentity')
 }
 
-const getUsersById = async userIds => User.query().findByIds(userIds)
+const getUsersById = async (userIds, options = {}) =>
+  User.findByIds(userIds, options)
 
 const isUserOnline = async user => {
   const currentDateTime = new Date()
@@ -848,7 +841,6 @@ module.exports = {
   channelUsersForMention,
   defaultIdentity,
   deleteUser,
-  expandChat,
   getCurrentUser,
   getSharedReviewersIds,
   getUser,

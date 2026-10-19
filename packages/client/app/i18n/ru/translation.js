@@ -38,6 +38,7 @@ const ru = {
       No: 'Нет',
       Save: 'Сохранить',
       Update: 'Обновить',
+      next: 'Далее',
       Activate: 'Активировать',
       Deactivate: 'Деактивировать',
       Modified: 'Изменено',
@@ -46,8 +47,6 @@ const ru = {
       Delete: 'Удалить',
       View: 'Просмотреть',
       'Enter search terms...': 'Найти',
-      surroundMultiword:
-        'Фразы, состоящие из нескольких слов, заключайте в кавычки «». Исключите термин, добавив префикс -. Укажите альтернативные совпадения, используя OR. Используйте * в качестве подстановочного знака для окончаний слов. Заключите подвыражения в круглые скобки ().',
       noOption: 'Не найдено',
       danteRangeCalendar: {
         Presets: 'Готовые',
@@ -162,6 +161,8 @@ const ru = {
       Email: 'Email',
       Language: 'Язык',
       Change: 'Изменить',
+      enterEmail: 'Введите адрес электронной почты',
+      enterYourEmail: 'Введите ваш адрес электронной почты',
       usernameWarn:
         'Не может начинаться с цифры или начинаться или заканчиваться пробелами',
       userPrivilegeAlert: `Требуются права пользователя
@@ -175,7 +176,17 @@ const ru = {
     },
     manuscriptsTable: {
       'No matching manuscripts were found': 'Совпадений не найдено',
+      searchChip: 'Поиск: {{query}}',
+      searchTipsHeader: 'Советы по использованию поиска',
+      searchTips: [
+        'Фразы, состоящие из нескольких слов, заключайте в кавычки «».',
+        'Исключите термин, добавив префикс -.',
+        'Укажите альтернативные совпадения, используя OR.',
+        'Используйте * в качестве подстановочного знака для окончаний слов.',
+        'Нажмите / в любом месте страницы, чтобы перейти к поиску.',
+      ],
       'Manuscript number': 'Номер статьи',
+      'No.': '№',
       Created: 'Создано',
       Updated: 'Обновлено',
       lastReviewerStatusUpdate: 'Последнее обновление статуса рецензента',
@@ -192,6 +203,21 @@ const ru = {
       Production: 'Производство',
       'No results found': 'Результаты не найдены',
       pagination: `Показано <strong>{{lastResult}}</strong> из <strong>{{totalCount}}</strong> результата`,
+      removeFilter: 'Удалить фильтр',
+      compactView: 'Компактный вид',
+      overdueTasks: 'Просроченные задачи',
+      noAbstract: 'Аннотация не предоставлена',
+      abstractHeader: 'Аннотация',
+      showAbstract: 'Показать аннотацию',
+      selectedCount: 'Выбрано: {{count}}',
+      confirmArchive: 'Архивировать {{count}} рукописей?',
+      confirmUnarchive: 'Разархивировать {{count}} рукописей?',
+      confirmReviewAccept: 'Принять приглашение на рецензирование?',
+      confirmReviewReject: 'Отклонить приглашение на рецензирование?',
+      confirmPublish: 'Опубликовать эту рукопись?',
+      detailedView: 'Подробный вид',
+      reviewerStatusColumnTip:
+        'Каждый блок представляет рецензента, а цвет — его статус. Наведите курсор на блок, чтобы увидеть подробности.',
       pagination_few: `Показано <strong>{{lastResult}}</strong> из <strong>{{totalCount}}</strong> результатов`,
       pagination_many: `Показано <strong>{{lastResult}}</strong> из <strong>{{totalCount}}</strong> результатов`,
       reviewAccept: 'Принять',
@@ -405,7 +431,8 @@ const ru = {
     },
     editorSection: {
       noFileLoaded: 'Файл рукописи не загружен',
-      noSupportedView: 'Файл не поддерживается для отображения',
+      noSupportedView:
+        'Загружен неподдерживаемый файл, или редактор не включён',
     },
     reviewDecisionSection: {
       noDecisionUpdated: 'Решение по этому рукописи пока не обновлено',
@@ -525,8 +552,8 @@ const ru = {
       'read-only': ' (только для чтения)',
       'Previous Feedback Submissions': 'Предыдущие отзывы',
       'No feedback submissions': 'Нет отправок отзывов авторов',
-      'No supported view of the file':
-        'Нет поддерживаемого представления файла',
+      noSupportedView:
+        'Загружен неподдерживаемый файл, или редактор не включён',
       Download: 'Загрузить',
       Editor: 'Редактор',
       'PDF CSS': 'CSS для PDF',
@@ -543,6 +570,11 @@ const ru = {
       accepted: '{{invitationType}} принял приглашение',
     },
     configPage: {
+      colorPicker: {
+        poorContrastTitle: 'Недостаточная доступность цвета',
+        poorContrastDescription:
+          'Выбранный цвет не соответствует стандарту доступности WCAG AA. Пользователям может быть сложно пользоваться интерфейсом и ориентироваться в нём. Пожалуйста, выберите другой цвет.',
+      },
       generalTab: 'Общие',
       workflowTab: 'Рабочий процесс',
       productionTab: 'Производство',
@@ -737,11 +769,10 @@ const ru = {
       editorsCanPublish: 'Редакторы могут публиковать статьи/обзоры.',
       editorsDeleteReviews: 'Редакторы могут удалять отправленные отзывы',
       Reports: 'Аналитика',
-      reportShowInMenu:
-        'Администратору и редактору доступен раздел “Аналитика”',
+      reportShowInMenu: 'Показывать раздел “Аналитика” в меню',
       'User Management': 'Управление пользователями',
       userIsAdmin:
-        'Всем пользователям назначаются роли администратора и редактора',
+        'Всем пользователям назначаются роли редактора и администратора группы',
       kotahiApis: 'Котахи API',
       tokens: 'Токены',
       Update: 'Обновлять',
@@ -1371,7 +1402,8 @@ const ru = {
       acceptedFiletypes: 'Принимаемые форматы файлов: pdf,epub,zip,docx,latex',
       converting:
         'Ваша рукопись преобразуется в редактируемую версию. Это может занять некоторое время.',
-      'Submit a URL instead': 'Вставить URL-адрес вместо файла',
+      skipManuscriptUpload:
+        'Пропустить загрузку рукописи и перейти к форме подачи',
       errorUploading: 'Файл не распознан',
     },
     formBuilder: {

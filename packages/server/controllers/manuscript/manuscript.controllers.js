@@ -25,6 +25,7 @@ const {
   hasElifeStyleEvaluations,
   stripConfidentialDataFromReviews,
   buildQueryForManuscriptSearchFilterAndOrder,
+  buildSearchSnippets,
   applyTemplatesToArtifacts,
 } = require('./manuscriptUtils')
 
@@ -135,15 +136,16 @@ const addReviewer = async (
   )
 }
 
-const archiveManuscript = async id => {
-  await deleteAlertsForManuscript(id)
-  const manuscript = await Manuscript.findById(id)
+const archiveManuscript = async (id, options = {}) => {
+  await deleteAlertsForManuscript(id, options)
+  const manuscript = await Manuscript.findById(id, options)
+  const { trx } = options
 
   // getting the ID of the firstVersion for all manuscripts.
   const firstVersionId = manuscript.parentId || manuscript.id
 
   // Archive Manuscript
-  const archivedManuscript = await Manuscript.query()
+  const archivedManuscript = await Manuscript.query(trx)
     .returning('id')
     .update({ isHidden: true })
     .where('id', firstVersionId)
@@ -972,7 +974,8 @@ const manuscriptsUserHasCurrentRoleIn = async (
             t.members.some(
               member =>
                 member.userId === userId &&
-                (!reviewerStatus || member.status === reviewerStatus),
+                (!reviewerStatus ||
+                  reviewerStatus.split(',').includes(member.status)),
             )
           )
             rolesFound.add(t.role)
@@ -1015,11 +1018,11 @@ const manuscriptsUserHasCurrentRoleIn = async (
     totalCount = parseInt(resultRows[0].full_count, 10)
   }
 
-  // Add in searchRank and searchSnippet
+  // Add in searchRank and searchSnippets
   const result = resultRows.map(row => ({
     ...userManuscriptsWithInfo[row.id],
     searchRank: row.rank,
-    searchSnippet: row.snippet,
+    searchSnippets: buildSearchSnippets(row, submissionForm),
   }))
 
   return { totalCount, manuscripts: result }
@@ -1080,7 +1083,7 @@ const paginatedManuscripts = async (
   const result = rawQResult.rows.map(row => ({
     ...found.find(m => m.id === row.id),
     searchRank: row.rank,
-    searchSnippet: row.snippet,
+    searchSnippets: buildSearchSnippets(row, submissionForm),
   }))
 
   return { totalCount, manuscripts: result }

@@ -7,7 +7,7 @@ import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../../pubsweet'
 import { SectionHeader, SectionRow } from '../../../shared'
-import { UserAction } from '../../../component-manuscripts-table/src/style'
+import { UserAction } from './style'
 import DeclinedReviewer from './DeclinedReviewer'
 
 const DropdownTitleContainer = styled.div`
@@ -49,7 +49,7 @@ const ReviewersDeclined = ({ members }) => {
               ? t('decisionPage.Hide Declined')
               : t('decisionPage.See Declined', { count: declinations.length })}
           </UserAction>
-          <Icon color="#9e9e9e">{open ? 'chevron-up' : 'chevron-down'}</Icon>
+          <Icon color="#6b7280">{open ? 'chevron-up' : 'chevron-down'}</Icon>
         </DropdownTitleContainer>
       </SectionHeader>
 

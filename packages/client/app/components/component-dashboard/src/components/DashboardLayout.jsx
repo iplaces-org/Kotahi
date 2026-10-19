@@ -6,16 +6,15 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '../../../pubsweet'
-import { HiddenTabsContainer, Tab, TabContainer } from '../../../shared'
-import Page from '../../../../ui/shared/Page'
-import SearchControl from '../../../component-manuscripts/src/SearchControl'
-import { ControlsContainer } from '../../../component-manuscripts/src/style'
 import {
-  URI_PAGENUM_PARAM,
-  URI_SEARCH_PARAM,
-  useQueryParams,
-} from '../../../../shared/urlParamUtils'
+  ActionButton,
+  AddLabel,
+  HiddenTabsContainer,
+  Tab,
+  TabContainer,
+} from '../../../shared'
+import Page from '../../../../ui/shared/Page'
+import { ControlsContainer } from '../../../component-manuscripts/src/style'
 import { FlexRow } from '../../../../globals'
 import { ConfigContext } from '../../../config/src'
 
@@ -43,9 +42,6 @@ const DashboardLayout = ({ children }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { groupName } = useParams()
-  const applyQueryParams = useQueryParams()
-  const uriQueryParams = new URLSearchParams(location.search)
-  const currentSearchQuery = uriQueryParams.get(URI_SEARCH_PARAM)
   const dashboardPages = []
 
   const { t } = useTranslation()
@@ -85,21 +81,12 @@ const DashboardLayout = ({ children }) => {
             ))}
           </Tabs>
           <RightControls>
-            <SearchControl
-              applySearchQuery={newQuery =>
-                applyQueryParams({
-                  [URI_SEARCH_PARAM]: newQuery,
-                  [URI_PAGENUM_PARAM]: 1,
-                })
-              }
-              currentSearchQuery={currentSearchQuery}
-            />
-            <Button
-              $primary
+            <ActionButton
               onClick={() => navigate(`/${groupName}/newSubmission`)}
+              primary
             >
-              {t('dashboardPage.New submission')}
-            </Button>
+              <AddLabel>{t('dashboardPage.New submission')}</AddLabel>
+            </ActionButton>
           </RightControls>
         </TabRow>
       </HiddenTabsContainer>
