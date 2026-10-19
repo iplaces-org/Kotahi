@@ -86,7 +86,8 @@ permalink: "/browse/index.html"
           {%- set rtype = (ps.resourcetype | default("")) | string -%}
           {%- set dpub = (ps.datePublished | default("")) | string -%}
           {%- set yr = dpub | truncate(4, true, "") -%}
-          {%- set cat = (ps.topics | default("")) | join(", ") -%}
+          {%- set topicsArr = ps.topics if (ps.topics and ps.topics.join) else ([ps.topics] if ps.topics else []) -%}
+          {%- set cat = topicsArr | join(", ") -%}
           {%- set place = (ps.geolocation | default("")) | string -%}
 
           {%- set lc = ps["$localContext"] | default("") -%}
