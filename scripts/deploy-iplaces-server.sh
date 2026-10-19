@@ -35,7 +35,9 @@ CONTAINER_MS_CTRL_PATH="/home/node/app/controllers/manuscript/manuscript.control
 LATEST_PATCH_MARKER="getRelatedItems"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://publish.iplacesalliance.org"
-EXPECTED_INSTANCE_GROUPS="gumpstation:journal,wams:journal"
+EXPECTED_INSTANCE_GROUPS="gumpstation:journal,wams:journal,obfs:journal"
+BASE_IMAGE_FINGERPRINT="userHasRoleInMsFamily"
+BASE_IMAGE_FINGERPRINT_PATH="services/queryCache.service.js"
 # -----------------------------------------------------------------------------
 
 # Resolve repo root from this script's location, and cd there (build context).
