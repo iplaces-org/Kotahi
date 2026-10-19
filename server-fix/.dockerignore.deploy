@@ -55,3 +55,9 @@ server-fix/overlays/*
 !server-fix/overlays/controllers
 server-fix/overlays/controllers/*
 !server-fix/overlays/controllers/pdfExport.controllers.js
+
+# (Patch 18) ORCID author linking overlays.
+!server-fix/overlays/controllers/orcid.controllers.js
+!server-fix/overlays/services
+server-fix/overlays/services/*
+!server-fix/overlays/services/orcidAuthorLink.service.js

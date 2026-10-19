@@ -75,3 +75,12 @@ COPY packages/server/permissions.js /home/node/app/permissions.js
 
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/controllers/user.controllers.js
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/dist/controllers/user.controllers.js
+
+# (Patch 18) ORCID author linking: users join the author team of manuscripts
+#     whose $authors lists their ORCID (at login, and when $authors is saved).
+#     orcid.controllers.js is pinned to the 2026.10.12-0 image's plain copy
+#     (== tag) + the login hook; orcidAuthorLink.service.js is iPlaces-only.
+COPY server-fix/overlays/controllers/orcid.controllers.js /home/node/app/controllers/orcid.controllers.js
+COPY server-fix/overlays/controllers/orcid.controllers.js /home/node/app/dist/controllers/orcid.controllers.js
+COPY server-fix/overlays/services/orcidAuthorLink.service.js /home/node/app/services/orcidAuthorLink.service.js
+COPY server-fix/overlays/services/orcidAuthorLink.service.js /home/node/app/dist/services/orcidAuthorLink.service.js

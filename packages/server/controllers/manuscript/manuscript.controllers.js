@@ -86,6 +86,10 @@ const {
 } = require('./importManuscripts')
 
 const {
+  linkAuthorsOfManuscript,
+} = require('../../services/orcidAuthorLink.service') // iplaces Patch 18
+
+const {
   getThreadedDiscussionsForManuscript,
 } = require('../threadedDiscussion.controllers')
 
@@ -2278,6 +2282,16 @@ const updateManuscript = async (id, input) => {
       logger.info(`Patch 16: Flax rebuild OK after unpublish of ${id}`)
     } catch (e) {
       logger.error(`Patch 16: Flax rebuild FAILED after unpublish: ${e.message}`)
+    }
+  }
+
+  // iplaces Patch 18: when $authors is saved, add listed authors who already
+  // have an ORCID login to the author team. Non-fatal.
+  if (msDelta.submission && '$authors' in msDelta.submission) {
+    try {
+      await linkAuthorsOfManuscript(saved)
+    } catch (e) {
+      logger.error(`Patch 18: save ORCID link failed for ${id}: ${e.message}`)
     }
   }
 

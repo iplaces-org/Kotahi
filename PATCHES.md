@@ -69,6 +69,28 @@ Verified live: a record with `resourcetype = "Project"` now publishes
 
 ---
 
+## Patch 18 — ORCID author linking (2026-10-19)
+
+### What it does
+A user whose ORCID appears in a manuscript's `submission.$authors` is added to
+that manuscript's `author` team (full author rights; shows under My
+Submissions). Add-only: removing someone from `$authors` does not remove them.
+All groups. ORCIDs are compared after stripping `https://orcid.org/` and
+upper-casing a final `x`.
+
+- `server-fix/overlays/services/orcidAuthorLink.service.js` (iPlaces-only):
+  `linkUserToManuscriptsByOrcid`, `linkAuthorsOfManuscript`.
+- `server-fix/overlays/controllers/orcid.controllers.js`: 2026.10.12-0 image
+  plain copy (== tag) + login hook before `done(...)`, non-fatal.
+- `packages/server/controllers/manuscript/manuscript.controllers.js`:
+  `updateManuscript` links authors when the delta carries `$authors`
+  (also covers `submitManuscript`), non-fatal.
+- `server-fix/scripts/backfill-orcid-authors.js`: idempotent one-off backfill
+  (sftp to /home/node/app, run with node).
+
+Re-pin `orcid.controllers.js` at every base-image bump (diff vs the image's
+plain copy must show only the Patch 18 lines).
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
