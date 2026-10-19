@@ -22,7 +22,8 @@ const normalizeOrcid = value =>
 const isValidOrcid = bare => ORCID_PATTERN.test(bare)
 
 // Same normalisation, in SQL, for an author entry's orcid
-const SQL_AUTHOR_ORCID = `upper(trim(regexp_replace(trim(a->>'orcid'), '^https?://(www\\.)?orcid\\.org/', '', 'i')))`
+// (no literal '?' here: knex.raw would read it as a bind placeholder)
+const SQL_AUTHOR_ORCID = `upper(trim(regexp_replace(trim(a->>'orcid'), '^https{0,1}://(www\\.){0,1}orcid\\.org/', '', 'i')))`
 
 const ensureAuthorOnManuscript = async (manuscriptId, userId) => {
   // lazy requires: models/controllers require services, avoid a load-order cycle

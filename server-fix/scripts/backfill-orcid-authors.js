@@ -4,13 +4,19 @@
 // Run inside the server container from /home/node/app:
 //   node backfill-orcid-authors.js
 /* eslint-disable no-console, no-restricted-syntax, no-await-in-loop */
-const { Identity } = require('./models')
-
-const {
-  linkUserToManuscriptsByOrcid,
-} = require('./services/orcidAuthorLink.service')
-
 const main = async () => {
+  // standalone script: @coko/server >=5.3 needs config + db initialised
+  // (as coko-server start does) before any model or controller is used
+  const { config, db } = require('@coko/server')
+  await config.init()
+  db.init()
+
+  const { Identity } = require('./models')
+
+  const {
+    linkUserToManuscriptsByOrcid,
+  } = require('./services/orcidAuthorLink.service')
+
   const identities = await Identity.query().where('type', 'orcid')
   let total = 0
 
