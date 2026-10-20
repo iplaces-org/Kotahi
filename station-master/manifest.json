@@ -23,6 +23,17 @@
     },
     "gumpstation": {
       "hideConferencePapers": true
+    },
+    "wams": {
+      "title": "iPlaces WAMS",
+      "shortName": "WAMS",
+      "pathSlug": "wams",
+      "mission": "A place-based journal for the World Association of Marine Stations, publishing research, conference proceedings and outreach from marine stations worldwide through the iPlaces network.",
+      "hostOrg": {
+        "name": "World Association of Marine Stations",
+        "url": "",
+        "ror": ""
+      }
     }
   },
   "createIfMissing": [
