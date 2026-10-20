@@ -24,5 +24,8 @@
     "gumpstation": {
       "hideConferencePapers": true
     }
-  }
+  },
+  "createIfMissing": [
+    "data/issues.json"
+  ]
 }

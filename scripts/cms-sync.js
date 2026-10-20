@@ -91,6 +91,7 @@ async function main() {
   const allGroups = await gql(server, null, '{ groups { id name } }')
   const live = {}
   const ids = {}
+  const folders = {}
   const groupIds = {}
 
   for (const name of groups) {
@@ -100,6 +101,7 @@ async function main() {
     const r = await readLive(server, g.id)
     live[name] = r.files
     ids[name] = r.ids
+    folders[name] = r.folders
     groupIds[name] = g.id
     const dir = path.join(outDir, 'live', name)
     for (const [p, content] of Object.entries(live[name])) {
@@ -109,7 +111,7 @@ async function main() {
     console.log(`${Object.keys(live[name]).length} files`)
   }
 
-  const ctx = { server, masterDir, master, manifest, isOwned, groups, live, ids, groupIds, outDir }
+  const ctx = { server, masterDir, master, manifest, isOwned, groups, live, ids, folders, groupIds, outDir }
   if (cmd === 'push') return push(ctx)
   if (cmd === 'restore') return restore(ctx)
 
@@ -166,7 +168,11 @@ function restore(ctx) {
 }
 
 async function push(ctx, readSource, opts = {}) {
-  const { server, master, isOwned, manifest, groups, live, ids, groupIds, outDir } = ctx
+  const { server, master, isOwned, manifest, groups, live, ids, folders, groupIds, outDir } = ctx
+  // Station-owned files that every station must have (e.g. data/issues.json):
+  // created from master when missing, never overwritten.
+  const createIfMissing = manifest.createIfMissing || []
+  const creates = {}
   const base = readSource || ((g, p) => master[p])
   // station.json is station-owned, but the manifest can set named keys in it
   // ("stationJson": {"*": {defaults, added only when missing}, "<group>": {always set}}).
@@ -181,16 +187,26 @@ async function push(ctx, readSource, opts = {}) {
   const problems = []
   for (const g of groups) {
     plan[g] = []
-    const candidates = requested.length ? requested : Object.keys(master).filter(p => !isOwned(p))
-    if (stationJson[g] !== undefined && !candidates.includes('data/station.json')) candidates.push('data/station.json')
+    creates[g] = new Set()
+    const candidates = requested.length ? [...requested] : Object.keys(master).filter(p => !isOwned(p))
+    if (!requested.length) for (const p of createIfMissing) if (!candidates.includes(p)) candidates.push(p)
+    if (!requested.length && stationJson[g] !== undefined && !candidates.includes('data/station.json')) candidates.push('data/station.json')
     for (const p of candidates) {
       const want = source(g, p)
       if (want === undefined) { if (requested.length) problems.push(`${g}: ${p} is not in ${label}`); continue }
       const managed = p === 'data/station.json' && stationJson[g] !== undefined
-      if (isOwned(p) && !opts.allowOwned && !managed) { problems.push(`${g}: ${p} is station-owned (manifest); not pushed`); continue }
+      const seed = createIfMissing.includes(p) && live[g][p] === undefined
+      if (createIfMissing.includes(p) && !seed && !opts.allowOwned) continue
+      if (isOwned(p) && !opts.allowOwned && !managed && !seed) { problems.push(`${g}: ${p} is station-owned (manifest); not pushed`); continue }
       if ((manifest.overrides?.[g] || []).includes(p)) { console.log(`skip ${g}: ${p} (listed override)`); continue }
       const have = live[g][p]
-      if (have === undefined) { problems.push(`${g}: ${p} does not exist in the CMS yet; create it there once (File browser), then re-run`); continue }
+      if (have === undefined) {
+        const dir = path.posix.dirname(p) === '.' ? '' : path.posix.dirname(p)
+        if (folders[g][dir] === undefined) { problems.push(`${g}: ${p} is missing and so is its folder "${dir}"; create the folder in the CMS first`); continue }
+        creates[g].add(p)
+        plan[g].push(p)
+        continue
+      }
       if (compare(p, want, have) === 'same') continue
       const last = state[g]?.[p]
       if (last && !managed && sha(have) !== last && !args.force) {
@@ -216,6 +232,7 @@ async function push(ctx, readSource, opts = {}) {
       fs.mkdirSync(path.dirname(f), { recursive: true })
       fs.writeFileSync(f, source(g, p))
       console.log(`\n===== ${g}: ${p}  (live → ${label})`)
+      if (creates[g].has(p)) { console.log(`(new file, will be created)\n${source(g, p).slice(0, 600)}`); continue }
       try { execFileSync('diff', ['-u', path.join(outDir, 'live', g, p), f], { stdio: 'inherit' }) } catch (_) { /* differs */ }
     }
   }
@@ -227,8 +244,8 @@ async function push(ctx, readSource, opts = {}) {
   if (!args['skip-preflight']) {
     for (const g of groups.filter(x => plan[x].length)) {
       const files = Object.fromEntries(plan[g].map(p => [p, source(g, p)]))
-      const r = preflight(g, files)
-      console.log(`pre-flight ${g}: baseline ${r.base.pages} article pages, candidate ${r.cand.pages}, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}`)
+      const r = preflight(g, live[g], files)
+      console.log(`pre-flight ${g}: ${r.recs} records; current CMS builds ${r.base.pages} pages${r.base.exit ? ' (FAILS: publishing as-is would 403)' : ''}; with changes ${r.cand.pages} pages, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}`)
       if (!r.ok) {
         console.log(r.cand.log)
         throw new Error(`pre-flight build failed for ${g}; nothing was pushed to any station`)
@@ -245,6 +262,13 @@ async function push(ctx, readSource, opts = {}) {
   for (const g of groups) {
     for (const p of plan[g]) {
       const want = source(g, p)
+      if (creates[g].has(p)) {
+        const dir = path.posix.dirname(p) === '.' ? '' : path.posix.dirname(p)
+        const made = await gql(server, groupIds[g], 'mutation($id: ID!) { addResourceToFolder(id: $id, type: false) { id fileId } }', { id: folders[g][dir] })
+        await gql(server, groupIds[g], 'mutation($id: ID!, $n: String!) { renameResource(id: $id, name: $n) { id } }', { id: made.addResourceToFolder.id, n: path.posix.basename(p) })
+        ids[g][p] = made.addResourceToFolder.fileId
+        console.log(`created ${g}: ${p}`)
+      }
       await gql(server, groupIds[g], 'mutation($id: ID!, $c: String!) { updateResource(id: $id, content: $c) { id } }', { id: ids[g][p], c: want })
       const back = await gql(server, groupIds[g], 'query($id: ID!) { getCmsFileContent(id: $id) { content } }', { id: ids[g][p] })
       if (compare(p, want, back.getCmsFileContent.content) !== 'same') throw new Error(`${g}: ${p} did not read back as written; stop and check the CMS`)
@@ -286,39 +310,67 @@ function stationJsonUpdates(manifest, groups, live) {
   return out
 }
 
-function preflight(g, files) {
-  const D = `/tmp/pf-${g}`
-  const lines = [
-    `rm -rf ${D} ${D}-base-out ${D}-out && cp -r ${FLAX_ROOT}/src/${g} ${D}`,
+function preflight(g, liveFiles, files) {
+  // Builds the station exactly as a Publish would right now: the live CMS files
+  // (read by this script), plus Flax's own data/articleQuery.json. Not a copy of
+  // /app/src/<g>, which can hold stale files the CMS no longer has (20 Oct: wams
+  // built fine from a leftover data/issues.json, then 403'd on publish).
+  //
+  // Flax's eleventy.config.js beforeBuild deletes every non-asset directory in
+  // inputDir.replace("src", "public"), so the input sits under a throwaway
+  // .../src/<g> with a throwaway "public" twin. Never build from /app/src.
+  const R = '/tmp/cms-sync'
+  const IN = `${R}/src/${g}`
+  const OUT = `${R}/public/${g}`
+  const enc = obj => Object.fromEntries(Object.entries(obj)
+    .filter(([p]) => p !== 'data/articleQuery.json')
+    .map(([p, c]) => [p, Buffer.from(c).toString('base64')]))
+  flaxUpload(`${R}-base.json`, JSON.stringify(enc(liveFiles)))
+  flaxUpload(`${R}-cand.json`, JSON.stringify(enc({ ...liveFiles, ...files })))
+  const write = which => `node -e 'const fs=require("fs"),path=require("path");const d=JSON.parse(fs.readFileSync("${R}-${which}.json"));for(const[k,v] of Object.entries(d)){const f=path.join("${IN}",k);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,Buffer.from(v,"base64"))}'`
+  const fresh = which => [
+    `rm -rf ${R}/src ${R}/public && mkdir -p ${IN}/data ${R}/public`,
+    write(which),
+    `cp ${FLAX_ROOT}/src/${g}/data/articleQuery.json ${IN}/data/articleQuery.json`,
+  ].join(' && ')
+  const build = log => `npx eleventy --pathprefix=${g} --input=${IN} --output=${OUT} > ${R}/${log}.log 2>&1`
+  const out = flaxRun([
+    `mkdir -p ${R}`,
     `cd ${FLAX_ROOT}`,
-    `npx eleventy --pathprefix=${g} --input=${D} --output=${D}-base-out > ${D}-base.log 2>&1; echo BASE_EXIT=$?`,
-    `echo BASE_PAGES=$(ls ${D}-base-out/articles 2>/dev/null | wc -l)`,
-  ]
-  for (const [p, content] of Object.entries(files)) {
-    lines.push(`echo ${Buffer.from(content).toString('base64')} | base64 -d > '${D}/${p}'`)
-  }
-  lines.push(
-    `npx eleventy --pathprefix=${g} --input=${D} --output=${D}-out > ${D}.log 2>&1; echo CAND_EXIT=$?`,
-    `echo CAND_PAGES=$(ls ${D}-out/articles 2>/dev/null | wc -l)`,
-    `test -f ${D}-out/index.html && echo CAND_INDEX=1`,
-    `echo ---LOG; grep -iE "error|problem" ${D}.log | head -20`,
-    `rm -rf ${D} ${D}-base-out ${D}-out`,
-  )
-  const out = flaxRun(lines.join('\n'))
+    `echo RECS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l)`,
+    fresh('base'),
+    `${build('base')}; echo BASE_EXIT=$?`,
+    `echo BASE_PAGES=$(ls ${OUT}/articles 2>/dev/null | wc -l)`,
+    fresh('cand'),
+    `${build('cand')}; echo CAND_EXIT=$?`,
+    `echo CAND_PAGES=$(ls ${OUT}/articles 2>/dev/null | wc -l)`,
+    `test -f ${OUT}/index.html && echo CAND_INDEX=1`,
+    `echo ---LOG; grep -iE "error|problem" ${R}/cand.log | head -20; tail -3 ${R}/cand.log`,
+    `rm -rf ${R}/src ${R}/public ${R}-base.json ${R}-cand.json`,
+  ].join('\n'))
   const num = k => Number((out.match(new RegExp(`${k}=(\\d+)`)) || [])[1])
+  const recs = num('RECS')
   const base = { exit: num('BASE_EXIT'), pages: num('BASE_PAGES') }
   const cand = { exit: num('CAND_EXIT'), pages: num('CAND_PAGES'), index: /CAND_INDEX=1/.test(out), log: out.split('---LOG')[1] || out }
-  const ok = cand.exit === 0 && cand.index && cand.pages >= base.pages
-  return { ok, base, cand }
+  if (!(recs > 0)) throw new Error(`pre-flight: no records found in ${FLAX_ROOT}/src/${g}/data/articleQuery.json; publish ${g} once, then re-run. Nothing was pushed.`)
+  // The recipe-11a check: one article page per record, plus a homepage.
+  const ok = cand.exit === 0 && cand.index && cand.pages === recs
+  return { ok, recs, base, cand }
 }
 
-// Ship a script to the Flax machine in base64 chunks, then run it.
+// Copy a (possibly large) text file to the Flax machine in base64 chunks.
+function flaxUpload(dest, content) {
+  const b64 = Buffer.from(content).toString('base64')
+  fly(`sh -c 'rm -f ${dest}.b64'`)
+  for (let i = 0; i < b64.length; i += 60000) fly(`sh -c 'printf %s ${b64.slice(i, i + 60000)} >> ${dest}.b64'`)
+  fly(`sh -c 'base64 -d ${dest}.b64 > ${dest} && rm -f ${dest}.b64'`)
+}
+
+// Ship a script to the Flax machine, then run it.
 function flaxRun(script) {
-  const b64 = Buffer.from(script).toString('base64')
-  const tag = `/tmp/cms-sync-${process.pid}`
-  fly(`sh -c 'rm -f ${tag}.b64'`)
-  for (let i = 0; i < b64.length; i += 60000) fly(`sh -c 'printf %s ${b64.slice(i, i + 60000)} >> ${tag}.b64'`)
-  return fly(`sh -c 'base64 -d ${tag}.b64 > ${tag}.sh && sh ${tag}.sh; rm -f ${tag}.b64 ${tag}.sh'`)
+  const tag = `/tmp/cms-sync-${process.pid}.sh`
+  flaxUpload(tag, script)
+  return fly(`sh -c 'sh ${tag}; rm -f ${tag}'`)
 }
 
 function fly(cmd) {
@@ -334,7 +386,7 @@ function fly(cmd) {
 async function verify(groups) {
   let bad = 0
   for (const g of groups) {
-    const out = fly(`sh -c 'echo PAGES=$(ls ${FLAX_ROOT}/public/${g}/articles 2>/dev/null | wc -l); echo IDS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l); test -f ${FLAX_ROOT}/public/${g}/index.html && echo INDEX=1'`)
+    const out = fly(`sh -c 'echo PAGES=$(ls ${FLAX_ROOT}/public/${g}/articles 2>/dev/null | wc -l); echo IDS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l); test -f ${FLAX_ROOT}/public/${g}/index.html && echo INDEX=1; true'`)
     const pages = Number((out.match(/PAGES=(\d+)/) || [])[1])
     const recs = Number((out.match(/IDS=(\d+)/) || [])[1])
     let code = 0
@@ -357,11 +409,12 @@ async function readLive(server, groupId) {
   const res = await gql(server, groupId, '{ getActiveCmsFilesTree }')
   const tree = JSON.parse(res.getActiveCmsFilesTree)
   const files = []
+  const folders = { '': tree.id }
   const walk = (node, prefix) => {
     for (const child of node.children || []) {
       const p = prefix ? `${prefix}/${child.name}` : child.name
       if (child.fileId) files.push({ path: p, fileId: child.fileId })
-      else walk(child, p)
+      else { folders[p] = child.id; walk(child, p) }
     }
   }
   walk(tree, '')
@@ -378,7 +431,7 @@ async function readLive(server, groupId) {
     )
     out[f.path] = r.getCmsFileContent.content ?? ''
   })
-  return { files: out, ids }
+  return { files: out, ids, folders }
 }
 
 async function gql(server, groupId, query, variables) {

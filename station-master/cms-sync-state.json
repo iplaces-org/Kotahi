@@ -1,1 +1,15 @@
-{}
+{
+  "gumpstation": {
+    "content/pages/browse.njk": "269409f3e3c794af",
+    "index.md": "1abb5f28819ddf11",
+    "layouts/_partials/list-articles.njk": "0c76908b39146ad2",
+    "data/station.json": "0e681e3cc9915900"
+  },
+  "wams": {
+    "content/pages/browse.njk": "269409f3e3c794af",
+    "index.md": "1abb5f28819ddf11",
+    "layouts/_partials/cover.njk": "8f388d3ed79182a6",
+    "layouts/_partials/metaror-menu.njk": "e4a68170fcbd0e51",
+    "data/station.json": "5083d32fe7ddbf64"
+  }
+}
