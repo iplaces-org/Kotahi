@@ -16,7 +16,12 @@ permalink: "/browse/index.html"
 
   .facet { border-bottom: 1px solid #e9e7df; padding: 0 0 0.9rem; margin-bottom: 0.9rem; }
   .facet:last-child { border-bottom: 0; }
-  .facet-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #7a7a72; font-weight: 700; margin: 0 0 0.55rem; }
+  .facet-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #7a7a72; font-weight: 700; margin: 0; cursor: pointer; user-select: none; }
+  .facet-label::after { content: "\2228"; margin-left: 0.4rem; display: inline-block; transition: transform 0.15s; }
+  .facet.is-open .facet-label { margin-bottom: 0.55rem; }
+  .facet.is-open .facet-label::after { transform: rotate(180deg); }
+  .facet-label .facet-on { color: #185fa5; margin-left: 0.3rem; }
+  .facet:not(.is-open) .facet-opts, .facet:not(.is-open) .facet-find, .facet:not(.is-open) .facet-more { display: none !important; }
   .facet-opt { display: block; font-size: 0.85rem; color: #3a3a36; padding: 0.16rem 0; cursor: pointer; line-height: 1.35; }
   .facet-opt input { margin-right: 0.45rem; vertical-align: baseline; }
   .facet-opt.is-zero { opacity: 0.35; }
@@ -39,6 +44,8 @@ permalink: "/browse/index.html"
   .browse-item-meta { display: block; font-size: 0.85rem; color: #57574f; margin-top: 0.3rem; }
   .browse-item-tags { display: block; margin-top: 0.4rem; }
   .btag { display: inline-block; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; padding: 0.1rem 0.45rem; margin-right: 0.35rem; border-radius: 3px; background: #f0eee6; color: #57574f; }
+  .btag[data-facet] { cursor: pointer; }
+  .btag[data-facet]:hover { filter: brightness(0.93); text-decoration: underline; }
   .btag-place { background: #fdf0e3; color: #8a5320; }
   .btag-notice { background: #f3e9f5; color: #5a3a86; }
   .btag-label { background: #e8f0f8; color: #1e5182; }
@@ -55,7 +62,7 @@ permalink: "/browse/index.html"
 </style>
 
 <div class="browse">
-  <h1>Browse iPlaces</h1>
+  <h1>Browse published works</h1>
   <p class="browse-sub">Search and filter published works. Combine filters to narrow results.</p>
 
   <input type="text" class="browse-search" id="browse-search" placeholder="Search titles, authors, institutions…">
@@ -128,12 +135,12 @@ permalink: "/browse/index.html"
             <a class="browse-item-title" href="{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">{{ article.headerInfo.title | safe }}</a>
             <span class="browse-item-meta">{{ authorNames | join(', ') }}</span>
             <span class="browse-item-tags">
-              {% if rtype %}<span class="btag">{{ rtype }}</span>{% endif %}
-              {% if yr %}<span class="btag">{{ yr }}</span>{% endif %}
-              {% if place %}<span class="btag btag-place">{{ place }}</span>{% endif %}
-              {% for nt in noticeTypes %}<span class="btag btag-notice">{{ nt }}</span>{% endfor %}
-              {% for lb in lcLabels %}<span class="btag btag-label">{{ lb }}</span>{% endfor %}
-              {% if hasGeome %}<span class="btag btag-geome">GEOME</span>{% endif %}
+              {% if rtype %}<span class="btag" data-facet="type" data-value="{{ rtype }}" title="Show all {{ rtype }} works">{{ rtype }}</span>{% endif %}
+              {% if yr %}<span class="btag" data-facet="year" data-value="{{ yr }}" title="Show all works from {{ yr }}">{{ yr }}</span>{% endif %}
+              {% if place %}<span class="btag btag-place" data-facet="place" data-value="{{ place }}" title="Show all works in {{ place }}">{{ place }}</span>{% endif %}
+              {% for nt in noticeTypes %}<span class="btag btag-notice" data-facet="notices" data-value="{{ nt }}" title="Show all works with this notice">{{ nt }}</span>{% endfor %}
+              {% for lb in lcLabels %}<span class="btag btag-label" data-facet="labels" data-value="{{ lb }}" title="Show all works with this label">{{ lb }}</span>{% endfor %}
+              {% if hasGeome %}<span class="btag btag-geome" data-facet="geome" data-value="{{ hasGeome }}" title="Show all works with GEOME field data">GEOME</span>{% endif %}
             </span>
           </li>
         {% endfor %}
@@ -242,7 +249,7 @@ permalink: "/browse/index.html"
     FACETS.forEach(function (f) {
       if (!universe[f.key].length) return;
       html += '<div class="facet" data-facet="' + f.key + '">';
-      html += '<p class="facet-label">' + f.label + '</p>';
+      html += '<p class="facet-label" role="button" tabindex="0">' + f.label + '<span class="facet-on"></span></p>';
       if (f.find) html += '<input type="text" class="facet-find" placeholder="Filter ' + f.label.toLowerCase() + '…">';
       html += '<div class="facet-opts"></div>';
       html += '<span class="facet-more" style="display:none;"></span>';
@@ -252,6 +259,20 @@ permalink: "/browse/index.html"
   }
 
   var expanded = {};
+  var opened = {};   // facets stay collapsed until clicked or filtered
+  var lastCount = {};
+
+  function syncOpen() {
+    FACETS.forEach(function (f) {
+      var box = sideWrap.querySelector('.facet[data-facet="' + f.key + '"]');
+      if (!box) return;
+      var n = state[f.key].length;
+      if (!n && lastCount[f.key]) delete opened[f.key];   // filter just cleared: close again
+      lastCount[f.key] = n;
+      box.classList.toggle('is-open', f.key in opened ? opened[f.key] : n > 0);
+      box.querySelector('.facet-on').textContent = n ? '(' + n + ')' : '';
+    });
+  }
 
   function renderFacetOptions() {
     FACETS.forEach(function (f) {
@@ -337,6 +358,7 @@ permalink: "/browse/index.html"
     if (clear) clear.addEventListener('click', clearAll);
 
     renderFacetOptions();
+    syncOpen();
     renderPills();
     renderApi();
     syncUrl();
@@ -389,7 +411,34 @@ permalink: "/browse/index.html"
     applyFind(e.target.closest('.facet'), e.target.value);
   });
 
+  function toggleFacet(label) {
+    var key = label.closest('.facet').getAttribute('data-facet');
+    opened[key] = !label.closest('.facet').classList.contains('is-open');
+    syncOpen();
+  }
+
+  sideWrap.addEventListener('keydown', function (e) {
+    var label = e.target.closest && e.target.closest('.facet-label');
+    if (label && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleFacet(label); }
+  });
+
+  // a tag under a work filters the list to that value
+  list.addEventListener('click', function (e) {
+    var tag = e.target.closest('.btag[data-facet]');
+    if (!tag) return;
+    var key = tag.getAttribute('data-facet');
+    var val = tag.getAttribute('data-value');
+    if (!state[key] || state[key].indexOf(val) !== -1) return;
+    var f = FACETS.filter(function (x) { return x.key === key; })[0];
+    if (f && f.multi === false) state[key] = [val];
+    else state[key].push(val);
+    apply();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   sideWrap.addEventListener('click', function (e) {
+    var label = e.target.closest('.facet-label');
+    if (label) { toggleFacet(label); return; }
     if (!e.target.classList.contains('facet-more')) return;
     var key = e.target.closest('.facet').getAttribute('data-facet');
     expanded[key] = !expanded[key];

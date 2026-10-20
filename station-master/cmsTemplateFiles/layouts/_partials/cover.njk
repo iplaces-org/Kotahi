@@ -11,7 +11,7 @@
   </div>
   {% endif %}
   <div class="iplaces-cover-text">
-    <p class="iplaces-cover-eyebrow">{{ cmsConfig.group.name }}</p>
+    <p class="iplaces-cover-eyebrow">{{ station.browseTitle or cmsConfig.group.name }}</p>
     <h1 class="iplaces-cover-title">{{ station.title | default("iPlaces") }}</h1>
     <p class="iplaces-cover-mission">{{ station.mission | default("") }}</p>
    {# {% if current %}<p class="iplaces-cover-issue">{{ current.label }}</p>{% endif %} #}

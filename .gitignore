@@ -64,3 +64,6 @@ packages/server/scripts/local
 # R history droppings from the publishing services dirs.
 **/.Rhistory
 .Rhistory
+
+# cms-sync drift reports and live CMS copies
+cms-sync-out/
