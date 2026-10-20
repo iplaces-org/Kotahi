@@ -383,6 +383,11 @@
   id="topbar"
 >
 </div>
+{% if station.trial %}
+<div class="iplaces-trial-banner" style="width:100%;background:#b45309;color:#ffffff;text-align:center;padding:8px 16px;box-sizing:border-box;font-size:14px;line-height:1.4;font-family:inherit;">
+  {{ station.trial }}
+</div>
+{% endif %}
 <div id="sticky-menu">
 {% include "_partials/logo.njk" %}
   <input type="checkbox" id="menu-btn" /><label

@@ -1,0 +1,28 @@
+{
+  "stations": [
+    "gumpstation",
+    "wams"
+  ],
+  "stationOwned": [
+    "data/station.json",
+    "data/issues.json",
+    "data/cms*.json",
+    "data/site.json",
+    "data/articleQuery.json",
+    "content/pages/*.njk",
+    "!content/pages/browse.njk",
+    "!content/pages/archive.njk",
+    "!content/pages/page.njk",
+    "!content/pages/issue_template.njk",
+    "assets/ihs-*"
+  ],
+  "overrides": {},
+  "stationJson": {
+    "*": {
+      "hideConferencePapers": false
+    },
+    "gumpstation": {
+      "hideConferencePapers": true
+    }
+  }
+}

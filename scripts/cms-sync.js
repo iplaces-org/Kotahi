@@ -2,12 +2,18 @@
 /*
  * cms-sync: compare station-master against each station's live Kotahi CMS files.
  *
- * Only `drift` exists so far, and it is READ-ONLY: it calls the two CMS read
- * queries Flax itself uses (getActiveCmsFilesTree, getCmsFileContent) and never
- * a mutation. Plan: /mnt/project-files/planning/shared-flax-templates-plan.md
+ * drift   READ-ONLY: the two CMS read queries Flax itself uses.
+ * push    shows diffs, backs up live files, test-builds each station on the
+ *         Flax machine with the new files (fly ssh), asks "yes", writes with
+ *         updateResource, reads back, then rebuilds (KOTAHI_TOKEN) or tells you
+ *         to click Publish. Refuses files hand-edited in a CMS since the last push.
+ * verify  page count vs record count + HTTP 200 per station, after a publish.
+ * restore pushes files back from a backup folder.
+ * Plan: /mnt/project-files/planning/shared-flax-templates-plan.md
  *
  *   node scripts/cms-sync.js drift
- *   node scripts/cms-sync.js drift --groups gumpstation,wams --diff content/pages/browse.njk
+ *   node scripts/cms-sync.js push --dry-run
+ *   node scripts/cms-sync.js push layouts/_partials/cover.njk --groups wams
  *
  * Options:
  *   --server URL       Kotahi server (default https://iplaces-test-server.fly.dev)
@@ -16,7 +22,7 @@
  *   --manifest FILE    default station-master/manifest.json (built-in default if absent)
  *   --out DIR          where live copies + drift.md go (default cms-sync-out/<timestamp>)
  *   --diff PATH        also print `diff -u master live` for that file, per station
- *   KOTAHI_TOKEN env   optional bearer token, only if the reads turn out to need auth
+ *   KOTAHI_TOKEN env   bearer token (group admin); needed for rebuild, maybe for push
  *
  * Node 18+, no dependencies.
  */
@@ -44,11 +50,18 @@ const DEFAULT_MANIFEST = {
   overrides: {},
 }
 
+const USAGE = `usage (run from ~/Kotahi):
+  node scripts/cms-sync.js drift   [--groups a,b] [--diff PATH]
+  node scripts/cms-sync.js push    [PATH ...] [--groups a,b] [--dry-run] [--yes] [--force]
+  node scripts/cms-sync.js verify  [--groups a,b]
+  node scripts/cms-sync.js restore PATH ... --from cms-sync-out/<time>/live --groups a`
+
 const args = parseArgs(process.argv.slice(2))
 
 async function main() {
-  if (args._[0] !== 'drift') {
-    console.error('usage: node scripts/cms-sync.js drift [--groups a,b] [--diff PATH]')
+  const cmd = args._[0]
+  if (!['drift', 'push', 'verify', 'restore'].includes(cmd)) {
+    console.error(USAGE)
     process.exit(2)
   }
 
@@ -73,14 +86,21 @@ async function main() {
   console.log(`manifest ${fs.existsSync(manifestPath) ? manifestPath : 'built-in default'}`)
   console.log(`stations ${groups.join(', ')}\n`)
 
+  if (cmd === 'verify') return verify(groups)
+
   const allGroups = await gql(server, null, '{ groups { id name } }')
   const live = {}
+  const ids = {}
+  const groupIds = {}
 
   for (const name of groups) {
     const g = allGroups.groups.find(x => x && x.name === name)
     if (!g) throw new Error(`no group named "${name}" on ${server}`)
     process.stdout.write(`reading ${name} … `)
-    live[name] = await readLive(server, g.id)
+    const r = await readLive(server, g.id)
+    live[name] = r.files
+    ids[name] = r.ids
+    groupIds[name] = g.id
     const dir = path.join(outDir, 'live', name)
     for (const [p, content] of Object.entries(live[name])) {
       fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true })
@@ -88,6 +108,10 @@ async function main() {
     }
     console.log(`${Object.keys(live[name]).length} files`)
   }
+
+  const ctx = { server, masterDir, master, manifest, isOwned, groups, live, ids, groupIds, outDir }
+  if (cmd === 'push') return push(ctx)
+  if (cmd === 'restore') return restore(ctx)
 
   // ---- compare
   const rows = shared.map(p => {
@@ -125,6 +149,208 @@ async function main() {
   }
 }
 
+// ---------- push / restore / verify
+
+const FLAX_APP = 'iplaces-test-flax'
+const FLAX_ROOT = process.env.CMS_SYNC_FLAX_ROOT || '/app' // override only for local tests
+const STATE_FILE = 'station-master/cms-sync-state.json'
+const sha = s => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16)
+
+function restore(ctx) {
+  if (!args.from) throw new Error('restore needs --from cms-sync-out/<time>/live')
+  const read = (g, p) => {
+    const f = path.join(args.from, g, p)
+    return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : undefined
+  }
+  return push(ctx, read, { label: `backup ${args.from}`, allowOwned: true })
+}
+
+async function push(ctx, readSource, opts = {}) {
+  const { server, master, isOwned, manifest, groups, live, ids, groupIds, outDir } = ctx
+  const base = readSource || ((g, p) => master[p])
+  // station.json is station-owned, but the manifest can set named keys in it
+  // ("stationJson": {"*": {defaults, added only when missing}, "<group>": {always set}}).
+  const stationJson = readSource ? {} : stationJsonUpdates(manifest, groups, live)
+  const source = (g, p) => (p === 'data/station.json' && stationJson[g] !== undefined ? stationJson[g] : base(g, p))
+  const label = opts.label || 'station-master'
+  const requested = args._.slice(1)
+  const state = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) : {}
+
+  // ---- plan
+  const plan = {}
+  const problems = []
+  for (const g of groups) {
+    plan[g] = []
+    const candidates = requested.length ? requested : Object.keys(master).filter(p => !isOwned(p))
+    if (stationJson[g] !== undefined && !candidates.includes('data/station.json')) candidates.push('data/station.json')
+    for (const p of candidates) {
+      const want = source(g, p)
+      if (want === undefined) { if (requested.length) problems.push(`${g}: ${p} is not in ${label}`); continue }
+      const managed = p === 'data/station.json' && stationJson[g] !== undefined
+      if (isOwned(p) && !opts.allowOwned && !managed) { problems.push(`${g}: ${p} is station-owned (manifest); not pushed`); continue }
+      if ((manifest.overrides?.[g] || []).includes(p)) { console.log(`skip ${g}: ${p} (listed override)`); continue }
+      const have = live[g][p]
+      if (have === undefined) { problems.push(`${g}: ${p} does not exist in the CMS yet; create it there once (File browser), then re-run`); continue }
+      if (compare(p, want, have) === 'same') continue
+      const last = state[g]?.[p]
+      if (last && !managed && sha(have) !== last && !args.force) {
+        problems.push(`${g}: ${p} was edited in the CMS since the last push. Fold that edit into master, or re-run with --force`)
+        continue
+      }
+      plan[g].push(p)
+    }
+  }
+
+  for (const msg of problems) console.log(`! ${msg}`)
+  const total = groups.reduce((n, g) => n + plan[g].length, 0)
+  if (!total) {
+    console.log(problems.length ? '\nNothing to push (see ! lines above).' : '\nNothing to push: every requested file already matches.')
+    return
+  }
+
+  // ---- show the diffs
+  const candDir = path.join(outDir, 'candidate')
+  for (const g of groups) {
+    for (const p of plan[g]) {
+      const f = path.join(candDir, g, p)
+      fs.mkdirSync(path.dirname(f), { recursive: true })
+      fs.writeFileSync(f, source(g, p))
+      console.log(`\n===== ${g}: ${p}  (live → ${label})`)
+      try { execFileSync('diff', ['-u', path.join(outDir, 'live', g, p), f], { stdio: 'inherit' }) } catch (_) { /* differs */ }
+    }
+  }
+  console.log(`\nPlan: ${groups.map(g => `${g} ${plan[g].length} file(s)`).join(', ')}`)
+  console.log(`Backup of current live files: ${path.join(outDir, 'live')}/`)
+  if (args['dry-run']) { console.log('\n--dry-run: nothing was changed.'); return }
+
+  // ---- pre-flight: build each station with the candidate files, on the Flax machine
+  if (!args['skip-preflight']) {
+    for (const g of groups.filter(x => plan[x].length)) {
+      const files = Object.fromEntries(plan[g].map(p => [p, source(g, p)]))
+      const r = preflight(g, files)
+      console.log(`pre-flight ${g}: baseline ${r.base.pages} article pages, candidate ${r.cand.pages}, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}`)
+      if (!r.ok) {
+        console.log(r.cand.log)
+        throw new Error(`pre-flight build failed for ${g}; nothing was pushed to any station`)
+      }
+    }
+  }
+
+  if (!args.yes && !(await confirm(`Push ${total} file(s) now? Type yes: `))) {
+    console.log('Stopped; nothing was changed.')
+    return
+  }
+
+  // ---- write, then read back
+  for (const g of groups) {
+    for (const p of plan[g]) {
+      const want = source(g, p)
+      await gql(server, groupIds[g], 'mutation($id: ID!, $c: String!) { updateResource(id: $id, content: $c) { id } }', { id: ids[g][p], c: want })
+      const back = await gql(server, groupIds[g], 'query($id: ID!) { getCmsFileContent(id: $id) { content } }', { id: ids[g][p] })
+      if (compare(p, want, back.getCmsFileContent.content) !== 'same') throw new Error(`${g}: ${p} did not read back as written; stop and check the CMS`)
+      state[g] = state[g] || {}
+      state[g][p] = sha(back.getCmsFileContent.content)
+      console.log(`pushed ${g}: ${p}`)
+    }
+  }
+  fs.writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`)
+
+  // ---- rebuild
+  const changed = groups.filter(g => plan[g].length)
+  if (process.env.KOTAHI_TOKEN) {
+    for (const g of changed) {
+      const r = await gql(server, groupIds[g], 'mutation { rebuildFlaxSite(params: "{}") { status error } }')
+      console.log(`rebuild ${g}: ${r.rebuildFlaxSite.status || r.rebuildFlaxSite.error}`)
+    }
+    console.log(`\nWhen the builds finish: node scripts/cms-sync.js verify --groups ${changed.join(',')}`)
+  } else {
+    console.log(`\nNow click Publish in the CMS of: ${changed.join(', ')}`)
+    console.log(`Then: node scripts/cms-sync.js verify --groups ${changed.join(',')}`)
+  }
+  console.log(`Commit ${STATE_FILE} with the template change.`)
+}
+
+function stationJsonUpdates(manifest, groups, live) {
+  const spec = manifest.stationJson || {}
+  const out = {}
+  for (const g of groups) {
+    const raw = live[g]['data/station.json']
+    if (raw === undefined || (!spec['*'] && !spec[g])) continue
+    const cur = JSON.parse(raw)
+    const next = { ...cur }
+    for (const [k, v] of Object.entries(spec['*'] || {})) if (!(k in next)) next[k] = v
+    Object.assign(next, spec[g] || {})
+    if (canon(next) === canon(cur)) continue
+    out[g] = /\n\s+"/.test(raw) ? `${JSON.stringify(next, null, 2)}\n` : JSON.stringify(next)
+  }
+  return out
+}
+
+function preflight(g, files) {
+  const D = `/tmp/pf-${g}`
+  const lines = [
+    `rm -rf ${D} ${D}-base-out ${D}-out && cp -r ${FLAX_ROOT}/src/${g} ${D}`,
+    `cd ${FLAX_ROOT}`,
+    `npx eleventy --pathprefix=${g} --input=${D} --output=${D}-base-out > ${D}-base.log 2>&1; echo BASE_EXIT=$?`,
+    `echo BASE_PAGES=$(ls ${D}-base-out/articles 2>/dev/null | wc -l)`,
+  ]
+  for (const [p, content] of Object.entries(files)) {
+    lines.push(`echo ${Buffer.from(content).toString('base64')} | base64 -d > '${D}/${p}'`)
+  }
+  lines.push(
+    `npx eleventy --pathprefix=${g} --input=${D} --output=${D}-out > ${D}.log 2>&1; echo CAND_EXIT=$?`,
+    `echo CAND_PAGES=$(ls ${D}-out/articles 2>/dev/null | wc -l)`,
+    `test -f ${D}-out/index.html && echo CAND_INDEX=1`,
+    `echo ---LOG; grep -iE "error|problem" ${D}.log | head -20`,
+    `rm -rf ${D} ${D}-base-out ${D}-out`,
+  )
+  const out = flaxRun(lines.join('\n'))
+  const num = k => Number((out.match(new RegExp(`${k}=(\\d+)`)) || [])[1])
+  const base = { exit: num('BASE_EXIT'), pages: num('BASE_PAGES') }
+  const cand = { exit: num('CAND_EXIT'), pages: num('CAND_PAGES'), index: /CAND_INDEX=1/.test(out), log: out.split('---LOG')[1] || out }
+  const ok = cand.exit === 0 && cand.index && cand.pages >= base.pages
+  return { ok, base, cand }
+}
+
+// Ship a script to the Flax machine in base64 chunks, then run it.
+function flaxRun(script) {
+  const b64 = Buffer.from(script).toString('base64')
+  const tag = `/tmp/cms-sync-${process.pid}`
+  fly(`sh -c 'rm -f ${tag}.b64'`)
+  for (let i = 0; i < b64.length; i += 60000) fly(`sh -c 'printf %s ${b64.slice(i, i + 60000)} >> ${tag}.b64'`)
+  return fly(`sh -c 'base64 -d ${tag}.b64 > ${tag}.sh && sh ${tag}.sh; rm -f ${tag}.b64 ${tag}.sh'`)
+}
+
+function fly(cmd) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return execFileSync('fly', ['ssh', 'console', '-a', FLAX_APP, '-C', cmd], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch (err) {
+      if (attempt >= 2) throw new Error(`fly ssh failed: ${(err.stderr || err.message).toString().slice(0, 400)}`)
+    }
+  }
+}
+
+async function verify(groups) {
+  let bad = 0
+  for (const g of groups) {
+    const out = fly(`sh -c 'echo PAGES=$(ls ${FLAX_ROOT}/public/${g}/articles 2>/dev/null | wc -l); echo IDS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l); test -f ${FLAX_ROOT}/public/${g}/index.html && echo INDEX=1'`)
+    const pages = Number((out.match(/PAGES=(\d+)/) || [])[1])
+    const recs = Number((out.match(/IDS=(\d+)/) || [])[1])
+    let code = 0
+    try { code = (await fetch(`https://${FLAX_APP}.fly.dev/${g}/`)).status } catch (_) { /* leave 0 */ }
+    const ok = code === 200 && /INDEX=1/.test(out) && pages === recs
+    if (!ok) bad++
+    console.log(`${ok ? 'OK  ' : 'FAIL'} ${g}: HTTP ${code}, ${pages} article pages for ${recs} records${/INDEX=1/.test(out) ? '' : ', no index.html'}`)
+  }
+  if (bad) process.exitCode = 1
+}
+
+function confirm(question) {
+  const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise(resolve => rl.question(question, a => { rl.close(); resolve(a.trim() === 'yes') }))
+}
+
 // ---------- live CMS reads (the same two queries Flax uses)
 
 async function readLive(server, groupId) {
@@ -141,6 +367,8 @@ async function readLive(server, groupId) {
   walk(tree, '')
 
   const out = {}
+  const ids = {}
+  for (const f of files) ids[f.path] = f.fileId
   await pool(files, 6, async f => {
     const r = await gql(
       server,
@@ -150,7 +378,7 @@ async function readLive(server, groupId) {
     )
     out[f.path] = r.getCmsFileContent.content ?? ''
   })
-  return out
+  return { files: out, ids }
 }
 
 async function gql(server, groupId, query, variables) {
@@ -301,7 +529,9 @@ function renderReport({ server, masterDir, groups, rows, extras, manifest }) {
 function parseArgs(argv) {
   const out = { _: [] }
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith('--')) out[argv[i].slice(2)] = argv[i + 1]?.startsWith('--') ? true : argv[++i]
+    const BOOL = ['dry-run', 'yes', 'force', 'skip-preflight']
+    const key = argv[i].slice(2)
+    if (argv[i].startsWith('--')) out[key] = BOOL.includes(key) ? true : argv[++i]
     else out._.push(argv[i])
   }
   return out
