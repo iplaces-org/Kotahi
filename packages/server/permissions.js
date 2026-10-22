@@ -4,6 +4,7 @@ const { cachedGet } = require('./services/queryCache.service')
 
 const Channel = require('./models/channel/channel.model')
 const Config = require('./models/config/config.model')
+const Invitation = require('./models/invitation/invitation.model')
 const Message = require('./models/message/message.model')
 const Manuscript = require('./models/manuscript/manuscript.model')
 const Review = require('./models/review/review.model')
@@ -447,6 +448,47 @@ const manuscriptIsPublished = rule({
   return !!manuscript.published
 })
 
+// iplaces Patch 20: assignUserAsAuthor only for the logged-in user, with an
+// open AUTHOR invitation to that same manuscript (not answered, and not
+// addressed to someone else). Was isAuthenticated: any logged-in user could
+// add anyone to any manuscript's author team.
+const userHasOpenAuthorInvitation = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+  ctx,
+) => {
+  if (!ctx.userId || args.userId !== ctx.userId || !args.invitationId)
+    return false
+
+  const invitation = await Invitation.query().findById(args.invitationId)
+
+  return (
+    !!invitation &&
+    invitation.invitedPersonType === 'AUTHOR' &&
+    invitation.manuscriptId === args.manuscriptId &&
+    invitation.status === 'UNANSWERED' &&
+    !invitation.responseDate &&
+    (!invitation.userId || invitation.userId === ctx.userId)
+  )
+})
+
+// iplaces Patch 21: authors may not change a version whose status is
+// 'published'. Editors, group managers and admins still can (and unpublishing
+// is theirs too). Authors who need a change ask an editor, or start a new
+// version where the station allows it.
+const manuscriptIsNotPublished = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+) => {
+  if (!args.id) return false
+
+  const manuscript = await Manuscript.query()
+    .select('status')
+    .findById(args.id)
+
+  return !!manuscript && manuscript.status !== 'published'
+})
+
 const userIsCurrentUser = rule({ cache: 'strict' })(async (
   parent,
   args,
@@ -608,7 +650,7 @@ const permissions = {
     archiveManuscript: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     archiveManuscripts: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     assignTeamEditor: deny, // Never used
-    assignUserAsAuthor: isAuthenticated, // TODO require the invitation ID to be sent in this mutation
+    assignUserAsAuthor: userHasOpenAuthorInvitation, // iplaces Patch 20
     completeComment: isAuthenticated,
     completeComments: isAuthenticated,
     // createDocxToHTMLJob seems to be exposed from xsweet???
@@ -686,7 +728,7 @@ const permissions = {
     ),
     submitManuscript: and(
       or(
-        userIsAuthorOfManuscript,
+        and(userIsAuthorOfManuscript, manuscriptIsNotPublished), // iplaces Patch 21
         userIsEditor,
         userIsGm,
         userIsGroupAdmin,
@@ -712,7 +754,7 @@ const permissions = {
     updateInvitationResponse: allow,
     updateInvitationStatus: allow,
     updateManuscript: or(
-      userIsAuthorOfManuscript,
+      and(userIsAuthorOfManuscript, manuscriptIsNotPublished), // iplaces Patch 21
       userIsEditor,
       userIsGm,
       userIsGroupAdmin,
