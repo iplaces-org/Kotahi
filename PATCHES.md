@@ -91,6 +91,32 @@ upper-casing a final `x`.
 Re-pin `orcid.controllers.js` at every base-image bump (diff vs the image's
 plain copy must show only the Patch 18 lines).
 
+## Patch 19 — no author emails on public read paths (2026-10-22)
+
+### What it does
+The public GraphQL queries `manuscriptsPublishedSinceDate`,
+`publishedManuscript` and `publishedManuscripts` (all `allow`, no login)
+returned the raw submission JSON, so every `$authors` email was readable by
+anyone with curl. The station authors typeahead (recipe 19) and the Flax
+article pages (`mailto:` in `article-preview.njk`) both read these queries.
+
+- `packages/server/controllers/manuscript/manuscript.controllers.js`:
+  `stripEmails` / `withoutEmails` drop every key containing "email", at any
+  depth, from the submission those three controllers return. Rows keep name,
+  ORCID and affiliation. Typeahead picks now arrive with a blank email.
+- `packages/server/permissions.js`: the generic `manuscript(id)` query no
+  longer serves a published record to anonymous callers
+  (`and(isAuthenticated, manuscriptIsPublished)`); the public article view
+  uses `publishedManuscript`, which is stripped.
+
+Not affected: editors/authors (role-gated queries), DataCite (reads the DB at
+publish), notification emails (server-side). Existing Flax pages keep their
+`mailto:` links until each station is rebuilt.
+
+Residual: a logged-in user with no role can still call `manuscript(id)` on a
+published record and see its emails. To close that too, drop the
+`and(isAuthenticated, manuscriptIsPublished)` line from the `manuscript` rule.
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
