@@ -874,6 +874,39 @@ const manuscripts = async () => {
     .orderBy('created', 'desc')
 }
 
+// iplaces Patch 19: the public read paths (manuscriptsPublishedSinceDate,
+// publishedManuscript, publishedManuscripts) never carry email addresses.
+// Drops every key containing "email", at any depth, from the submission, so
+// $authors rows keep name, ORCID and affiliation only. Feeds the station
+// authors typeahead and the Flax article pages. Editors and authors still see
+// emails through their role-gated queries; DOI registration reads the DB.
+const stripEmails = value => {
+  if (Array.isArray(value)) return value.map(stripEmails)
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !/e-?mail/i.test(key))
+        .map(([key, v]) => [key, stripEmails(v)]),
+    )
+  }
+
+  return value
+}
+
+const withoutEmails = manuscript => {
+  if (!manuscript?.submission) return manuscript
+
+  const submission =
+    typeof manuscript.submission === 'string'
+      ? JSON.parse(manuscript.submission)
+      : manuscript.submission
+
+  // eslint-disable-next-line no-param-reassign
+  manuscript.submission = stripEmails(submission)
+  return manuscript
+}
+
 const manuscriptsPublishedSinceDate = async (
   startDate,
   limit,
@@ -909,7 +942,7 @@ const manuscriptsPublishedSinceDate = async (
   if (limit) query.limit(limit)
   if (offset) query.offset(offset)
 
-  return query
+  return (await query).map(withoutEmails) // iplaces Patch 19
 }
 
 // TODO This is overcomplicated, trying to do three things at once (find manuscripts
@@ -1141,7 +1174,9 @@ const getPublishableSubmissionFiles = async manuscript => {
 }
 
 const publishedManuscript = async id => {
-  return Manuscript.query().findById(id).whereNotNull('published')
+  return withoutEmails(
+    await Manuscript.query().findById(id).whereNotNull('published'),
+  ) // iplaces Patch 19
 }
 
 const publishedManuscriptDecisions = async (manuscript, userId) => {
@@ -1208,7 +1243,7 @@ const publishedManuscripts = async (sort, offset, limit, groupId) => {
 
   return {
     totalCount,
-    manuscripts: res,
+    manuscripts: res.map(withoutEmails), // iplaces Patch 19
   }
 }
 

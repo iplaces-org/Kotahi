@@ -559,7 +559,9 @@ const permissions = {
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
-      manuscriptIsPublished,
+      // iplaces Patch 19: published records are public via publishedManuscript
+      // (emails stripped); the full record, emails included, needs a login.
+      and(isAuthenticated, manuscriptIsPublished),
       userIsEditor,
       userIsAuthorOfManuscript,
       userIsReviewerOrInvitedReviewerOfTheManuscript,
