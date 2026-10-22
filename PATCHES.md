@@ -154,6 +154,25 @@ republishes. After an unpublish (status `unpublished`) authors can edit again.
 status, so it stays read-only to authors unless the station sets
 `allowAuthorsSubmitNewVersion` (status becomes `revising`).
 
+## Patch 22 — a new version stays off the public site until published (2026-10-22)
+
+### What it does
+Kotahi's `createNewVersion` clones the old version, published date included,
+and Flax builds each record from its newest version that has a published
+date. So when an author started a new version of a published record (station
+setting "allow authors to submit a new version"), their unreviewed edits went
+public at the next station rebuild.
+
+- `packages/server/controllers/manuscript/manuscript.controllers.js`:
+  - `createNewVersion` clears `published` on the new version. It gets a date
+    again only when an editor publishes it.
+  - `manuscriptsPublishedSinceDate` serves the newest *published* version of
+    each record, and leaves a record out when a version newer than that one
+    was unpublished (an unpublish never brings back an older version).
+
+The article page keeps showing the last published version while the new one is
+in review. Publishing the new version replaces it as before.
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
