@@ -45,6 +45,13 @@ const RegisterInfoString = styled.p`
   text-align: center;
 `
 
+const PrivacyNote = styled.p`
+  color: #33444d;
+  font-size: 0.85rem;
+  margin: 0;
+  text-align: center;
+`
+
 const LoginButton = styled(Button).attrs({
   'data-testid': 'login-button',
 })`
@@ -177,6 +184,17 @@ const Login = () => {
           <RegisterLinkButton as="a" href={nextpage}>
             {t('loginPage.Register with ORCID')}
           </RegisterLinkButton>
+          <PrivacyNote>
+            How we handle your data: see the{' '}
+            <a
+              href="https://iplacesalliance.org/privacy/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              iPlaces privacy notice
+            </a>
+            .
+          </PrivacyNote>
         </Content>
       </Centered>
     </Container>
