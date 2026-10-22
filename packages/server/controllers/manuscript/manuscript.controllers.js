@@ -383,7 +383,20 @@ const createNewVersion = async id => {
     groupId: manuscript.groupId,
   })
 
-  return manuscript.createNewVersion()
+  const newVersion = await manuscript.createNewVersion()
+
+  // iplaces Patch 22: the model clones the old version's published date onto
+  // the new one, so an author's unreviewed new version would go public at the
+  // next station rebuild. A new version is unpublished until an editor
+  // publishes it; the site keeps showing the last published version.
+  if (newVersion.published) {
+    await Manuscript.query()
+      .findById(newVersion.id)
+      .patch({ published: null })
+    newVersion.published = null
+  }
+
+  return newVersion
 }
 
 const deleteManuscript = async id => {
@@ -923,10 +936,13 @@ const manuscriptsPublishedSinceDate = async (
 
   if (!group) throw new Error(`Group with name '${groupName}' not found`)
 
+  // iplaces Patch 22: the latest *published* version of each record, not the
+  // latest version, so a new version in progress never reaches the site.
   const subQuery = Manuscript.query()
     .select('short_id')
     .max('created as latest_created')
     .where('group_id', group.id)
+    .whereNotNull('published')
     .groupBy('short_id')
 
   const query = Manuscript.query()
@@ -936,6 +952,16 @@ const manuscriptsPublishedSinceDate = async (
     .andWhere('m.created', '=', raw('sub.latest_created'))
     .whereNotNull('m.published')
     .where('m.group_id', group.id)
+    // iplaces Patch 22: a record unpublished after its last published version
+    // stays off the site (older published versions do not reappear).
+    .whereNotExists(
+      Manuscript.query()
+        .from('manuscripts as u')
+        .whereRaw('u.group_id = m.group_id')
+        .whereRaw('u.short_id = m.short_id')
+        .where('u.status', 'unpublished')
+        .whereRaw('u.created > m.created'),
+    )
     .orderBy('m.published', 'desc')
 
   if (startDate) query.where('m.published', '>=', new Date(startDate))
