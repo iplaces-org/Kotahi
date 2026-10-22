@@ -117,6 +117,43 @@ Residual: a logged-in user with no role can still call `manuscript(id)` on a
 published record and see its emails. To close that too, drop the
 `and(isAuthenticated, manuscriptIsPublished)` line from the `manuscript` rule.
 
+## Patch 20 — assignUserAsAuthor needs an open invitation (2026-10-22)
+
+### What it does
+`assignUserAsAuthor(manuscriptId, userId, invitationId)` was `isAuthenticated`
+(upstream TODO), so any logged-in user could put anyone on any manuscript's
+author team. The controller only checked that the invitation existed and was
+unanswered, not that it was for that manuscript, or for an author.
+
+- `packages/server/permissions.js`: new rule `userHasOpenAuthorInvitation`.
+  Passes only when `userId` is the caller, and the invitation is an `AUTHOR`
+  invitation for the same `manuscriptId`, still `UNANSWERED` with no
+  `responseDate`, and not addressed to a different user.
+
+Not affected: the normal "accept author invitation" link (the client already
+sends the caller's id and the invitation's own manuscript), Patch 18 ORCID
+linking (server-side, no GraphQL), editors adding authors on the form.
+
+## Patch 21 — authors cannot edit a published version (2026-10-22)
+
+### What it does
+`updateManuscript` and `submitManuscript` let any author-team member change a
+version that is already `published`, including unpublishing it (Patch 16's
+`{status:'unpublished'}` path). Patch 18 puts every ORCID-matched author on
+the team, so that is now a lot of people.
+
+- `packages/server/permissions.js`: new rule `manuscriptIsNotPublished`
+  (status of the version named by `args.id` is not `published`). The author
+  branch of both mutations is now
+  `and(userIsAuthorOfManuscript, manuscriptIsNotPublished)`. Editors, group
+  managers, group admins and admins are unchanged.
+
+Authors who need a correction ask the station's editor, who edits and
+republishes. After an unpublish (status `unpublished`) authors can edit again.
+`createNewVersion` is unchanged, but a new version copies the old one's
+status, so it stays read-only to authors unless the station sets
+`allowAuthorsSubmitNewVersion` (status becomes `revising`).
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
