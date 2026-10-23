@@ -24,7 +24,38 @@
         <meta property="og:type" content="website">
         <meta name="twitter:card" content="summary_large_image">
       <meta property="og:url" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">
-      
+
+{# ---- Google Scholar (Highwire) citation tags, article pages only.
+     citation_journal_title uses station.seriesTitle once a series has its own
+     name, else station.title; citation_issn appears once station.issn is set.
+     PDF tag follows the same accessLevel gate as the Download button in side.njk. #}
+{% if article.parsedSubmission.$title %}
+{% set ctAlRaw = article.parsedSubmission.accessLevel %}
+{% set ctAl = ((ctAlRaw.value | default(ctAlRaw)) | default("")) | string | lower | trim %}
+{% set ctDate = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else article.parsedSubmission.datePublished %}
+        <meta name="citation_title" content="{{ article.parsedSubmission.$title | striptags | trim | escape }}">
+{% for au in article.headerInfo.authorNames %}
+        <meta name="citation_author" content="{{ ([au.lastName, ([au.firstName, au.middleName] | select | join(' '))] | select | join(', ')) | trim | escape }}">
+{% endfor %}
+{% if ctDate %}
+        <meta name="citation_publication_date" content="{{ ctDate | string | replace('-', '/') }}">
+{% endif %}
+{% if article.parsedSubmission.$doi %}
+        <meta name="citation_doi" content="{{ article.parsedSubmission.$doi }}">
+{% endif %}
+        <meta name="citation_journal_title" content="{{ (station.seriesTitle or station.title) | escape }}">
+{% if station.issn %}
+        <meta name="citation_issn" content="{{ station.issn }}">
+{% endif %}
+{% if station.hostOrg.name %}
+        <meta name="citation_publisher" content="{{ station.hostOrg.name | escape }}">
+{% endif %}
+        <meta name="citation_abstract_html_url" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">
+{% if ctAl == "" or ctAl == "public" %}
+        <meta name="citation_pdf_url" content="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ article.shortId }}">
+{% endif %}
+{% endif %}
+
 
 {% macro lcLabelGraphs(lc) %}{% if lc and lc.label %}{% for lbl in lc.label %}{
 "@type": "CreativeWork",
