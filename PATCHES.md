@@ -310,8 +310,24 @@ When Coko publishes a newer `cokoapps/kotahi-server` image:
    - this file's "Patch 1" heading references and the snippet above
    `scripts/bump-image-tag.sh <new-tag>` does both edits for you.
 3. Commit (`chore: bump kotahi-server image to <new-tag>`).
-4. Deploy with `scripts/deploy-iplaces-server.sh` and confirm all guards pass.
-5. Re-verify a funded record reaches DataCite with the ROR (the patch's whole
+4. Permission check (Patch 26), before any deploy:
+   `node scripts/check-permission-rules.js <new-tag>` (needs
+   `git fetch upstream --tags`). It must print `OK`.
+   - **NO RULE** lines: eLife added a server action; until it has a rule in
+     `permissions.js` anyone can call it without logging in. Add a rule
+     matching the page that uses it (see the Patch 26 groups).
+   - **NOT IN SCHEMA** lines: eLife removed or switched off an action we
+     have a rule for; the server will not start (HTTP 502) until that rule
+     is removed.
+   The deploy script runs the same check as a pre-flight guard.
+5. Drop what eLife fixed. For each iPlaces patch in `permissions.js` and the
+   controller overlays (Patches 19 to 26), check whether the new upstream
+   copy now does the same thing (for example, a rule we added now exists
+   upstream, or upstream's `addReviewer` checks the invitation). If it
+   does, take upstream's version and delete ours and its PATCHES.md entry,
+   so later merges get smaller. Note what was dropped in the commit message.
+6. Deploy with `scripts/deploy-iplaces-server.sh` and confirm all guards pass.
+7. Re-verify a funded record reaches DataCite with the ROR (the patch's whole
    purpose) — do not assume a green deploy means the ROR is correct.
 
 ---

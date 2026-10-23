@@ -115,6 +115,24 @@ preflight() {
     fail "Patch 12 marker (refreshLocalContextWriteback) missing from local controller source -- stale copy?"
   fi
 
+  # Patch 26: every GraphQL operation in the base image's schema must have a
+  # rule in permissions.js (no rule = open to anyone), and every rule must
+  # name an operation in that schema (a stray rule = server will not start,
+  # HTTP 502). Needs the upstream tag locally: git fetch upstream --tags
+  local base_tag
+  base_tag="$(grep -E '^FROM ' "$DOCKERFILE" | sed -E 's/.*:([^:[:space:]]+)[[:space:]]*$/\1/')"
+  if git rev-parse -q --verify "refs/tags/$base_tag" >/dev/null; then
+    if node scripts/check-permission-rules.js "$base_tag" >/tmp/iplaces-perm-check.txt 2>&1; then
+      ok "permissions.js matches the $base_tag schema"
+    else
+      fail "permissions.js does not match the $base_tag schema:"
+      sed 's/^/        /' /tmp/iplaces-perm-check.txt
+    fi
+  else
+    ylw "  WARN: upstream tag $base_tag not found locally, permission check skipped."
+    ylw "        Run: git fetch upstream --tags   (then re-run this script)"
+  fi
+
   # A stray root ./fly.toml is the classic foot-gun (wrong port / [env] /
   # [processes]). We always deploy with -c "$CONFIG", but warn loudly.
   if [[ -f "fly.toml" ]]; then
