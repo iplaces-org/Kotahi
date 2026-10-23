@@ -48,6 +48,7 @@ export const TextInput = props => {
     isReadOnly,
     isClearable,
     showMiddleName,
+    hideEmail,
     isRoRMulti,
     showOrcidId,
     validate,

@@ -78,12 +78,11 @@ export const loadStationPeople = async (client, groupName) => {
       const existing = seen.get(key)
 
       if (!existing) {
-        seen.set(key, { ...a, orcid: bareOrcid(a.orcid) })
+        seen.set(key, { ...a, email: '', orcid: bareOrcid(a.orcid) })
       } else {
         if (!existing.orcid && a.orcid) existing.orcid = bareOrcid(a.orcid)
         if ((!existing.ror || !existing.ror.length) && a.ror && a.ror.length)
           existing.ror = a.ror
-        if (!existing.email && a.email) existing.email = a.email
         if (!existing.middleName && a.middleName)
           existing.middleName = a.middleName
       }
