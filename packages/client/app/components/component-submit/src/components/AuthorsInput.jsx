@@ -113,6 +113,7 @@ const AuthorsInput = ({
   fullWidth = false, // should the component be the full width of the parent
   onChange,
   requireEmail = false, // is the email address required
+  hideEmail = false, // iplaces: leave the email address off the form
   value,
   overrideButtonLabel,
   rorMenuPlacement, // ROR affiliation dropdown position
@@ -139,6 +140,7 @@ const AuthorsInput = ({
    */
   const authorFieldOptions = {
     requireEmail,
+    hideEmail,
     showMiddleName,
     showOrcidId,
     validationOrcid,
@@ -154,7 +156,7 @@ const AuthorsInput = ({
     const validate = async () => {
       const validationPerField = await Promise.all(
         cleanedVal.map(async author =>
-          validateAuthor(author, { validationOrcid, requireEmail }),
+          validateAuthor(author, { validationOrcid, requireEmail, hideEmail }),
         ),
       )
 
@@ -285,6 +287,7 @@ AuthorsInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   overrideButtonLabel: PropTypes.string,
   requireEmail: PropTypes.bool,
+  hideEmail: PropTypes.bool,
   rorMenuPlacement: PropTypes.oneOf(['bottom', 'top', 'auto']),
   showMiddleName: PropTypes.bool,
   isRoRMulti: PropTypes.bool,
@@ -294,7 +297,7 @@ AuthorsInput.propTypes = {
       PropTypes.shape({
         firstName: PropTypes.string.isRequired,
         lastName: PropTypes.string.isRequired,
-        email: PropTypes.string.isRequired,
+        email: PropTypes.string,
         middleName: PropTypes.string,
         ror: PropTypes.shape({}),
         orcid: PropTypes.string,

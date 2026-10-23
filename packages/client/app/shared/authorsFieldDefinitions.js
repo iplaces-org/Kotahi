@@ -16,6 +16,7 @@ const isMalformedEmail = val =>
 export const getAuthorFields = (options = {}) => {
   const {
     requireEmail, // makes the email value required
+    hideEmail, // iplaces: omits the `email` field entirely
     showMiddleName, // shows the `middleName` field, otherwise hidden by default
     showOrcidId, // shows the `orcid` field, otherwise hidden by default
   } = options
@@ -42,14 +43,18 @@ export const getAuthorFields = (options = {}) => {
       placeholder: 'Enter last name…',
       validate: required,
     },
-    {
-      name: 'email',
-      label: 'Email address',
-      placeholder: 'Enter email address…',
-      validate: requireEmail
-        ? val => required(val) || isMalformedEmail(val)
-        : isMalformedEmail,
-    },
+    ...(hideEmail
+      ? []
+      : [
+          {
+            name: 'email',
+            label: 'Email address',
+            placeholder: 'Enter email address…',
+            validate: requireEmail
+              ? val => required(val) || isMalformedEmail(val)
+              : isMalformedEmail,
+          },
+        ]),
     {
       name: 'ror',
       label: 'ROR',
@@ -79,9 +84,9 @@ export const validateAuthors = (authors, options = {}) =>
 
 export const validateAuthor = async (
   author,
-  { validationOrcid, requireEmail },
+  { validationOrcid, requireEmail, hideEmail },
 ) => {
-  const fields = getAuthorFields({ requireEmail })
+  const fields = getAuthorFields({ requireEmail, hideEmail })
   return Promise.all(
     fields.map(async f => {
       if (f.name === 'orcid') {

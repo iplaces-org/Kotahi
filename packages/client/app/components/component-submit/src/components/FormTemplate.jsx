@@ -595,6 +595,7 @@ const FormTemplate = ({
                             element.component === 'Select' &&
                             element.name === 'submission.$customStatus'
                           }
+                          hideEmail={['AuthorsInput', 'StationAuthorsInput'].includes(element.component)} // iplaces: no author emails on forms
                           isRoRMulti={['AuthorsInput', 'StationAuthorsInput'].includes(element.component)}
                           key={`validate-${element.id}`}
                           name={element.name}
