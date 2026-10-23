@@ -5,5 +5,5 @@
 FROM alpine:3.20
 RUN echo "" && \
     echo "STOP: wrong branch for a client deploy." && \
-    echo "Run: cd ~/Kotahi && git checkout repeatable-group-spike && git pull && cd packages/client && fly deploy" && \
+    echo "Run instead: cd ~/Kotahi && ./scripts/deploy-iplaces-client.sh" && \
     echo "" && exit 1
