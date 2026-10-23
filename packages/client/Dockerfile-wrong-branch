@@ -1,0 +1,9 @@
+# Guard: this branch (iplaces-prod-config) carries an old 2025.09.30 client
+# tree. Building it caused the 2026-10-22 ORCID login loop. The live client
+# is built from branch repeatable-group-spike, whose fly.toml uses
+# Dockerfile-production as normal.
+FROM alpine:3.20
+RUN echo "" && \
+    echo "STOP: wrong branch for a client deploy." && \
+    echo "Run: cd ~/Kotahi && git checkout repeatable-group-spike && git pull && cd packages/client && fly deploy" && \
+    echo "" && exit 1
