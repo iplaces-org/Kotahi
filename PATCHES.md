@@ -250,6 +250,17 @@ of `Query`, `Mutation` and `Subscription`:
 - the rest (citations, references, chat, notifications, docx import, OpenAI,
   Local Contexts search): any logged-in user.
 
+Fix (same night): a rule for a field that is not in the running schema
+makes graphql-shield throw at startup ("Shield cannot find them in your
+schema"), and the server never listens (HTTP 502). The first version of this
+patch listed the eight `reference` and `payloadVerifier` queries
+(`checkApiPayload`, `formatCitation`, `getReferenceFromDoi`, ...), whose
+`.graphql` files exist upstream but are commented out of
+`api/graphql/index.js`, so they are not in the schema. Those rules are
+removed. The check must read the `typeDefFilePaths` list in
+`api/graphql/index.js`, not every `.graphql` file. `team`/`teams` come from
+@coko/server's own team model and are in the schema.
+
 After an upstream bump, re-run the check that every `Query`, `Mutation` and
 `Subscription` field in `api/**/*.graphql` has an entry here; a new upstream
 operation is open to anyone until it does. Plugins mounted at `/custom` can
