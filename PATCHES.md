@@ -227,7 +227,7 @@ were `isAuthenticated` for any file id. New rule `userCanChangeFile`:
 
 ### What it does
 graphql-shield's default for an operation missing from `permissions.js` is
-`allow`, with no login. Upstream 2026.10.12 leaves 58 operations unlisted,
+`allow`, with no login. Upstream 2026.10.12 leaves 60 operations unlisted,
 including `deleteResource`, `updateResource`, `renameResource` and
 `addResourceToFolder` (station CMS files), `generateNewToken` (API tokens),
 the email-template mutations, `removeInvitation`, `getEmailInvitedReviewers`
