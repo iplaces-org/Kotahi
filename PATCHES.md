@@ -173,6 +173,88 @@ public at the next station rebuild.
 The article page keeps showing the last published version while the new one is
 in review. Publishing the new version replaces it as before.
 
+## Patch 23 — author emails need a role on the record (2026-10-23)
+
+### What it does
+Closes the residual gap left by Patch 19.
+
+- `packages/server/permissions.js`: the `manuscript(id)` query no longer has
+  the `and(isAuthenticated, manuscriptIsPublished)` branch, so a logged-in
+  user with no role on a published record cannot read it (or its author
+  emails). Group managers, group admins, admins, the record's editors,
+  authors and reviewers are unchanged. The now-unused `manuscriptIsPublished`
+  rule is removed. Every client page that uses `manuscript(id)` is a role
+  page (submit, review, decision, production); the public article view uses
+  `publishedManuscript`, which Patch 19 strips.
+- The top-level `manuscripts` query (every record of every group, drafts and
+  emails included) was open to any logged-in user. The client never calls
+  it; it is now admin only.
+
+## Patch 24 — invitation and reviewer mutations (2026-10-23)
+
+### What it does
+- `updateInvitationStatus` was `allow`. Declining (status `REJECTED`, no
+  `userId`) stays open, because the decline link in the invitation email
+  works without a login. Accepting needs the logged-in invitee
+  (`userId` = caller), and the invitation must still be `UNANSWERED` and not
+  addressed to someone else. Admins can still do either.
+- `addEmailToBlacklist` was `allow`. Now only for an address whose invitation
+  to a record in that group was declined with "do not contact" (the decline
+  page saves that reason before it calls this), or for editors, group
+  managers, group admins and admins.
+- `addReviewer` was `isAuthenticated`, so any logged-in user could put anyone
+  on any record's reviewer team, and reviewers can read the whole record.
+  Now editors, group managers, group admins and admins, or the invitee
+  accepting their own open `REVIEWER`/`COLLABORATIVE_REVIEWER` invitation
+  to that record (same shape as Patch 20 for authors).
+
+## Patch 25 — file changes need a role on the file's record (2026-10-23)
+
+### What it does
+`deleteFile`, `deleteFiles`, `updateFile` (and `updateTagsFile`, see Patch 26)
+were `isAuthenticated` for any file id. New rule `userCanChangeFile`:
+
+- a record's file: its editors, the record's group managers and group
+  admins, and its authors while that version is not published (as Patch 21);
+- a file on a review (review attachments, decision files): the above editors
+  and managers, the review's author, or a member of the record's reviewer or
+  collaborative reviewer team;
+- any other file (logos, favicon, CMS and export-template assets): group
+  managers and group admins of the current group;
+- admins: everything. `deleteFiles` needs every id to pass.
+
+## Patch 26 — every GraphQL operation has a rule (2026-10-23)
+
+### What it does
+graphql-shield's default for an operation missing from `permissions.js` is
+`allow`, with no login. Upstream 2026.10.12 leaves 60 operations unlisted,
+including `deleteResource`, `updateResource`, `renameResource` and
+`addResourceToFolder` (station CMS files), `generateNewToken` (API tokens),
+the email-template mutations, `removeInvitation`, `getEmailInvitedReviewers`
+(reviewer emails), `getManuscriptsData` (record export) and `openAi`.
+
+Each now has an explicit rule, under an `iplaces Patch 26` comment in each
+of `Query`, `Mutation` and `Subscription`:
+
+- read-only site and CMS queries stay `allow` (`cmsLayout`, `cmsPage(s)`,
+  `getActiveCmsFilesTree`, `getCmsFilesTree`, `getCmsFileContent`,
+  `getFoldersList`, `flaxHealthCheck`, `groupByName`, `oldConfig`), because
+  Flax and logged-out pages may read them;
+- CMS file mutations, `generateNewToken`, `checkApiPayload`: group admins and
+  admins (as the existing CMS page mutations);
+- email templates, COAR inbox: group managers, group admins, admins;
+- editor actions (invitations, tasks, proofing, collaborative reviewers,
+  article templates, record export): editors, group managers, group admins,
+  admins;
+- `updateLanguage`: the user themselves, group admins, admins;
+- the rest (citations, references, chat, notifications, docx import, OpenAI,
+  Local Contexts search): any logged-in user.
+
+After an upstream bump, re-run the check that every `Query`, `Mutation` and
+`Subscription` field in `api/**/*.graphql` has an entry here; a new upstream
+operation is open to anyone until it does. Plugins mounted at `/custom` can
+add operations too.
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:

@@ -438,16 +438,6 @@ const userHasRoleInManuscriptOfFile = rule({ cache: 'strict' })(async (
   return cachedGet(`userHasRoleInMsFamily:${ctx.userId}:${manuscript.id}`)
 })
 
-const manuscriptIsPublished = rule({
-  cache: 'strict',
-})(async (parent, args) => {
-  const manuscript = await Manuscript.query()
-    .select('published')
-    .findById(args.id)
-
-  return !!manuscript.published
-})
-
 // iplaces Patch 20: assignUserAsAuthor only for the logged-in user, with an
 // open AUTHOR invitation to that same manuscript (not answered, and not
 // addressed to someone else). Was isAuthenticated: any logged-in user could
@@ -482,11 +472,161 @@ const manuscriptIsNotPublished = rule({ cache: 'strict' })(async (
 ) => {
   if (!args.id) return false
 
-  const manuscript = await Manuscript.query()
-    .select('status')
-    .findById(args.id)
+  const manuscript = await Manuscript.query().select('status').findById(args.id)
 
   return !!manuscript && manuscript.status !== 'published'
+})
+
+// iplaces Patch 24: updateInvitationStatus was `allow`, so anyone holding an
+// invitation id could mark it ACCEPTED for any userId. Declining stays open
+// (the decline link in the invitation email works without a login), but
+// accepting needs the logged-in invitee, on an invitation that is still
+// unanswered and not addressed to someone else.
+const userCanRespondToInvitation = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+  ctx,
+) => {
+  if (!args.id) return false
+  const invitation = await Invitation.query().findById(args.id)
+  if (!invitation || invitation.status !== 'UNANSWERED') return false
+
+  if (args.status === 'REJECTED') return !args.userId
+
+  return (
+    args.status === 'ACCEPTED' &&
+    !!ctx.userId &&
+    args.userId === ctx.userId &&
+    (!invitation.userId || invitation.userId === ctx.userId)
+  )
+})
+
+// iplaces Patch 24: addEmailToBlacklist was `allow` (anyone could stop a
+// station from emailing any address). Now only for an address whose
+// invitation to a record in that group was declined with "do not contact".
+const emailDeclinedWithDoNotContact = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+) => {
+  if (!args.email || !args.groupId) return false
+
+  const declined = await Invitation.query()
+    .join('manuscripts', 'manuscripts.id', 'invitations.manuscriptId')
+    .where({
+      'invitations.toEmail': args.email,
+      'invitations.declinedReason': 'DO_NOT_CONTACT',
+      'manuscripts.groupId': args.groupId,
+    })
+    .first()
+
+  return !!declined
+})
+
+// iplaces Patch 24: addReviewer was isAuthenticated, so any logged-in user
+// could put anyone on any record's reviewer team (and reviewers can read the
+// whole record). Now editors and managers, or the invitee accepting their
+// own open REVIEWER / COLLABORATIVE_REVIEWER invitation to that record.
+const userHasOpenReviewerInvitation = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+  ctx,
+) => {
+  if (!ctx.userId || args.userId !== ctx.userId || !args.invitationId)
+    return false
+
+  const invitation = await Invitation.query().findById(args.invitationId)
+
+  return (
+    !!invitation &&
+    invitation.invitedPersonType ===
+      (args.isCollaborative ? 'COLLABORATIVE_REVIEWER' : 'REVIEWER') &&
+    invitation.manuscriptId === args.manuscriptId &&
+    invitation.status === 'UNANSWERED' &&
+    !invitation.responseDate &&
+    (!invitation.userId || invitation.userId === ctx.userId)
+  )
+})
+
+// iplaces Patch 25: deleteFile(s), updateFile and updateTagsFile were
+// isAuthenticated for any file id. Now:
+// - a record's file (or a file on one of its reviews): its editors, the
+//   station's group managers and group admins, its authors while the version
+//   is not published (as Patch 21), and for a review file the reviewer;
+// - any other file (logos, CMS and export-template assets): group managers
+//   and group admins of the current group;
+// - admins: everything.
+const userCanChangeFile = async (ctx, fileId) => {
+  if (!ctx.userId || !fileId) return false
+  if (await cachedGet(`userIsAdmin:${ctx.userId}`)) return true
+
+  const { File } = require('@coko/server')
+  const file = await File.query().findById(fileId)
+  if (!file) return false
+
+  const manuscript = file.objectId
+    ? await cachedGet(`msOfFile:${file.id}`)
+    : null
+
+  if (!manuscript) {
+    const groupId = ctx.req?.headers['group-id']
+    if (!groupId || groupId === 'undefined') return false
+
+    return (
+      (await cachedGet(`userIsGroupAdmin:${ctx.userId}:${groupId}`)) ||
+      cachedGet(`userIsGM:${ctx.userId}:${groupId}`)
+    )
+  }
+
+  if (
+    (await cachedGet(`userIsEditor:${ctx.userId}:${manuscript.id}`)) ||
+    (await cachedGet(`userIsGM:${ctx.userId}:${manuscript.groupId}`)) ||
+    (await cachedGet(`userIsGroupAdmin:${ctx.userId}:${manuscript.groupId}`))
+  )
+    return true
+
+  if (file.objectId !== manuscript.id) {
+    // A review's file: the review's own author, or a member of the record's
+    // reviewer teams (collaborative reviews have no single owner).
+    const review = await Review.query().findById(file.objectId)
+    if (review?.userId === ctx.userId) return true
+    const user = await User.query().findById(ctx.userId)
+
+    return (
+      (await userIsMemberOfTeamWithRoleQuery(
+        user,
+        manuscript.id,
+        'reviewer',
+      )) ||
+      userIsMemberOfTeamWithRoleQuery(
+        user,
+        manuscript.id,
+        'collaborativeReviewer',
+      )
+    )
+  }
+
+  if (manuscript.status === 'published') return false
+  const user = await User.query().findById(ctx.userId)
+  return userIsMemberOfTeamWithRoleQuery(user, manuscript.id, 'author')
+}
+
+const userCanChangeFileById = rule({ cache: 'strict' })(
+  async (parent, args, ctx) =>
+    userCanChangeFile(ctx, args.id ?? args.input?.id),
+)
+
+const userCanChangeAllFiles = rule({ cache: 'strict' })(async (
+  parent,
+  args,
+  ctx,
+) => {
+  if (!args.ids?.length) return false
+
+  const allowed = await Promise.all(
+    args.ids.map(id => userCanChangeFile(ctx, id)),
+  )
+
+  return allowed.every(Boolean)
 })
 
 const userIsCurrentUser = rule({ cache: 'strict' })(async (
@@ -601,14 +741,15 @@ const permissions = {
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
-      // iplaces Patch 19: published records are public via publishedManuscript
-      // (emails stripped); the full record, emails included, needs a login.
-      and(isAuthenticated, manuscriptIsPublished),
+      // iplaces Patch 23: no longer open to any logged-in user once
+      // published (Patch 19 kept that, and it showed author emails to users
+      // with no role on the record). The public article view uses
+      // publishedManuscript, which strips emails.
       userIsEditor,
       userIsAuthorOfManuscript,
       userIsReviewerOrInvitedReviewerOfTheManuscript,
     ),
-    manuscripts: isAuthenticated,
+    manuscripts: userIsAdmin, // iplaces Patch 23: every record of every group, unused by the client
     manuscriptsActivity: or(userIsGroupAdmin, userIsAdmin),
     manuscriptsPublishedSinceDate: allow,
     manuscriptsUserHasCurrentRoleIn: isAuthenticated,
@@ -643,10 +784,82 @@ const permissions = {
     validateSuffix: isAuthenticated,
     versionsOfManuscriptCurrentUserIsReviewerOf: allow,
     events: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    // iplaces Patch 26: operations with no rule fall back to graphql-shield's default, `allow`,
+    // so these were open without a login. Read-only site/CMS queries stay
+    // public (Flax and logged-out pages may read them); everything else needs a
+    // login, and admin-type queries the matching role.
+    articleTemplate: isAuthenticated,
+    buildCitations: isAuthenticated,
+    buildCitationsCSL: isAuthenticated,
+    channelUsersForMention: isAuthenticated,
+    checkApiPayload: or(userIsGroupAdmin, userIsAdmin),
+    cmsLayout: allow,
+    cmsPage: allow,
+    cmsPages: allow,
+    coarNotificationsForManuscript: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    docxToHtml: isAuthenticated,
+    doisToRegister: isAuthenticated,
+    emailTemplates: isAuthenticated,
+    flaxHealthCheck: allow,
+    formatCitation: isAuthenticated,
+    formatMultipleCitations: isAuthenticated,
+    getActiveCmsFilesTree: allow,
+    getCmsFileContent: allow,
+    getCmsFilesTree: allow,
+    getDataciteCslFromDOI: isAuthenticated,
+    getDataciteCslFromTitle: isAuthenticated,
+    getEmailInvitedReviewers: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    getFoldersList: allow,
+    getFormattedReferences: isAuthenticated,
+    getManuscriptsData: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    getMatchingReferences: isAuthenticated,
+    getReferenceFromDoi: isAuthenticated,
+    getVariables: isAuthenticated,
+    groupByName: allow,
+    notificationOption: isAuthenticated,
+    oldConfig: allow,
+    openAi: isAuthenticated,
+    paginatedCoarNotificationsForGroupOrNone: or(
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    searchLocalContext: isAuthenticated,
+    unreadMessagesCount: isAuthenticated,
+    updateChannelLastViewed: isAuthenticated,
   },
   Mutation: {
-    addEmailToBlacklist: allow, // TODO scrap this mutation and trigger its action inside updateInvitationResponse
-    addReviewer: isAuthenticated,
+    // iplaces Patch 24 (was allow)
+    addEmailToBlacklist: or(
+      emailDeclinedWithDoNotContact,
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    // iplaces Patch 24 (was isAuthenticated)
+    addReviewer: or(
+      userHasOpenReviewerInvitation,
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
     archiveManuscript: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     archiveManuscripts: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     assignTeamEditor: deny, // Never used
@@ -677,8 +890,8 @@ const permissions = {
       userIsAdmin,
     ), // TODO scrap this mutation in favour of an 'assignEditor' mutation
     deleteCollection: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    deleteFile: isAuthenticated,
-    deleteFiles: isAuthenticated,
+    deleteFile: userCanChangeFileById, // iplaces Patch 25 (was isAuthenticated)
+    deleteFiles: userCanChangeAllFiles, // iplaces Patch 25
     deleteForm: or(userIsGroupAdmin, userIsAdmin),
     deleteFormElement: or(userIsGroupAdmin, userIsAdmin),
     deleteManuscript: deny, // Never used
@@ -748,11 +961,11 @@ const permissions = {
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    updateFile: isAuthenticated,
+    updateFile: userCanChangeFileById, // iplaces Patch 25 (was isAuthenticated)
     updateForm: or(userIsGroupAdmin, userIsAdmin),
     updateFormElement: or(userIsGroupAdmin, userIsAdmin),
     updateInvitationResponse: allow,
-    updateInvitationStatus: allow,
+    updateInvitationStatus: or(userCanRespondToInvitation, userIsAdmin), // iplaces Patch 24 (was allow)
     updateManuscript: or(
       and(userIsAuthorOfManuscript, manuscriptIsNotPublished), // iplaces Patch 21
       userIsEditor,
@@ -825,6 +1038,67 @@ const permissions = {
     deleteNotification: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     setNotificationActive: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     setEventActive: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    // iplaces Patch 26: mutations with no rule fell back to `allow` (no login
+    // needed), including CMS file delete/rename/update, email templates and
+    // API token creation. Each now has the role its page is built for.
+    addResourceToFolder: or(userIsGroupAdmin, userIsAdmin),
+    assignAuthorForProofingManuscript: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    channelViewed: isAuthenticated,
+    createEmailTemplate: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    createTaskEmailNotificationLog: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    deleteEmailTemplate: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    deleteResource: or(userIsGroupAdmin, userIsAdmin),
+    deleteTaskNotification: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    generateNewToken: or(userIsGroupAdmin, userIsAdmin),
+    removeInvitation: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    renameResource: or(userIsGroupAdmin, userIsAdmin),
+    reportUserIsActive: isAuthenticated,
+    resendCoarNotifyPayload: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    updateCollaborativeTeamMembers: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    updateEmailTemplate: or(userIsGm, userIsGroupAdmin, userIsAdmin),
+    updateFlaxRootFolder: or(userIsGroupAdmin, userIsAdmin),
+    updateLanguage: or(userIsCurrentUser, userIsGroupAdmin, userIsAdmin),
+    updateNotificationOption: isAuthenticated,
+    updateRecentTab: isAuthenticated,
+    updateResource: or(userIsGroupAdmin, userIsAdmin),
+    updateSharedStatusForInvitedReviewer: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
+    updateTagsFile: userCanChangeFileById,
+    updateTemplate: or(
+      userIsEditorOfAnyManuscript,
+      userIsGm,
+      userIsGroupAdmin,
+      userIsAdmin,
+    ),
   },
   Subscription: {
     fileUpdated: isAuthenticated,
@@ -839,6 +1113,9 @@ const permissions = {
      */
     // messageCreated: userIsAllowedToChat,
     messageCreated: isAuthenticated,
+    // iplaces Patch 26: were unlisted, so open without a login.
+    messageDeleted: isAuthenticated,
+    messageUpdated: isAuthenticated,
   },
   CurrentRole: isAuthenticated,
   Team: isAuthenticated,
