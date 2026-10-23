@@ -103,6 +103,14 @@ The pdfExport guard, verbatim:
   if (typeof articleData.meta.source !== 'string') articleData.meta.source = ''
 ```
 
+**Permission check (since 2026-10-23, Patch 26):** graphql-shield lets anyone call an operation that has no rule, and refuses to start if a rule names an operation that is not in the schema. After re-pinning `permissions.js`:
+```
+node scripts/check-permission-rules.js <new-tag>
+```
+Must print `OK`. Add a rule for each **NO RULE** line; remove each **NOT IN SCHEMA** line (2026-10-23: eight citation queries switched off upstream caused a 502 until removed). The deploy script runs it as a pre-flight guard too.
+
+**Drop what eLife fixed:** for each iPlaces patch (PATCHES.md, Patches 19 to 26), check whether the new upstream copy already does it. If so, keep upstream's version, delete ours and its PATCHES.md entry. Each patch dropped is one less merge next time.
+
 ## Phase 4 — Dockerfile (~5 min)
 
 In `server-fix/Dockerfile`:
