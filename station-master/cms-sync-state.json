@@ -3,17 +3,20 @@
     "content/pages/browse.njk": "269409f3e3c794af",
     "index.md": "1abb5f28819ddf11",
     "layouts/_partials/list-articles.njk": "0c76908b39146ad2",
-    "data/station.json": "0e681e3cc9915900",
+    "data/station.json": "1f2d0905b943e295",
     "layouts/article-preview.njk": "d73af5edfbc90c23",
-    "layouts/_partials/footer.njk": "2a0be2c4b3aae715"
+    "layouts/_partials/footer.njk": "a8a9d0a00dd031a7",
+    "layouts/base.njk": "1292e76f77a407d7",
+    "layouts/_partials/metaror-menu.njk": "e520328d391d25da"
   },
   "wams": {
     "content/pages/browse.njk": "269409f3e3c794af",
     "index.md": "1abb5f28819ddf11",
     "layouts/_partials/cover.njk": "8f388d3ed79182a6",
-    "layouts/_partials/metaror-menu.njk": "e4a68170fcbd0e51",
+    "layouts/_partials/metaror-menu.njk": "e520328d391d25da",
     "data/station.json": "5083d32fe7ddbf64",
     "layouts/article-preview.njk": "d73af5edfbc90c23",
-    "layouts/_partials/footer.njk": "2a0be2c4b3aae715"
+    "layouts/_partials/footer.njk": "a8a9d0a00dd031a7",
+    "layouts/base.njk": "1292e76f77a407d7"
   }
 }
