@@ -266,6 +266,68 @@ After an upstream bump, re-run the check that every `Query`, `Mutation` and
 operation is open to anyone until it does. Plugins mounted at `/custom` can
 add operations too.
 
+## Patch 27 — other users' emails only for station staff (2026-10-24)
+
+**File:** `server-fix/overlays/api/graphql/user/user.resolvers.js` (pinned to
+the 2026.10.12-0 image's plain copy of `api/graphql/user/user.resolvers.js`,
+copied to both the plain and `dist/` paths).
+
+### What it does
+The `User` type is `isAuthenticated`, so any logged-in user could read any
+user's `email` through `user(id)`, `searchUsers`, team lists, chat messages,
+review authors and so on. The overlay adds field resolvers for `User.email`
+and the `email` on `User.defaultIdentity` / `User.identities`. The email is
+returned only to:
+
+- the user themselves (`currentUser` keeps working);
+- admins;
+- the current station's (`group-id` header) group managers, group admins and
+  editors (an editor team on any record of that station), and only for users
+  in that station's `user` team. An editor at one station does not see the
+  emails of another station's users.
+
+Everyone else gets `null`, with no error. It is done in the resolvers and not
+as a shield rule because a denied field fails the whole query (team lists and
+the chat @-mention search would break). Subscriptions carry no `group-id`, so
+there only the user themselves and admins see an email. The answers are memoised
+on `ctx` so a list of users costs two or three lookups per request.
+
+The "Add existing author" picker does not use these queries (it reads
+published records, Recipe Part 19), so it is unaffected. Note: `searchUsers`
+itself errors in the 2026.10.12-0 image (`User.model` is undefined in the
+upstream controller); this patch does not change that.
+
+**Upgrade:** re-pin to the new image's own `user.resolvers.js` and re-add the
+`iplaces Patch 27` lines. If upstream adds a new `User` field that carries an
+email, add it here too.
+
+## Patch 28 — attaching a file needs a role on the record (2026-10-24)
+
+### What it does
+`createFile` and `uploadFiles` were `isAuthenticated`, so any logged-in user
+could attach a file to any record, review, config or CMS layout. New helper
+`userCanAddFileTo` follows Patch 25:
+
+- a record (`createFile` `meta.manuscriptId`, `uploadFiles` `entityId`): its
+  editors, the record's group managers and group admins, and its authors
+  while that version is not published;
+- a review (`meta.reviewId`): those editors and managers, the review's own
+  author, or a member of the record's reviewer or collaborative reviewer
+  team, but not on a decision. `meta.manuscriptId` must be a version of the
+  review's record, as it also names the storage folder;
+- anything else (logo, favicon, CMS layout images, or no object): group
+  managers and group admins of the current group, and the config or CMS
+  layout must belong to that group;
+- admins: everything.
+
+`uploadFile` (no record, used for the docx upload when starting a
+submission) stays `isAuthenticated`.
+
+TRAP: these two rules use `cache: 'no_cache'`. With `cache: 'strict'`
+graphql-shield hashes the args, the `Upload` promise in them makes that
+throw, and every upload is refused. Any future rule on an upload mutation
+needs `no_cache` or `contextual`.
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:

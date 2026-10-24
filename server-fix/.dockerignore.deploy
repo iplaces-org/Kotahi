@@ -61,3 +61,12 @@ server-fix/overlays/controllers/*
 !server-fix/overlays/services
 server-fix/overlays/services/*
 !server-fix/overlays/services/orcidAuthorLink.service.js
+
+# (Patch 27) user email resolvers overlay.
+!server-fix/overlays/api
+server-fix/overlays/api/*
+!server-fix/overlays/api/graphql
+server-fix/overlays/api/graphql/*
+!server-fix/overlays/api/graphql/user
+server-fix/overlays/api/graphql/user/*
+!server-fix/overlays/api/graphql/user/user.resolvers.js
