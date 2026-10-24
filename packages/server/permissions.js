@@ -629,6 +629,107 @@ const userCanChangeAllFiles = rule({ cache: 'strict' })(async (
   return allowed.every(Boolean)
 })
 
+// iplaces Patch 28: createFile and uploadFiles were isAuthenticated, so any
+// logged-in user could attach a file to any record, review, config or CMS
+// layout. Now the same people as Patch 25 can change files:
+// - on a record: its editors, the station's group managers and group admins,
+//   and its authors while the version is not published;
+// - on a review: those editors and managers, the review's own author, and the
+//   record's reviewers (not on a decision);
+// - on anything else (logo, favicon, CMS layout, or no object): group
+//   managers and group admins of the current group;
+// - admins: everything.
+// createFile's meta.manuscriptId must be the review's record (any version)
+// when a reviewId is given, as it also names the storage folder.
+const userCanAddFileTo = async (ctx, objectId, manuscriptIdOfReview) => {
+  if (!ctx.userId) return false
+  if (await cachedGet(`userIsAdmin:${ctx.userId}`)) return true
+
+  const review = objectId ? await Review.query().findById(objectId) : null
+
+  const manuscript =
+    objectId &&
+    (await Manuscript.query().findById(review ? review.manuscriptId : objectId))
+
+  if (!manuscript) {
+    if (review) return false
+    const groupId = ctx.req?.headers['group-id']
+    if (!groupId || groupId === 'undefined') return false
+
+    if (objectId) {
+      const CmsLayout = require('./models/cmsLayout/cmsLayout.model')
+
+      const owner =
+        (await Config.query().select('groupId').findById(objectId)) ||
+        (await CmsLayout.query().select('groupId').findById(objectId))
+
+      if (owner && owner.groupId !== groupId) return false
+    }
+
+    return (
+      (await cachedGet(`userIsGroupAdmin:${ctx.userId}:${groupId}`)) ||
+      cachedGet(`userIsGM:${ctx.userId}:${groupId}`)
+    )
+  }
+
+  if (review && manuscriptIdOfReview !== undefined) {
+    const named = await Manuscript.query()
+      .select('id', 'parentId')
+      .findById(manuscriptIdOfReview)
+
+    if (
+      !named ||
+      (named.parentId || named.id) !== (manuscript.parentId || manuscript.id)
+    )
+      return false
+  }
+
+  if (
+    (await cachedGet(`userIsEditor:${ctx.userId}:${manuscript.id}`)) ||
+    (await cachedGet(`userIsGM:${ctx.userId}:${manuscript.groupId}`)) ||
+    (await cachedGet(`userIsGroupAdmin:${ctx.userId}:${manuscript.groupId}`))
+  )
+    return true
+
+  const user = await User.query().findById(ctx.userId)
+
+  if (review) {
+    if (review.isDecision) return false
+    if (review.userId === ctx.userId) return true
+
+    return (
+      (await userIsMemberOfTeamWithRoleQuery(
+        user,
+        manuscript.id,
+        'reviewer',
+      )) ||
+      userIsMemberOfTeamWithRoleQuery(
+        user,
+        manuscript.id,
+        'collaborativeReviewer',
+      )
+    )
+  }
+
+  if (manuscript.status === 'published') return false
+  return userIsMemberOfTeamWithRoleQuery(user, manuscript.id, 'author')
+}
+
+// cache 'no_cache': a 'strict' cache hashes the args, and the Upload promise
+// in them makes that fail, which denies every upload.
+const userCanCreateFile = rule({ cache: 'no_cache' })(
+  async (parent, args, ctx) =>
+    userCanAddFileTo(
+      ctx,
+      args.meta?.reviewId || args.meta?.manuscriptId,
+      args.meta?.reviewId ? args.meta.manuscriptId : undefined,
+    ),
+)
+
+const userCanUploadFiles = rule({ cache: 'no_cache' })(
+  async (parent, args, ctx) => userCanAddFileTo(ctx, args.entityId),
+)
+
 const userIsCurrentUser = rule({ cache: 'strict' })(async (
   parent,
   args,
@@ -859,7 +960,7 @@ const permissions = {
     completeComment: isAuthenticated,
     completeComments: isAuthenticated,
     // createDocxToHTMLJob seems to be exposed from xsweet???
-    createFile: isAuthenticated,
+    createFile: userCanCreateFile, // iplaces Patch 28 (was isAuthenticated)
     createForm: or(userIsGroupAdmin, userIsAdmin),
     createCollection: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     createManuscript: and(isAuthenticated, userIsNotSubmitBlocked),
@@ -1017,7 +1118,7 @@ const permissions = {
     ),
     updateUser: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     uploadFile: isAuthenticated,
-    uploadFiles: isAuthenticated,
+    uploadFiles: userCanUploadFiles, // iplaces Patch 28 (was isAuthenticated)
     updateTaskStatus: isAuthenticated,
     updateCMSPage: or(userIsGroupAdmin, userIsAdmin),
     createCMSPage: or(userIsGroupAdmin, userIsAdmin),

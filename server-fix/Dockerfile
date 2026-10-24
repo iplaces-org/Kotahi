@@ -76,6 +76,12 @@ COPY packages/server/permissions.js /home/node/app/permissions.js
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/controllers/user.controllers.js
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/dist/controllers/user.controllers.js
 
+# (Patch 27) User emails only for the user themselves, admins, and the current
+#     station's editors/managers. Pinned to the 2026.10.12-0 image's plain copy
+#     of user.resolvers.js + the email resolvers (see PATCHES.md).
+COPY server-fix/overlays/api/graphql/user/user.resolvers.js /home/node/app/api/graphql/user/user.resolvers.js
+COPY server-fix/overlays/api/graphql/user/user.resolvers.js /home/node/app/dist/api/graphql/user/user.resolvers.js
+
 # (Patch 18) ORCID author linking: users join the author team of manuscripts
 #     whose $authors lists their ORCID (at login, and when $authors is saved).
 #     orcid.controllers.js is pinned to the 2026.10.12-0 image's plain copy
