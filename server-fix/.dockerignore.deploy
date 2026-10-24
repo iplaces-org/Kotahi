@@ -41,6 +41,9 @@ packages/server/config/storage/*
 packages/server/config/storage/forms-journal/*
 !packages/server/config/storage/forms-journal/submit.json
 
+# (3d) default email templates for new stations.
+!packages/server/config/defaultEmailTemplates.js
+
 # (2b) Gump CMS look tree.
 !station-master
 station-master/*

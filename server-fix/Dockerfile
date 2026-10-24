@@ -62,6 +62,16 @@ COPY packages/server/services/handlebars.service.js \
 COPY packages/server/services/handlebars.service.js \
      /home/node/app/dist/services/handlebars.service.js
 
+# (3d) Default email templates for NEW stations: subjects and sign-offs say
+#      {{ brandName }} (the station title) instead of "Kotahi". seedGroups only
+#      reads this when a group has no templates yet, so existing stations are
+#      fixed in Settings > Emails (or SQL). Repo copy == the 2026.10.12-0
+#      image's plain copy + these text changes; re-pin on image bumps.
+COPY packages/server/config/defaultEmailTemplates.js \
+     /home/node/app/config/defaultEmailTemplates.js
+COPY packages/server/config/defaultEmailTemplates.js \
+     /home/node/app/dist/config/defaultEmailTemplates.js
+
 # (4) pdfExport crash guard. RE-PINNED 2026-07 to the 2026.07.03-0 image's own
 #     copy (config.get('pagedjs') / new createFile signature) + the 5-line
 #     meta.source guard. Verified: diff vs image copy shows guard lines only.

@@ -1,8 +1,11 @@
+// iplaces: subjects and sign-offs use the station title ({{ brandName }},
+// Settings > Configuration > Group Identity > Group name) instead of
+// "Kotahi". Only seeds a NEW group; existing stations are fixed in Emails.
 module.exports = [
   {
     emailTemplateKey: 'genericTaskNotificationEmailTemplate',
     description: 'Task notification',
-    subject: 'Kotahi | Task notification',
+    subject: '{{ brandName }} | Task notification',
     ccEditors: false,
     body: `<p>
         <p>Dear {{ recipientName }},</p>
@@ -10,13 +13,13 @@ module.exports = [
         {{{ manuscriptLink }}}
         </p>
         <p>Regards, <br>
-          Kotahi team
+          {{ brandName }} team
         </p>`,
   },
   {
     emailTemplateKey: 'authorInvitationEmailTemplate',
     description: 'Author Invitation',
-    subject: 'Kotahi | Permission to review',
+    subject: '{{ brandName }} | Permission to review',
     ccEditors: false,
     type: 'authorInvitation',
     body: `<p>Dear {{ recipientName }},</p>
@@ -30,13 +33,13 @@ module.exports = [
         </p>
         <p>
         Regards, <br>
-        Kotahi team
+        {{ brandName }} team
       </p>`,
   },
   {
     emailTemplateKey: 'reviewerInvitationEmailTemplate',
     description: 'Reviewer Invitation',
-    subject: 'Kotahi | Reviewer invitation',
+    subject: '{{ brandName }} | Reviewer invitation',
     ccEditors: false,
     type: 'reviewerInvitation',
     body: `
@@ -52,14 +55,14 @@ module.exports = [
           </p>
           <p>
               Regards, <br>
-              Kotahi team
+              {{ brandName }} team
           </p>
       </p>`,
   },
   {
     emailTemplateKey: 'collabroativeReviewerInvitationEmailTemplate',
     description: 'Collaborative Reviewer Invitation',
-    subject: 'Kotahi | Collaborative Reviewer invitation',
+    subject: '{{ brandName }} | Collaborative Reviewer invitation',
     ccEditors: false,
     type: 'collaborativeReviewerInvitation',
     body: `
@@ -75,29 +78,29 @@ module.exports = [
           </p>
           <p>
               Regards, <br>
-              Kotahi team
+              {{ brandName }} team
           </p>
       </p>`,
   },
   {
     emailTemplateKey: 'chatNotification',
     description: 'Chat notification',
-    subject: 'Kotahi | Discussion notification',
+    subject: '{{ brandName }} | Discussion notification',
     ccEditors: false,
     type: 'systemEmail',
     body: `<p>
         <p>Dear {{ recipientName }},</p>
 
         <p>You have new discussion messages. Click here to reply; {{{ discussionUrl }}}</p>
-        <p>Want to change your notifications settings? Login to Kotahi and go to your profile page<br></p>
+        <p>Want to change your notifications settings? Log in to {{ brandName }} and go to your profile page<br></p>
         <p>Regards, <br>
-          Kotahi team
+          {{ brandName }} team
         </p>`,
   },
   {
     emailTemplateKey: 'authorProofingInvitationEmailTemplate',
     description: 'Author proofing invitation',
-    subject: 'Kotahi | You’ve been assigned to proof {{ manuscriptTitle }}',
+    subject: '{{ brandName }} | You’ve been assigned to proof {{ manuscriptTitle }}',
     ccEditors: false,
     type: 'authorProofingInvitation',
     body: `
@@ -109,7 +112,7 @@ module.exports = [
           <p>{{{ manuscriptProductionLink }}}</p>
           <p>
               Regards, <br>
-              Kotahi team
+              {{ brandName }} team
           </p>
       </p>`,
   },
@@ -117,7 +120,7 @@ module.exports = [
     emailTemplateKey: 'authorProofingSubmittedEmailTemplate',
     description: 'Author proofing submitted',
     subject:
-      'Kotahi | {{ senderName }} has completed proofing {{ manuscriptTitle }}',
+      '{{ brandName }} | {{ senderName }} has completed proofing {{ manuscriptTitle }}',
     ccEditors: false,
     type: 'authorProofingSubmitted',
     body: `
@@ -129,7 +132,7 @@ module.exports = [
           <p>{{{ manuscriptProductionLink }}}</p>
           <p>
               Regards, <br>
-              Kotahi team
+              {{ brandName }} team
           </p>
       </p>`,
   },
