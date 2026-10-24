@@ -40,5 +40,12 @@
   },
   "createIfMissing": [
     "data/issues.json"
+  ],
+  "createPagesIfMissing": [
+    {
+      "url": "/editorial-policy/",
+      "title": "Editorial policy",
+      "file": "station-master/pages/editorial-policy.html"
+    }
   ]
 }

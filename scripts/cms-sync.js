@@ -9,6 +9,9 @@
  *         to click Publish. Refuses files hand-edited in a CMS since the last push.
  * verify  page count vs record count + HTTP 200 per station, after a publish.
  * restore pushes files back from a backup folder.
+ * push also creates the Kotahi CMS pages listed in the manifest's
+ * "createPagesIfMissing" (e.g. the Editorial policy stub) on stations that have
+ * no page at that URL. Existing pages are never touched. Needs KOTAHI_TOKEN.
  * Plan: /mnt/project-files/planning/shared-flax-templates-plan.md
  *
  *   node scripts/cms-sync.js drift
@@ -217,8 +220,12 @@ async function push(ctx, readSource, opts = {}) {
     }
   }
 
+  // Kotahi CMS pages (not files) every station must have: created when missing, never overwritten.
+  const pages = readSource || requested.length ? {} : await planPages(ctx, source, problems)
+
   for (const msg of problems) console.log(`! ${msg}`)
-  const total = groups.reduce((n, g) => n + plan[g].length, 0)
+  const pageCount = g => (pages[g] || []).length
+  const total = groups.reduce((n, g) => n + plan[g].length + pageCount(g), 0)
   if (!total) {
     console.log(problems.length ? '\nNothing to push (see ! lines above).' : '\nNothing to push: every requested file already matches.')
     return
@@ -236,7 +243,10 @@ async function push(ctx, readSource, opts = {}) {
       try { execFileSync('diff', ['-u', path.join(outDir, 'live', g, p), f], { stdio: 'inherit' }) } catch (_) { /* differs */ }
     }
   }
-  console.log(`\nPlan: ${groups.map(g => `${g} ${plan[g].length} file(s)`).join(', ')}`)
+  for (const g of groups) {
+    for (const pg of pages[g] || []) console.log(`\n===== ${g}: CMS page ${pg.url} "${pg.title}"  (new page, will be created and published)\n${pg.content.slice(0, 600)}`)
+  }
+  console.log(`\nPlan: ${groups.map(g => `${g} ${plan[g].length} file(s)${pageCount(g) ? ` + ${pageCount(g)} page(s)` : ''}`).join(', ')}`)
   console.log(`Backup of current live files: ${path.join(outDir, 'live')}/`)
   if (args['dry-run']) { console.log('\n--dry-run: nothing was changed.'); return }
 
@@ -253,7 +263,7 @@ async function push(ctx, readSource, opts = {}) {
     }
   }
 
-  if (!args.yes && !(await confirm(`Push ${total} file(s) now? Type yes: `))) {
+  if (!args.yes && !(await confirm(`Push ${total} change(s) now? Type yes: `))) {
     console.log('Stopped; nothing was changed.')
     return
   }
@@ -279,8 +289,19 @@ async function push(ctx, readSource, opts = {}) {
   }
   fs.writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`)
 
+  // ---- create missing CMS pages, then publish them (what the CMS Publish button does)
+  for (const g of groups) {
+    for (const pg of pages[g] || []) {
+      const r = await gql(server, groupIds[g], 'mutation($in: CMSPageInput!) { createCMSPage(input: $in) { success error errorMessage cmsPage { id } } }', { in: { title: pg.title, url: pg.url, content: pg.content } })
+      const made = r.createCMSPage
+      if (!made.success) throw new Error(`${g}: could not create page ${pg.url}: ${made.errorMessage || made.error}`)
+      await gql(server, groupIds[g], 'mutation($id: ID!, $in: CMSPageInput!) { updateCMSPage(id: $id, input: $in) { id } }', { id: made.cmsPage.id, in: { published: new Date().toISOString() } })
+      console.log(`created and published ${g}: page ${pg.url}`)
+    }
+  }
+
   // ---- rebuild
-  const changed = groups.filter(g => plan[g].length)
+  const changed = groups.filter(g => plan[g].length || pageCount(g))
   if (process.env.KOTAHI_TOKEN) {
     for (const g of changed) {
       const r = await gql(server, groupIds[g], 'mutation { rebuildFlaxSite(params: "{}") { status error } }')
@@ -292,6 +313,34 @@ async function push(ctx, readSource, opts = {}) {
     console.log(`Then: node scripts/cms-sync.js verify --groups ${changed.join(',')}`)
   }
   console.log(`Commit ${STATE_FILE} with the template change.`)
+}
+
+// Manifest "createPagesIfMissing": [{ url, title, file }]. The file is HTML with
+// {{title}}, {{hostOrg}} and {{contact}} filled from the station's data/station.json
+// (as this push would leave it); contact falls back to commons@iplacesalliance.org.
+async function planPages(ctx, source, problems) {
+  const { server, manifest, groups, groupIds } = ctx
+  const specs = manifest.createPagesIfMissing || []
+  const out = {}
+  if (!specs.length) return out
+  for (const g of groups) {
+    const res = await gql(server, groupIds[g], '{ cmsPages { url } }')
+    const have = new Set(res.cmsPages.map(p => p.url))
+    const missing = specs.filter(s => !have.has(s.url))
+    if (!missing.length) continue
+    if (!process.env.KOTAHI_TOKEN) { problems.push(`${g}: no CMS page at ${missing.map(s => s.url).join(', ')}; set KOTAHI_TOKEN to create it`); continue }
+    let st = {}
+    try { st = JSON.parse(source(g, 'data/station.json') || '{}') } catch (_) { /* checked below */ }
+    const values = { title: st.title, hostOrg: st.hostOrg?.name, contact: st.contactEmail || 'commons@iplacesalliance.org' }
+    const blank = Object.entries(values).filter(([, v]) => !v || /FIXME/.test(v)).map(([k]) => k)
+    if (blank.length) { problems.push(`${g}: data/station.json has no ${blank.join(', ')}; page ${missing.map(s => s.url).join(', ')} not created`); continue }
+    out[g] = missing.map(s => ({
+      url: s.url,
+      title: s.title,
+      content: fs.readFileSync(s.file, 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => (k in values ? values[k] : m)),
+    }))
+  }
+  return out
 }
 
 function stationJsonUpdates(manifest, groups, live) {
