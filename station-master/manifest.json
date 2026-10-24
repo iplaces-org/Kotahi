@@ -22,7 +22,9 @@
       "hideConferencePapers": false
     },
     "gumpstation": {
-      "hideConferencePapers": true
+      "hideConferencePapers": true,
+      "title": "iPlaces Gump Station",
+      "seriesTitle": "iPlaces Gump Station"
     },
     "wams": {
       "title": "iPlaces WAMS",
