@@ -11,6 +11,7 @@ const Review = require('./models/review/review.model')
 const Team = require('./models/team/team.model')
 const TeamMember = require('./models/teamMember/teamMember.model')
 const User = require('./models/user/user.model')
+const UserNotification = require('./models/userNotification/userNotification.model')
 
 // Shield's `race` rule is misnamed, as it doesn't race the different rules but applies them sequentially until one succeeds. `or`, on the other hand, applies all rules in parallel.
 const { rule, and, or, allow, deny, race: lazyOr } = authorization
@@ -84,6 +85,16 @@ const userOwnsMessage = rule({ cache: 'contextual' })(async (
   const message = await Message.query().findById(args.messageId)
 
   return message?.userId === ctx.userId
+})
+
+const userOwnsUserNotification = rule({ cache: 'contextual' })(async (
+  parent,
+  args,
+  ctx,
+) => {
+  if (!ctx.userId) return false
+  const userNotification = await UserNotification.findById(args.id)
+  return userNotification.userId === ctx.userId
 })
 
 const getLatestVersionOfManuscript = async (ctx, manuscriptVersionId) => {
@@ -178,6 +189,38 @@ const isAuthenticated = rule({ cache: 'contextual' })(async (
   ctx,
 ) => {
   return !!ctx.userId
+})
+
+const userCanCreateSubmission = rule({ cache: 'no_cache' })(async (
+  parent,
+  { groupId, file },
+  ctx,
+) => {
+  if (!ctx.userId) return false
+
+  const roleChecks = await Promise.all([
+    User.hasGlobalRole(ctx.userId, 'admin'),
+    ...['user', 'groupManager', 'groupAdmin'].map(role =>
+      User.hasRoleOnObject(ctx.userId, role, groupId),
+    ),
+  ])
+
+  if (!roleChecks.some(Boolean)) return false
+
+  const config = await Config.getActive(groupId)
+  const { submitOptions } = config?.formData?.submission?.submissionPage ?? {}
+
+  if (!submitOptions) return true
+
+  return file
+    ? ['allowAuthorUploadOnly', 'allowAuthorUploadWithForm'].includes(
+        submitOptions,
+      )
+    : [
+        'allowAuthorUploadWithForm',
+        'allowAuthorSubmitForm',
+        'allowAuthorSubmitFormWithBlankEditor',
+      ].includes(submitOptions)
 })
 
 // Who can send a message to a channel?
@@ -796,6 +839,9 @@ const permissions = {
   Query: {
     authorsActivity: or(userIsGroupAdmin, userIsAdmin),
     builtCss: isAuthenticated,
+    cmsLayout: allow, // read by the public Flax site
+    cmsPage: or(userIsGroupAdmin, userIsAdmin),
+    cmsPages: allow, // read by the public Flax site
     config: isAuthenticated,
     convertToJats: or(
       userIsEditorOfAnyManuscript,
@@ -810,6 +856,7 @@ const permissions = {
       userIsAdmin,
     ),
     currentUser: isAuthenticated,
+    dashboardData: isAuthenticated,
     docmap: allow,
     editorsActivity: or(userIsGroupAdmin, userIsAdmin),
     file: deny, // Never used
@@ -818,12 +865,15 @@ const permissions = {
     formForPurposeAndCategory: allow,
     forms: allow,
     formsByCategory: or(userIsGroupAdmin, userIsAdmin),
+    getActiveCmsFilesTree: allow, // read by the public Flax site
     getBlacklistInformation: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
     ),
+    getCmsFileContent: or(userIsGroupAdmin, userIsAdmin),
+    getCmsFilesTree: or(userIsGroupAdmin, userIsAdmin),
     getEntityFiles: isAuthenticated,
     getInvitationsForManuscript: or(
       userIsEditorOfAnyManuscript,
@@ -832,10 +882,12 @@ const permissions = {
       userIsAdmin,
     ),
     getFilesByTagOrId: allow,
+    getFoldersList: or(userIsGroupAdmin, userIsAdmin),
     getSpecificFiles: isAuthenticated,
     globalTeams: deny, // Never used
     group: allow,
     groups: allow,
+    hasToken: or(userIsGroupAdmin, userIsAdmin),
     invitationManuscriptId: isAuthenticated,
     invitationStatus: allow,
     manuscript: or(
@@ -856,6 +908,7 @@ const permissions = {
     manuscriptsUserHasCurrentRoleIn: isAuthenticated,
     message: deny, // Never used
     messages: isAuthenticated,
+    newSubmissionSettings: isAuthenticated,
     orcidValidate: isAuthenticated,
     paginatedManuscripts: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     paginatedUsers: or(userIsGroupAdmin, userIsAdmin),
@@ -875,6 +928,7 @@ const permissions = {
     unreviewedPreprints: allow, // This has its own token-based authentication.
     user: isAuthenticated,
     userHasTaskAlerts: isAuthenticated,
+    userNotifications: isAuthenticated,
     users: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
@@ -889,33 +943,28 @@ const permissions = {
     // so these were open without a login. Read-only site/CMS queries stay
     // public (Flax and logged-out pages may read them); everything else needs a
     // login, and admin-type queries the matching role.
+    // (2026.11.03: the CMS queries are now ruled upstream, above, and stricter:
+    // cmsPage, getCmsFilesTree, getCmsFileContent and getFoldersList need a group
+    // admin. Ours removed; docxToHtml no longer exists.)
     articleTemplate: isAuthenticated,
     buildCitations: isAuthenticated,
     buildCitationsCSL: isAuthenticated,
     channelUsersForMention: isAuthenticated,
-    cmsLayout: allow,
-    cmsPage: allow,
-    cmsPages: allow,
     coarNotificationsForManuscript: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    docxToHtml: isAuthenticated,
     doisToRegister: isAuthenticated,
     emailTemplates: isAuthenticated,
     flaxHealthCheck: allow,
-    getActiveCmsFilesTree: allow,
-    getCmsFileContent: allow,
-    getCmsFilesTree: allow,
     getEmailInvitedReviewers: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    getFoldersList: allow,
     getManuscriptsData: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
@@ -963,7 +1012,9 @@ const permissions = {
     createFile: userCanCreateFile, // iplaces Patch 28 (was isAuthenticated)
     createForm: or(userIsGroupAdmin, userIsAdmin),
     createCollection: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    createManuscript: and(isAuthenticated, userIsNotSubmitBlocked),
+    // iplaces Patch 15: upstream's createSubmission rule, plus the station's
+    // submitBlocked team (was on createManuscript before 2026.11.03).
+    createSubmission: and(userCanCreateSubmission, userIsNotSubmitBlocked),
     createMessage: userIsAllowedToChat,
     createNewTaskAlerts: or(userIsGm, userIsGroupAdmin, userIsAdmin), // Only used when test code is enabled
     createNewVersion: and(
@@ -976,12 +1027,6 @@ const permissions = {
       ),
       userIsNotSubmitBlocked,
     ),
-    createTeam: or(
-      userIsEditorOfAnyManuscript,
-      userIsGm,
-      userIsGroupAdmin,
-      userIsAdmin,
-    ), // TODO scrap this mutation in favour of an 'assignEditor' mutation
     deleteCollection: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     deleteFile: userCanChangeFileById, // iplaces Patch 25 (was isAuthenticated)
     deleteFiles: userCanChangeAllFiles, // iplaces Patch 25
@@ -995,6 +1040,7 @@ const permissions = {
       userOwnsMessage,
       and(userIsGm, userIsGroupAdmin, userIsAdmin),
     ),
+    generateNewToken: or(userIsGroupAdmin, userIsAdmin),
     importManuscripts: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     makeDecision: or(
       userIsEditorOfAnyManuscript,
@@ -1117,7 +1163,6 @@ const permissions = {
       userIsEditorOfTheManuscriptOfTheReview,
     ),
     updateUser: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    uploadFile: isAuthenticated,
     uploadFiles: userCanUploadFiles, // iplaces Patch 28 (was isAuthenticated)
     updateTaskStatus: isAuthenticated,
     updateCMSPage: or(userIsGroupAdmin, userIsAdmin),
@@ -1125,6 +1170,11 @@ const permissions = {
     deleteCMSPage: or(userIsGroupAdmin, userIsAdmin),
     updateCMSLayout: or(userIsGroupAdmin, userIsAdmin),
     rebuildFlaxSite: or(userIsGroupAdmin, userIsAdmin),
+    addResourceToFolder: or(userIsGroupAdmin, userIsAdmin),
+    deleteResource: or(userIsGroupAdmin, userIsAdmin),
+    renameResource: or(userIsGroupAdmin, userIsAdmin),
+    updateResource: or(userIsGroupAdmin, userIsAdmin),
+    updateFlaxRootFolder: or(userIsGroupAdmin, userIsAdmin),
     updateMessage: or(userOwnsMessage, userIsGm, userIsGroupAdmin, userIsAdmin),
     createNotification: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     updateNotification: or(userIsGm, userIsGroupAdmin, userIsAdmin),
@@ -1134,7 +1184,8 @@ const permissions = {
     // iplaces Patch 26: mutations with no rule fell back to `allow` (no login
     // needed), including CMS file delete/rename/update, email templates and
     // API token creation. Each now has the role its page is built for.
-    addResourceToFolder: or(userIsGroupAdmin, userIsAdmin),
+    // (2026.11.03: CMS file mutations and generateNewToken now ruled upstream,
+    // above, with the same roles; ours removed.)
     assignAuthorForProofingManuscript: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
@@ -1150,21 +1201,18 @@ const permissions = {
       userIsAdmin,
     ),
     deleteEmailTemplate: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    deleteResource: or(userIsGroupAdmin, userIsAdmin),
     deleteTaskNotification: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    generateNewToken: or(userIsGroupAdmin, userIsAdmin),
     removeInvitation: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
       userIsGroupAdmin,
       userIsAdmin,
     ),
-    renameResource: or(userIsGroupAdmin, userIsAdmin),
     reportUserIsActive: isAuthenticated,
     resendCoarNotifyPayload: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     updateCollaborativeTeamMembers: or(
@@ -1174,11 +1222,8 @@ const permissions = {
       userIsAdmin,
     ),
     updateEmailTemplate: or(userIsGm, userIsGroupAdmin, userIsAdmin),
-    updateFlaxRootFolder: or(userIsGroupAdmin, userIsAdmin),
     updateLanguage: or(userIsCurrentUser, userIsGroupAdmin, userIsAdmin),
     updateNotificationOption: isAuthenticated,
-    updateRecentTab: isAuthenticated,
-    updateResource: or(userIsGroupAdmin, userIsAdmin),
     updateSharedStatusForInvitedReviewer: or(
       userIsEditorOfAnyManuscript,
       userIsGm,
@@ -1192,6 +1237,9 @@ const permissions = {
       userIsGroupAdmin,
       userIsAdmin,
     ),
+    // end iplaces Patch 26
+    dismissUserNotification: userOwnsUserNotification,
+    dismissAllUserNotifications: isAuthenticated,
   },
   Subscription: {
     fileUpdated: isAuthenticated,
@@ -1199,6 +1247,7 @@ const permissions = {
     filesUploaded: isAuthenticated,
     reviewFormUpdated: isAuthenticated,
     manuscriptsImportStatus: isAuthenticated,
+    newSubmissionProgress: isAuthenticated,
     /**
      * This was not being triggered at all before the v3 upgrade.
      * It doesn't work because userIsAllowedToChat dependends on req, and req
@@ -1233,7 +1282,6 @@ const permissions = {
     userIsGroupAdmin,
     userIsAdmin,
   ),
-  FileNotInDb: allow,
   Form: allow,
   FormStructure: allow,
   FormElement: allow,

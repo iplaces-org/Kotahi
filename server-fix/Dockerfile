@@ -9,7 +9,7 @@
 # the app into /home/node/app/dist (verified: dist copies are identical in
 # logic, reformatted only), and we don't know which copy runs -- so EVERY
 # overlay is COPYed to both the plain path and its dist/ twin.
-FROM cokoapps/kotahi-server:2026.10.12-0
+FROM cokoapps/kotahi-server:2026.11.03-0
 
 # (1) DataCite overlays (see PATCHES.md):
 #   - fieldsTransformers.js (Patch 1): funderIdentifier uses the ROR id (funderid).
@@ -65,7 +65,7 @@ COPY packages/server/services/handlebars.service.js \
 # (3d) Default email templates for NEW stations: subjects and sign-offs say
 #      {{ brandName }} (the station title) instead of "Kotahi". seedGroups only
 #      reads this when a group has no templates yet, so existing stations are
-#      fixed in Settings > Emails (or SQL). Repo copy == the 2026.10.12-0
+#      fixed in Settings > Emails (or SQL). Repo copy == the 2026.11.03-0
 #      image's plain copy + these text changes; re-pin on image bumps.
 COPY packages/server/config/defaultEmailTemplates.js \
      /home/node/app/config/defaultEmailTemplates.js
@@ -73,7 +73,7 @@ COPY packages/server/config/defaultEmailTemplates.js \
      /home/node/app/dist/config/defaultEmailTemplates.js
 #      seedGroups.js writes the @mention template itself and finds the Task
 #      notification template by its exact subject, so it needs the same change.
-#      Pinned to the 2026.10.12-0 image's plain copy + 4 Patch 29 edits.
+#      Pinned to the 2026.11.03-0 image's plain copy + 4 Patch 29 edits.
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/scripts/seedGroups.js
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/dist/scripts/seedGroups.js
 
@@ -88,20 +88,30 @@ COPY server-fix/overlays/controllers/pdfExport.controllers.js \
 COPY packages/server/permissions.js /home/node/app/dist/permissions.js
 COPY packages/server/permissions.js /home/node/app/permissions.js
 
+# (Patch 17) Admin user list scoped to the current station. From 2026.11.03-0
+#     pinned to the image's plain copy (== tag source) + the Patch 17 lines
+#     (was pinned to the dist/ compiled copy).
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/controllers/user.controllers.js
 COPY server-fix/overlays/controllers/user.controllers.js /home/node/app/dist/controllers/user.controllers.js
 
 # (Patch 27) User emails only for the user themselves, admins, and the current
-#     station's editors/managers. Pinned to the 2026.10.12-0 image's plain copy
+#     station's editors/managers. Pinned to the 2026.11.03-0 image's plain copy
 #     of user.resolvers.js + the email resolvers (see PATCHES.md).
 COPY server-fix/overlays/api/graphql/user/user.resolvers.js /home/node/app/api/graphql/user/user.resolvers.js
 COPY server-fix/overlays/api/graphql/user/user.resolvers.js /home/node/app/dist/api/graphql/user/user.resolvers.js
 
 # (Patch 18) ORCID author linking: users join the author team of manuscripts
 #     whose $authors lists their ORCID (at login, and when $authors is saved).
-#     orcid.controllers.js is pinned to the 2026.10.12-0 image's plain copy
+#     orcid.controllers.js is pinned to the 2026.11.03-0 image's plain copy
 #     (== tag) + the login hook; orcidAuthorLink.service.js is iPlaces-only.
 COPY server-fix/overlays/controllers/orcid.controllers.js /home/node/app/controllers/orcid.controllers.js
 COPY server-fix/overlays/controllers/orcid.controllers.js /home/node/app/dist/controllers/orcid.controllers.js
 COPY server-fix/overlays/services/orcidAuthorLink.service.js /home/node/app/services/orcidAuthorLink.service.js
 COPY server-fix/overlays/services/orcidAuthorLink.service.js /home/node/app/dist/services/orcidAuthorLink.service.js
+
+# (Patch 30) ORCID login tokens: orcid.controllers.js (above) no longer stores
+#     the ORCID OAuth tokens in identities.oauth, and this route no longer
+#     writes the ?token=<JWT> login redirect into the server log. Pinned to the
+#     2026.11.03-0 image's plain copy of api/rest/orcid/orcid.js + Patch 30.
+COPY server-fix/overlays/api/rest/orcid/orcid.js /home/node/app/api/rest/orcid/orcid.js
+COPY server-fix/overlays/api/rest/orcid/orcid.js /home/node/app/dist/api/rest/orcid/orcid.js

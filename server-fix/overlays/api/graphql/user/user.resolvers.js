@@ -6,19 +6,19 @@ const {
   getUsers,
   isUserOnline,
   paginatedUsers,
-  profilePicture,
+  profilePictureUrl,
   searchUsers,
   sendEmail,
   setGlobalRole,
   setGroupRole,
   updateEmail,
   updateLanguage,
-  updateRecentTab,
   updateUser,
   updateUsername,
   userIdentities,
 } = require('../../../controllers/user.controllers')
 
+const { getRequestLoaders } = require('../requestLoaders')
 const Team = require('../../../models/team/team.model')
 const { cachedGet } = require('../../../services/queryCache.service')
 
@@ -155,10 +155,6 @@ module.exports = {
       return updateLanguage(id, preferredLanguage)
     },
 
-    async updateRecentTab(_, { tab }, ctx) {
-      return updateRecentTab(ctx.userId, tab)
-    },
-
     async updateUser(_, { id, input }) {
       return updateUser(id, input)
     },
@@ -170,15 +166,13 @@ module.exports = {
 
   User: {
     async defaultIdentity(user, _, ctx) {
-      // TODO: Cypress test 002 fails with this optimisation. Needs further investigation
       if (user.defaultIdentity && user.defaultIdentity.id && user.email) {
         const { id, name, aff, type, identifier } = user.defaultIdentity
         const email = (await canSeeEmailOf(user, ctx)) ? user.email : null // iplaces Patch 27
         return { id, name, aff, email, type, identifier }
       }
 
-      if (!ctx?.loaders) return null
-      const identity = await ctx.loaders.User.defaultIdentitiesLoader.load(
+      const identity = await getRequestLoaders(ctx).defaultIdentities.load(
         user.id,
       )
       return (await canSeeEmailOf(user, ctx))
@@ -201,8 +195,11 @@ module.exports = {
       return isUserOnline(parent)
     },
 
-    async profilePicture(parent) {
-      return profilePicture(parent)
+    async profilePicture(user, _, ctx) {
+      if (!user.profilePicture) return null
+
+      const file = await getRequestLoaders(ctx).files.load(user.profilePicture)
+      return profilePictureUrl(file)
     },
   },
 }

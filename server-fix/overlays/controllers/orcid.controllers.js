@@ -55,7 +55,7 @@ const addUserToAdminAndGroupAdminTeams = async (
   const groupAdminTeam = await Team.query(trx).findOne({
     role: 'groupAdmin',
     objectId: groupId,
-    objectType: 'Group',
+    objectType: 'group',
   })
 
   const adminTeam = await Team.query(trx).findOne({
@@ -71,7 +71,7 @@ const addUserToUserTeam = async (userId, groupId) => {
   const userTeam = await Team.query().findOne({
     role: 'user',
     objectId: groupId,
-    objectType: 'Group',
+    objectType: 'group',
   })
 
   await TeamMember.query().insert({ userId, teamId: userTeam.id })
@@ -83,7 +83,7 @@ const addUserToGroupAdminTeam = async (userId, groupId, options = {}) => {
   const groupAdminTeam = await Team.query(trx).findOne({
     role: 'groupAdmin',
     objectId: groupId,
-    objectType: 'Group',
+    objectType: 'group',
   })
 
   await TeamMember.query(trx).insert({ userId, teamId: groupAdminTeam.id })
@@ -150,7 +150,9 @@ const createOrcidStrategy = () => {
 
             const identity = await Identity.query(trx).insert({
               identifier: params.orcid,
-              oauth: { accessToken, refreshToken },
+              // iplaces Patch 30: the ORCID OAuth tokens are not stored. The
+              // access token is used once, in memory, for the name and
+              // affiliation lookup just below. Was: oauth: { accessToken, refreshToken }
               type: 'orcid',
               isDefault: true,
               userId: user.id,
@@ -166,7 +168,10 @@ const createOrcidStrategy = () => {
             }
 
             // Do another request to the ORCID API for aff/name
-            const userDetails = await fetchUserDetails(user, { trx })
+            const userDetails = await fetchUserDetails(user, {
+              trx,
+              accessToken, // iplaces Patch 30
+            })
 
             await identity.$query(trx).patchAndFetch({
               name: `${userDetails.firstName || ''} ${
@@ -227,7 +232,9 @@ const toDate = date => {
   return new Date(year, month, day)
 }
 
-const orcidRequest = (identity, endpoint) => {
+// iplaces Patch 30: the token comes from the login callback; identities no
+// longer keep one (identity.oauth is null).
+const orcidRequest = (identity, endpoint, accessToken) => {
   const apiRoot = config.get('auth-orcid').useSandboxedOrcid
     ? 'https://pub.sandbox.orcid.org/v3.0'
     : 'https://pub.orcid.org/v3.0'
@@ -237,13 +244,18 @@ const orcidRequest = (identity, endpoint) => {
     url: `${apiRoot}/${identity.identifier}/${endpoint}`,
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${identity.oauth.accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   })
 }
 
 const fetchUserDetails = async (user, options = {}) => {
   const { trx } = options
+  // iplaces Patch 30: without a token from the login callback there is
+  // nothing to ask ORCID with (Crossref publishing calls this; iPlaces uses
+  // DataCite), so return empty details instead of throwing.
+  const accessToken = options.accessToken
+  if (!accessToken) return {}
 
   const identity = await Identity.query(trx).findOne({
     userId: user.id,
@@ -253,8 +265,8 @@ const fetchUserDetails = async (user, options = {}) => {
   logger.debug('processing response from orcid api')
 
   const [personResponse, employmentsResponse] = await Promise.all([
-    orcidRequest(identity, 'person'),
-    orcidRequest(identity, 'employments'),
+    orcidRequest(identity, 'person', accessToken),
+    orcidRequest(identity, 'employments', accessToken),
   ])
 
   const firstName = get(personResponse, 'body.name.given-names.value')
@@ -318,7 +330,7 @@ const handleOrcidOAuthResponse = async user => {
     .findOne({
       userId: user.id,
       objectId: groupId,
-      objectType: 'Group',
+      objectType: 'group',
       role: 'groupManager',
     })
 
@@ -330,7 +342,7 @@ const handleOrcidOAuthResponse = async user => {
     .findOne({
       userId: user.id,
       objectId: groupId,
-      objectType: 'Group',
+      objectType: 'group',
       role: 'user',
     })
 
