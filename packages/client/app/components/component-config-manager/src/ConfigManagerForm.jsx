@@ -9,7 +9,7 @@ import { useMemo, useRef, useState } from 'react'
 import Form from '@rjsf/core'
 import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
-import { isEqual } from 'lodash'
+import { isEqual, pick } from 'lodash'
 import { th, grid } from '@coko/client'
 import {
   generateSchemas,
@@ -281,9 +281,14 @@ const ConfigManagerForm = ({
   const handlers = {
     form: {
       onChange: ({ formData }, properties, key) => {
+        // Every tab is a separate form that was loaded with the whole config,
+        // so its formData also carries stale copies of the other tabs' sections.
+        // Only take this tab's own sections, so a change on one tab (or a
+        // late onChange from a widget such as the Wax editor) cannot put back
+        // old values, e.g. the brand colours, that were changed on another tab.
         const updatedData = {
           ...storedFormData.current,
-          ...formData,
+          ...pick(formData, properties.flat()),
         }
 
         seekForPendingChanges(formData, properties, key)
