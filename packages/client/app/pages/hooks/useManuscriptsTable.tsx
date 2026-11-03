@@ -1392,15 +1392,30 @@ const useManuscriptsTable = (variant: Variant): UseManuscriptsTableResult => {
 
         const fieldComponent = fieldDefinitions[property]?.component
 
-        if (fieldComponent === 'AuthorsInput') {
+        // iplaces: the station author, more-than-human author and DataCite
+        // contributor fields hold lists of people too; show their names
+        // instead of a blank cell.
+        if (
+          [
+            'AuthorsInput',
+            'StationAuthorsInput',
+            'MoreThanHumanAuthorsInput',
+            'ContributorsInput',
+          ].includes(fieldComponent)
+        ) {
           const authors = get(manuscript, property)
 
           accumulator[property] = Array.isArray(authors)
             ? authors
-                .map((author: Record<string, any>) =>
-                  [author.firstName, author.middleName, author.lastName]
-                    .filter(Boolean)
-                    .join(' '),
+                .map(
+                  (author: Record<string, any>) =>
+                    [
+                      author.firstName ?? author.givenName,
+                      author.middleName,
+                      author.lastName ?? author.familyName,
+                    ]
+                      .filter(Boolean)
+                      .join(' ') || author.name,
                 )
                 .filter(Boolean)
                 .join(', ')
