@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto'
 import { describe, afterEach, beforeAll, afterAll, it, expect } from 'vitest'
 import gql from 'graphql-tag'
 import {
@@ -7,6 +6,7 @@ import {
   db,
   config,
   DbTestUtils,
+  uuid,
 } from '@coko/server'
 
 import {
@@ -124,7 +124,7 @@ const setUp = async ({
     role: 'groupAdmin',
     displayName: 'Group Admin',
     objectId: group.id,
-    objectType: 'Group',
+    objectType: 'group',
   })
 
   const editorTeam = await Team.insert({
@@ -153,7 +153,7 @@ const insertDiscussion = async (
   comments: StoredComment[],
 ): Promise<{ threadedDiscussionId: string; threadId: string }> => {
   const now = new Date().toISOString()
-  const threadId = randomUUID()
+  const threadId = uuid()
 
   const discussion = await ThreadedDiscussion.query().insertAndFetch({
     manuscriptId,
@@ -168,7 +168,7 @@ const insertDiscussion = async (
           created: now,
           updated: now,
           commentVersions: c.commentVersions.map(v => ({
-            id: randomUUID(),
+            id: uuid(),
             created: now,
             updated: now,
             ...v,
@@ -235,21 +235,20 @@ describe('Threaded discussion API', () => {
 
   afterAll(async () => {
     await DbTestUtils.clearDb()
-    await db.destroy()
   })
 
   describe('updatePendingComment', () => {
     it('refuses a global Admin starting a discussion, and creates nothing', async () => {
       const { group, manuscript, adminId } = await setUp()
-      const threadedDiscussionId = randomUUID()
+      const threadedDiscussionId = uuid()
 
       const { errors } = await execute(
         UPDATE_PENDING_COMMENT,
         {
           manuscriptId: manuscript.id,
           threadedDiscussionId,
-          threadId: randomUUID(),
-          commentId: randomUUID(),
+          threadId: uuid(),
+          commentId: uuid(),
           comment: '<p>Admin comment</p>',
           manuscriptVersionId: manuscript.id,
         },
@@ -265,7 +264,7 @@ describe('Threaded discussion API', () => {
 
     it('refuses a global Admin editing an existing comment', async () => {
       const { group, manuscript, adminId, groupAdminId } = await setUp()
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const { threadedDiscussionId, threadId } = await insertDiscussion(
         manuscript.id,
@@ -300,15 +299,15 @@ describe('Threaded discussion API', () => {
 
     it('lets a Group Admin start a discussion', async () => {
       const { group, manuscript, groupAdminId } = await setUp()
-      const threadedDiscussionId = randomUUID()
+      const threadedDiscussionId = uuid()
 
       const { errors } = await execute(
         UPDATE_PENDING_COMMENT,
         {
           manuscriptId: manuscript.id,
           threadedDiscussionId,
-          threadId: randomUUID(),
-          commentId: randomUUID(),
+          threadId: uuid(),
+          commentId: uuid(),
           comment: '<p>Group Admin comment</p>',
           manuscriptVersionId: manuscript.id,
         },
@@ -326,7 +325,7 @@ describe('Threaded discussion API', () => {
 
     it('lets an editor edit their own comment when editing is enabled', async () => {
       const { group, manuscript, editorId } = await setUp()
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const { threadedDiscussionId, threadId } = await insertDiscussion(
         manuscript.id,
@@ -361,7 +360,7 @@ describe('Threaded discussion API', () => {
         editorsEditDiscussionPostsEnabled: false,
       })
 
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const { threadedDiscussionId, threadId } = await insertDiscussion(
         manuscript.id,
@@ -403,7 +402,7 @@ describe('Threaded discussion API', () => {
       threadId: string
       commentId: string
     }> => {
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const ids = await insertDiscussion(manuscriptId, [
         {
@@ -431,7 +430,7 @@ describe('Threaded discussion API', () => {
 
     it('lets a Group Admin submit their draft', async () => {
       const { group, manuscript, groupAdminId } = await setUp()
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const { threadedDiscussionId, threadId } = await insertDiscussion(
         manuscript.id,
@@ -493,7 +492,7 @@ describe('Threaded discussion API', () => {
   describe('concurrent writes', () => {
     it('a draft save racing completeComment does not lose the submitted edit', async () => {
       const { group, manuscript, editorId } = await setUp()
-      const commentId = randomUUID()
+      const commentId = uuid()
 
       const { threadedDiscussionId, threadId } = await insertDiscussion(
         manuscript.id,
@@ -544,7 +543,7 @@ describe('Threaded discussion API', () => {
 
       await insertDiscussion(manuscript.id, [
         {
-          id: randomUUID(),
+          id: uuid(),
           commentVersions: [{ userId: groupAdminId, comment: '<p>Hi</p>' }],
           pendingVersions: [],
         },

@@ -51,6 +51,40 @@ class Team extends TeamBase {
     }
   }
 
+  /** Teams of an object with the given roles, with their users */
+  static async findWithUsers(objectId, roles, options = {}) {
+    const { trx } = options
+
+    return Team.query(trx)
+      .where({ objectId })
+      .whereIn('role', roles)
+      .withGraphFetched('users')
+  }
+
+  /** Collaborative reviewer teams of the given manuscripts, with their users */
+  static async findCollaborativeReviewerTeams(manuscriptIds, options = {}) {
+    const { trx } = options
+
+    return Team.query(trx)
+      .where({ role: 'collaborativeReviewer' })
+      .whereIn('objectId', manuscriptIds)
+      .withGraphFetched('users')
+      .orderBy('created')
+  }
+
+  static async isUserInRolesForObject(userId, objectId, roles, options = {}) {
+    const { trx, excludeTeamId } = options
+
+    const query = this.query(trx)
+      .joinRelated('members')
+      .where({ 'teams.objectId': objectId, 'members.userId': userId })
+      .whereIn('teams.role', roles)
+
+    if (excludeTeamId) query.whereNot('teams.id', excludeTeamId)
+
+    return (await query.resultSize()) > 0
+  }
+
   // TODO add $beforeDelete once https://github.com/Coko-Foundation/cokoserver/issues/43 is resolved
   async $beforeInsert(queryContext) {
     await super.$beforeInsert(queryContext)
