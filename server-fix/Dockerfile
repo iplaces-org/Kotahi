@@ -71,6 +71,11 @@ COPY packages/server/config/defaultEmailTemplates.js \
      /home/node/app/config/defaultEmailTemplates.js
 COPY packages/server/config/defaultEmailTemplates.js \
      /home/node/app/dist/config/defaultEmailTemplates.js
+#      seedGroups.js writes the @mention template itself and finds the Task
+#      notification template by its exact subject, so it needs the same change.
+#      Pinned to the 2026.10.12-0 image's plain copy + 4 Patch 29 edits.
+COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/scripts/seedGroups.js
+COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/dist/scripts/seedGroups.js
 
 # (4) pdfExport crash guard. RE-PINNED 2026-07 to the 2026.07.03-0 image's own
 #     copy (config.get('pagedjs') / new createFile signature) + the 5-line

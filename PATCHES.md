@@ -343,8 +343,16 @@ already has templates). Existing stations were fixed once in the database
 created, set its Group name before anyone is emailed, or emails show the
 slug.
 
-Overlay copied to plain + dist; the repo copy equals the 2026.10.12-0
-image's plain copy plus these text changes. Re-pin on image bumps.
+`scripts/seedGroups.js` (overlay `server-fix/overlays/scripts/`, pinned to
+the 2026.10.12-0 image's plain copy) gets the same change for the
+@mention notification template it writes itself. It also tags the Task
+notification template by matching its exact subject, so that match now
+accepts `{{ brandName }} | Task notification` too. Without it a new
+station's task template would never get type `taskNotification`.
+
+Both overlays are copied to plain + dist. The defaultEmailTemplates.js repo
+copy equals the image's plain copy plus these text changes. Re-pin both on
+image bumps.
 
 ## How the patches reach the container
 

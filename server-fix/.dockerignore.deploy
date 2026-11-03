@@ -73,3 +73,8 @@ server-fix/overlays/api/graphql/*
 !server-fix/overlays/api/graphql/user
 server-fix/overlays/api/graphql/user/*
 !server-fix/overlays/api/graphql/user/user.resolvers.js
+
+# (Patch 29) seedGroups overlay.
+!server-fix/overlays/scripts
+server-fix/overlays/scripts/*
+!server-fix/overlays/scripts/seedGroups.js
