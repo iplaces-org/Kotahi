@@ -7,9 +7,10 @@ app = 'iplaces-zenodo'
 primary_region = 'lhr'
 
 [env]
+  # ZENODO_BASE (https://zenodo.org) is set as a Fly secret, which overrides
+  # [env]. Do not add it here: a sandbox value here was misleading.
   KOTAHI_SERVER = 'https://iplaces-test-server.fly.dev'
   SERVICE_BASE_URL = 'https://iplaces-zenodo.fly.dev'
-  ZENODO_BASE = 'https://sandbox.zenodo.org'
 
 [http_service]
   internal_port = 8080
