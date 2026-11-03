@@ -7,7 +7,7 @@ RUN corepack enable
 
 ENV NODE_ENV='production'
 ENV CLIENT_STATIC_FOLDER_PATH=../public
-ENV CLIENT_PAGE_TITLE='iPlaces'
+ENV CLIENT_PAGE_TITLE='iPlaces Publishing'
 
 WORKDIR /home/node/app
 
