@@ -505,6 +505,7 @@ const useManuscriptsTable = (variant: Variant): UseManuscriptsTableResult => {
       'submission.adaState': t('manuscriptsTable.adaState'),
       actions: t('manuscriptsTable.Actions'),
       author: t('manuscriptsTable.Author'),
+      authorTeam: t('manuscriptsTable.authorTeam'), // iplaces
       created: t('manuscriptsTable.Created'),
       editor: t('manuscriptsTable.Editor'),
       lastUpdated: t('manuscriptsTable.lastReviewerStatusUpdate'),
@@ -1370,6 +1371,22 @@ const useManuscriptsTable = (variant: Variant): UseManuscriptsTableResult => {
 
         if (property === 'created') {
           accumulator[property] = manuscript.firstVersionCreated
+          return accumulator
+        }
+
+        // iplaces: every member of the record's author team (not just the
+        // submitter), comma-separated. Add 'authorTeam' to Settings >
+        // Configuration > Manuscripts page > table columns to show it.
+        if (property === 'authorTeam') {
+          const authorTeam = (manuscript.teams || []).find(
+            (team: Record<string, any>) => team.role === 'author',
+          )
+
+          const names = (authorTeam?.members || [])
+            .map((member: Record<string, any>) => member?.user?.username)
+            .filter(Boolean)
+
+          accumulator[property] = names.length ? names.join(', ') : undefined
           return accumulator
         }
 

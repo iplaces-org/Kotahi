@@ -177,6 +177,7 @@ const en = {
       ORCID: 'ORCID',
     },
     manuscriptsTable: {
+      authorTeam: 'Author team', // iplaces
       'No matching manuscripts were found':
         'No matching manuscripts were found',
       searchChip: 'Search: {{query}}',
