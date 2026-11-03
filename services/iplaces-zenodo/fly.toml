@@ -1,0 +1,17 @@
+# fly.toml app configuration file generated for iplaces-zenodo on 2026-11-03T12:19:47-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'iplaces-zenodo'
+primary_region = 'lhr'
+
+[env]
+  # ZENODO_BASE (https://zenodo.org) is set as a Fly secret, which overrides
+  # [env]. Do not add it here: a sandbox value here was misleading.
+  KOTAHI_SERVER = 'https://iplaces-test-server.fly.dev'
+  SERVICE_BASE_URL = 'https://iplaces-zenodo.fly.dev'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
