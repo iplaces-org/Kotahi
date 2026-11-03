@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 #
 # One-command backup of the Kotahi database (Fly app: iplaces-test-db2).
+# Every station (gumpstation, wams, obfs, commons, and new ones) lives in this
+# one database, so one dump backs up all of them.
 #
 # Run it from Terminal on the Mac, from anywhere:
 #   ~/Kotahi/scripts/backup-iplaces-db.sh                  dump, download, encrypt, prune
 #   ~/Kotahi/scripts/backup-iplaces-db.sh --restore-test   same, plus a restore test first
+#   backup-iplaces-db.sh --unattended --restore-test       what the weekly launchd job runs
+#                                                          (scripts/install-backup-schedule.sh)
 #
 # What it does (the steps in planning/db-backup/BACKUP-STEPS.md, in order):
 #   1. checks fly and age are installed and the database machine has room
@@ -12,14 +16,17 @@
 #   3. downloads the dump to ~/iplaces-backups and checks the size matches
 #   4. (--restore-test) restores it into a scratch database and compares row counts
 #   5. deletes the dump from the database machine
-#   6. encrypts the laptop copy with `age -p` and deletes the unencrypted file
+#   6. encrypts the laptop copy with age and deletes the unencrypted file
 #   7. keeps the newest 8 encrypted dumps and deletes older ones
 #   8. copies the encrypted file to Google Drive iPlaces/db-backups if Google
 #      Drive for desktop is installed (or IPLACES_DRIVE_DIR is set), and keeps
 #      the newest 8 there too
 #
-# `age -p` asks for a passphrase twice. Use the one in the password manager.
-# Without it the backup can never be opened.
+# Encryption: if ~/.config/iplaces-backup/recipients.txt exists (made by
+# install-backup-schedule.sh), the dump is encrypted to that public key with no
+# prompt; the matching private key lives only in the password manager.
+# Otherwise `age -p` asks for the backup passphrase twice.
+# Without the key or passphrase a backup can never be opened.
 #
 # The script never handles the database password. It uses the database
 # machine's own OPERATOR_PASSWORD environment variable, so it keeps working
@@ -34,13 +41,16 @@ PGCONN="-h localhost -p 5433 -U postgres"
 LOCAL_DIR="$HOME/iplaces-backups"
 KEEP=8
 REMOTE_DIR="/data/backups"
+RECIPIENTS="$HOME/.config/iplaces-backup/recipients.txt"
 # -----------------------------------------------------------------------------
 
 RESTORE_TEST=0
+UNATTENDED=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --restore-test) RESTORE_TEST=1; shift ;;
-    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+    --unattended) UNATTENDED=1; shift ;;
+    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -65,6 +75,10 @@ REMOTE_DUMP="$REMOTE_DIR/$NAME"
 REMOTE_LEFT=0
 
 cleanup(){
+  local rc=$?
+  if [[ "$rc" != 0 && "$UNATTENDED" == 1 ]] && command -v osascript >/dev/null; then
+    osascript -e 'display notification "Weekly database backup FAILED. See ~/iplaces-backups/backup.log" with title "iPlaces backup"' >/dev/null 2>&1 || true
+  fi
   if [[ "$REMOTE_LEFT" == 1 ]]; then
     red "Cleaning up: removing $REMOTE_DUMP from the database machine."
     on_db "rm -f $REMOTE_DUMP; echo RM_OK" >/dev/null 2>&1 || red "Could not remove it. Run: fly ssh console -a $DB_APP -C \"rm -f $REMOTE_DUMP\""
@@ -80,6 +94,10 @@ trap cleanup EXIT
 hdr "1. Checks"
 command -v fly >/dev/null || die "fly is not installed."
 command -v age >/dev/null || die "age is not installed. Run: brew install age"
+if [[ "$UNATTENDED" == 1 && ! -s "$RECIPIENTS" ]]; then
+  die "--unattended needs $RECIPIENTS (run scripts/install-backup-schedule.sh)."
+fi
+echo "  started $(date '+%Y-%m-%d %H:%M %Z')"
 fly auth whoami >/dev/null 2>&1 || die "not logged in to Fly. Run: fly auth login"
 mkdir -p "$LOCAL_DIR"
 
@@ -135,9 +153,14 @@ grn "  ok"
 
 # ----- 6. encrypt -----------------------------------------------------------------
 hdr "6. Encrypt with age"
-echo "age will now ask for the backup passphrase twice (from the password manager)."
-echo "Nothing shows on screen while you type or paste. That is normal."
-age -p -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
+if [[ -s "$RECIPIENTS" ]]; then
+  echo "  encrypting to the backup key in $RECIPIENTS (no prompt)"
+  age -R "$RECIPIENTS" -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
+else
+  echo "age will now ask for the backup passphrase twice (from the password manager)."
+  echo "Nothing shows on screen while you type or paste. That is normal."
+  age -p -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
+fi
 [[ -s "$LOCAL_AGE" ]] || die "encrypted file is empty."
 rm -f "$LOCAL_DUMP"
 grn "  ok: $LOCAL_AGE ($(file_size "$LOCAL_AGE") bytes); unencrypted copy deleted"
@@ -163,9 +186,14 @@ if [[ -z "$DRIVE_DIR" ]]; then
   done
 fi
 if [[ -n "$DRIVE_DIR" && -d "$DRIVE_DIR" ]]; then
-  cp "$LOCAL_AGE" "$DRIVE_DIR/"
-  prune "$DRIVE_DIR"
-  grn "  ok: copied to $DRIVE_DIR"
+  if cp "$LOCAL_AGE" "$DRIVE_DIR/"; then
+    prune "$DRIVE_DIR"
+    grn "  ok: copied to $DRIVE_DIR"
+  else
+    DRIVE_DIR=""
+    red "  Could not write to Google Drive (macOS may be blocking background access)."
+    red "  The laptop copy is fine. Upload $LOCAL_AGE to Drive iPlaces/db-backups by hand."
+  fi
 else
   red "  Google Drive folder not found on this Mac. Upload $LOCAL_AGE to Drive iPlaces/db-backups by hand,"
   red "  and delete the oldest there so 8 remain."
