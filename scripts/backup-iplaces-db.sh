@@ -22,11 +22,11 @@
 #      Drive for desktop is installed (or IPLACES_DRIVE_DIR is set), and keeps
 #      the newest 8 there too
 #
-# Encryption: if ~/.config/iplaces-backup/recipients.txt exists (made by
-# install-backup-schedule.sh), the dump is encrypted to that public key with no
+# Encryption: to the public key in ~/.config/iplaces-backup/recipients.txt (made
+# once by install-backup-schedule.sh), with no
 # prompt; the matching private key lives only in the password manager.
-# Otherwise `age -p` asks for the backup passphrase twice.
-# Without the key or passphrase a backup can never be opened.
+# Without that key file the script stops before touching the database.
+# Without the private key a backup can never be opened.
 #
 # The script never handles the database password. It uses the database
 # machine's own OPERATOR_PASSWORD environment variable, so it keeps working
@@ -94,9 +94,9 @@ trap cleanup EXIT
 hdr "1. Checks"
 command -v fly >/dev/null || die "fly is not installed."
 command -v age >/dev/null || die "age is not installed. Run: brew install age"
-if [[ "$UNATTENDED" == 1 && ! -s "$RECIPIENTS" ]]; then
-  die "--unattended needs $RECIPIENTS (run scripts/install-backup-schedule.sh)."
-fi
+# No passphrase mode: a blank answer to `age -p` makes age invent a passphrase
+# and print it once, which left an unopenable backup on 2026-11-03.
+[[ -s "$RECIPIENTS" ]] || die "no backup key yet. Run ~/Kotahi/scripts/install-backup-schedule.sh once, then run this again." 
 echo "  started $(date '+%Y-%m-%d %H:%M %Z')"
 fly auth whoami >/dev/null 2>&1 || die "not logged in to Fly. Run: fly auth login"
 mkdir -p "$LOCAL_DIR"
@@ -153,14 +153,8 @@ grn "  ok"
 
 # ----- 6. encrypt -----------------------------------------------------------------
 hdr "6. Encrypt with age"
-if [[ -s "$RECIPIENTS" ]]; then
-  echo "  encrypting to the backup key in $RECIPIENTS (no prompt)"
-  age -R "$RECIPIENTS" -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
-else
-  echo "age will now ask for the backup passphrase twice (from the password manager)."
-  echo "Nothing shows on screen while you type or paste. That is normal."
-  age -p -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
-fi
+echo "  encrypting to the backup key in $RECIPIENTS (no prompt)"
+age -R "$RECIPIENTS" -o "$LOCAL_AGE" "$LOCAL_DUMP" || { rm -f "$LOCAL_AGE"; die "encryption failed."; }
 [[ -s "$LOCAL_AGE" ]] || die "encrypted file is empty."
 rm -f "$LOCAL_DUMP"
 grn "  ok: $LOCAL_AGE ($(file_size "$LOCAL_AGE") bytes); unencrypted copy deleted"
