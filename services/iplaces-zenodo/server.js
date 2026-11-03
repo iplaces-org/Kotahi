@@ -29,7 +29,26 @@ const SERVICE_BASE_URL = process.env.SERVICE_BASE_URL;     // e.g. https://iplac
 const KOTAHI_SERVER    = process.env.KOTAHI_SERVER;        // e.g. https://iplaces-test-server.fly.dev (server origin)
 const STATE_SECRET     = process.env.STATE_SECRET;         // any long random string, for signing the OAuth state
 const SCOPE            = "deposit:write";                  // add " deposit:actions" only if you later want the SERVER to publish
+// Zenodo's anti-bot filter answers unnamed clients (Node's default "node") with
+// an HTML "403 Forbidden ... unusual traffic" page (seen 2026-11-03), so every
+// outgoing request names this service.
+const USER_AGENT       = "iPlaces-Zenodo-Deposit/1.0 (+https://iplacesalliance.org)";
 /* -------------------------------------------------------------------- */
+
+/* ---------- outgoing HTTP: always send USER_AGENT, and fail with a readable
+   message (status + start of body) when a JSON API answers with HTML ---------- */
+function uaFetch(url, opts = {}) {
+  return fetch(url, { ...opts, headers: { "User-Agent": USER_AGENT, ...(opts.headers || {}) } });
+}
+async function readJson(res, what) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const snippet = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+    throw new Error(`${what} answered HTTP ${res.status} with non-JSON: ${snippet}`);
+  }
+}
 
 const REDIRECT_URI = SERVICE_BASE_URL + "/zenodo/callback";
 const app = express();
@@ -56,12 +75,12 @@ function verifyState(state) {
 async function getArticle(group, shortId) {
   const safeGroup = String(group).replace(/[^a-z0-9_-]/gi, "");
   const query = `{ manuscriptsPublishedSinceDate(groupName: "${safeGroup}", startDate: "2000-01-01") { shortId submission } }`;
-  const r = await fetch(KOTAHI_SERVER.replace(/\/$/, "") + "/graphql", {
+  const r = await uaFetch(KOTAHI_SERVER.replace(/\/$/, "") + "/graphql", {
     method: "POST",
     headers: { "Content-Type": "application/json", "apollo-require-preflight": "true" },
     body: JSON.stringify({ query }),
   });
-  const j = await r.json();
+  const j = await readJson(r, "Kotahi");
   if (j.errors) throw new Error("Kotahi GraphQL: " + JSON.stringify(j.errors));
   const list = (j.data && j.data.manuscriptsPublishedSinceDate) || [];
   const hit  = list.find(m => String(m.shortId) === String(shortId));
@@ -166,11 +185,11 @@ app.get("/zenodo/start", (req, res) => {
 app.get("/zenodo/callback", async (req, res) => {
   try {
     const { code, state, error } = req.query;
-    if (error) return res.status(400).send("Zenodo authorization denied: " + error);
+    if (error) return res.status(400).type("text/plain").send("Zenodo authorization denied: " + error);
     const { shortId, group } = verifyState(state);
 
     // 1. exchange code for the USER's access token
-    const tokRes = await fetch(ZENODO_BASE + "/oauth/token", {
+    const tokRes = await uaFetch(ZENODO_BASE + "/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -181,9 +200,10 @@ app.get("/zenodo/callback", async (req, res) => {
         redirect_uri: REDIRECT_URI,
       }),
     });
-    const tok = await tokRes.json();
+    const tok = await readJson(tokRes, "Zenodo token endpoint");
     if (!tokRes.ok || !tok.access_token) {
-      return res.status(502).send("Token exchange failed: " + JSON.stringify(tok));
+      console.error("token exchange failed", tokRes.status, JSON.stringify(tok));
+      return res.status(502).type("text/plain").send("Token exchange failed: " + JSON.stringify(tok));
     }
     const userToken = tok.access_token;   // used once, below; never stored
 
@@ -192,7 +212,7 @@ app.get("/zenodo/callback", async (req, res) => {
     const payload    = buildZenodoMetadata(submission);
 
     // 3. create the draft in the USER's account
-    const depRes = await fetch(ZENODO_BASE + "/api/deposit/depositions", {
+    const depRes = await uaFetch(ZENODO_BASE + "/api/deposit/depositions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -200,8 +220,9 @@ app.get("/zenodo/callback", async (req, res) => {
       },
       body: JSON.stringify(payload),
     });
-    const dep = await depRes.json();
+    const dep = await readJson(depRes, "Zenodo deposit API");
     if (!depRes.ok) {
+      console.error("draft rejected", depRes.status, JSON.stringify(dep));
       // surface the RAW Zenodo error so you can see exactly which field bounced
       return res.status(502).send(
         "<h3>Zenodo rejected the draft</h3><pre>" +
@@ -215,7 +236,8 @@ app.get("/zenodo/callback", async (req, res) => {
     const editUrl = (dep.links && dep.links.html) || (ZENODO_BASE + "/uploads/" + dep.id);
     res.redirect(editUrl);
   } catch (e) {
-    res.status(500).send("Deposit flow error: " + e.message);
+    console.error("deposit flow error:", e.message);
+    res.status(500).type("text/plain").send("Deposit flow error: " + e.message);
   }
 });
 
