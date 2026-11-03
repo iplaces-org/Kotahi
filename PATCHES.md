@@ -328,6 +328,32 @@ graphql-shield hashes the args, the `Upload` promise in them makes that
 throw, and every upload is refused. Any future rule on an upload mutation
 needs `no_cache` or `contextual`.
 
+## Patch 29 — emails say the station title, not "Kotahi" (2026-10-24)
+
+### What it does
+The seeded email templates had "Kotahi | ..." subjects and a "Kotahi team"
+sign-off. `config/defaultEmailTemplates.js` now uses `{{ brandName }}`
+(Patch 3c: the group's Settings > Configuration > Group Identity > Group
+name, falling back to the group slug), so Gump's reviewer invitation reads
+"iPlaces Gump Station | Reviewer invitation" and "iPlaces Gump Station team".
+
+Only NEW groups are seeded from this file (`seedGroups` skips a group that
+already has templates). Existing stations were fixed once in the database
+(`planning/email-branding/` in the project files). When a new station is
+created, set its Group name before anyone is emailed, or emails show the
+slug.
+
+`scripts/seedGroups.js` (overlay `server-fix/overlays/scripts/`, pinned to
+the 2026.10.12-0 image's plain copy) gets the same change for the
+@mention notification template it writes itself. It also tags the Task
+notification template by matching its exact subject, so that match now
+accepts `{{ brandName }} | Task notification` too. Without it a new
+station's task template would never get type `taskNotification`.
+
+Both overlays are copied to plain + dist. The defaultEmailTemplates.js repo
+copy equals the image's plain copy plus these text changes. Re-pin both on
+image bumps.
+
 ## How the patches reach the container
 
 `server-fix/Dockerfile` overlays the file onto the prebuilt image:
