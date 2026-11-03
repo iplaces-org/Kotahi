@@ -22,7 +22,7 @@ set -euo pipefail
 # ----- config (edit here when the client is upgraded) ------------------------
 APP="iplaces-test-client"
 CLIENT_BRANCH="repeatable-group-spike"
-EXPECTED_VERSION="2026.10.12-0"
+EXPECTED_VERSION="2026.11.03-0"
 # -----------------------------------------------------------------------------
 
 VERIFY_ONLY=0

@@ -80,8 +80,8 @@ upper-casing a final `x`.
 
 - `server-fix/overlays/services/orcidAuthorLink.service.js` (iPlaces-only):
   `linkUserToManuscriptsByOrcid`, `linkAuthorsOfManuscript`.
-- `server-fix/overlays/controllers/orcid.controllers.js`: 2026.10.12-0 image
-  plain copy (== tag) + login hook before `done(...)`, non-fatal.
+- `server-fix/overlays/controllers/orcid.controllers.js`: 2026.11.03-0 image
+  plain copy (== tag) + login hook before `done(...)`, non-fatal (+ Patch 30).
 - `packages/server/controllers/manuscript/manuscript.controllers.js`:
   `updateManuscript` links authors when the delta carries `$authors`
   (also covers `submitManuscript`), non-fatal.
@@ -269,7 +269,7 @@ add operations too.
 ## Patch 27 — other users' emails only for station staff (2026-10-24)
 
 **File:** `server-fix/overlays/api/graphql/user/user.resolvers.js` (pinned to
-the 2026.10.12-0 image's plain copy of `api/graphql/user/user.resolvers.js`,
+the 2026.11.03-0 image's plain copy of `api/graphql/user/user.resolvers.js`,
 copied to both the plain and `dist/` paths).
 
 ### What it does
@@ -344,7 +344,7 @@ created, set its Group name before anyone is emailed, or emails show the
 slug.
 
 `scripts/seedGroups.js` (overlay `server-fix/overlays/scripts/`, pinned to
-the 2026.10.12-0 image's plain copy) gets the same change for the
+the 2026.11.03-0 image's plain copy) gets the same change for the
 @mention notification template it writes itself. It also tags the Task
 notification template by matching its exact subject, so that match now
 accepts `{{ brandName }} | Task notification` too. Without it a new
@@ -353,6 +353,55 @@ station's task template would never get type `taskNotification`.
 Both overlays are copied to plain + dist. The defaultEmailTemplates.js repo
 copy equals the image's plain copy plus these text changes. Re-pin both on
 image bumps.
+
+## Patch 30 — ORCID login tokens are not kept (2026-11-03)
+
+### What it does
+- `server-fix/overlays/controllers/orcid.controllers.js`: a first ORCID login
+  no longer stores the ORCID OAuth access and refresh tokens in
+  `identities.oauth`. The access token is passed in memory to
+  `fetchUserDetails` for the one name/affiliation lookup it was kept for.
+  Called without a token (only Crossref publishing does that; iPlaces uses
+  DataCite), `fetchUserDetails` returns empty details instead of throwing.
+- `server-fix/overlays/api/rest/orcid/orcid.js` (new overlay, 2026.11.03-0
+  image plain copy + Patch 30): the request logger (pino-http in
+  @coko/server) wrote the callback's `Location` header, i.e.
+  `/<station>/login?token=<JWT>`, into the server log on every login. The
+  route now hands the logger the address without its query string; the
+  browser still gets the full redirect.
+- Existing tokens: `upgrades/kotahi-2026.11.03/orcid-tokens-*.sql` in the
+  project files sets `identities.oauth` to NULL (run after the deploy).
+
+## Patch 31 — publish once: the DOI is saved before the Flax rebuild (2026-11-03)
+
+### What it does
+`publishManuscript` mints the DataCite DOI, then asks Flax to rebuild, and
+only saves the DOI (and the Patch 12 Local Contexts refresh) after every
+step. Flax reads the record from the database, so the first publish built
+the article page without its DOI and editors published twice. Now the DOI
+and the submission are saved as soon as DataCite returns, before the Flax
+step. Non-fatal; the final save repeats it. Upstream bug (also in
+2026.11.03-0); not reported upstream (Erin's rule).
+
+## 2026.11.03-0 re-pin notes (2026-11-03)
+- Patch 15: `createManuscript` is gone upstream; the submit-blocked check is
+  now on `createSubmission: and(userCanCreateSubmission, userIsNotSubmitBlocked)`.
+- Patch 17: `user.controllers.js` re-pinned to the tag source (plain copy)
+  instead of the dist/ compiled copy.
+- Patch 26: dropped what eLife now rules itself: the CMS file mutations,
+  `generateNewToken` (same roles as ours), and the CMS queries, where
+  upstream is stricter (`cmsPage`, `getCmsFilesTree`, `getCmsFileContent`,
+  `getFoldersList` need a group admin; Flax reads `cmsLayout`, `cmsPages`,
+  `getActiveCmsFilesTree`, still `allow`). Removed rules for operations
+  eLife deleted: `createManuscript`, `createTeam`, `updateRecentTab`,
+  `uploadFile`, `docxToHtml`. New upstream operations come with upstream
+  rules (`createSubmission`, `dashboardData`, `hasToken`,
+  `newSubmissionSettings`, `userNotifications`, `dismiss*UserNotification*`,
+  `newSubmissionProgress`).
+- Patch 27: uses the new request loaders (`getRequestLoaders(ctx)`).
+- Team `objectType` for station teams is now lowercase `'group'` (migration
+  1793265002). SQL that filters `object_type = 'Group'` finds nothing after
+  the upgrade.
 
 ## How the patches reach the container
 
