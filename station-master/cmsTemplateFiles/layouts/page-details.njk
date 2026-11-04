@@ -13,9 +13,15 @@
 {% block styles %}
   {{ super() }}
   <style>
+    /* Centre the text column instead of fixed 335px side margins, which
+       squeezed pages to one word per line on phones (WCAG 1.4.10 Reflow). */
     .page-content {
-      margin-left: 335px;
-      margin-right: 335px;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: 20px;
+      padding-right: 20px;
+      box-sizing: border-box;
     }
   </style>
 {% endblock %}
