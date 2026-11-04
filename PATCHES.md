@@ -383,6 +383,25 @@ and the submission are saved as soon as DataCite returns, before the Flax
 step. Non-fatal; the final save repeats it. Upstream bug (also in
 2026.11.03-0); not reported upstream (Erin's rule).
 
+## Patch 32 — activity-log lines name the station, not Kotahi (2026-11-03)
+
+### What it does
+The editorial discussion and task logs said "Editor Decision sent by Kotahi
+to …", "Submission Confirmation Email sent by Kotahi to …" and so on. They now
+say "sent by iPlaces Gump Station to …": the station's Group name
+(Settings > Configuration > Group Identity), with "iPlaces " in front when the
+name doesn't already start with it (WAMS shows "iPlaces WAMS"). Fallback is
+plain "iPlaces"; the helper never throws.
+
+- `packages/server/services/stationSenderName.js`: iPlaces-only helper.
+- `manuscript.controllers.js` (overlay 3b): the five "sent by Kotahi" lines.
+- `task.controllers.js`: not overlaid. The Dockerfile patches its one line in
+  the image's own plain and dist copies, and fails the build if the line
+  isn't there. Re-check after every base-image bump.
+- `deploy-iplaces-server.sh`: `guard_sender_name_landed`.
+
+Only new log lines change; lines already in the database keep "Kotahi".
+
 ## 2026.11.03-0 re-pin notes (2026-11-03)
 - Patch 15: `createManuscript` is gone upstream; the submit-blocked check is
   now on `createSubmission: and(userCanCreateSubmission, userIsNotSubmitBlocked)`.

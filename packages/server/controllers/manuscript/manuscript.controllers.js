@@ -36,6 +36,7 @@ const { cachedGet } = require('../../services/queryCache.service')
 const seekEvent = require('../../services/notification.service')
 const { emitEvent } = require('../../services/eventManager/eventManager')
 const sanitizeWaxImages = require('../../utils/sanitizeWaxImages')
+const stationSenderName = require('../../services/stationSenderName') // iplaces Patch 32
 const {
   publishToDatacite,
   requestToDatacite,
@@ -258,7 +259,7 @@ const assignAuthorForProofingManuscript = async (manuscriptId, userId) => {
   }
 
   const messageContent = {
-    content: `Author proof assigned Email sent by Kotahi to ${author.username}`,
+    content: `Author proof assigned Email sent by ${await stationSenderName(manuscript.groupId)} to ${author.username}`,
     channelId,
     userId,
   }
@@ -857,7 +858,7 @@ const makeDecision = async (id, decisionKey, userId) => {
     ).id
 
     const messageContent = {
-      content: `Editor Decision sent by Kotahi to {{ recipientName }}`,
+      content: `Editor Decision sent by ${await stationSenderName(manuscript.groupId)} to {{ recipientName }}`,
       channelId,
       userId: manuscript.submitterId,
     }
@@ -1937,7 +1938,7 @@ const reviewerResponse = async (action, teamId, userId) => {
   )
 
   const messageContent = {
-    content: `Review Rejection Email sent by Kotahi to {{ receiverName }}`,
+    content: `Review Rejection Email sent by ${await stationSenderName(manuscript?.groupId)} to {{ receiverName }}`,
     channelId: editorialChannel?.id,
     userId: manuscript?.submitterId,
   }
@@ -2198,7 +2199,7 @@ const submitAuthorProofingFeedback = async (id, input, userId) => {
   }
 
   const messageContent = objIf(editor, {
-    content: `Author proof completed Email sent by Kotahi to ${editor.user.username}`,
+    content: `Author proof completed Email sent by ${await stationSenderName(manuscript.groupId)} to ${editor.user.username}`,
     channelId,
     userId: editor.user.id,
   })
@@ -2238,7 +2239,7 @@ const submitManuscript = async (id, input, userId) => {
   }
 
   const messageContent = {
-    content: `Submission Confirmation Email sent by Kotahi to ${manuscript?.submitter?.username}`,
+    content: `Submission Confirmation Email sent by ${await stationSenderName(manuscript.groupId)} to ${manuscript?.submitter?.username}`,
     channelId,
     userId: manuscript?.submitterId,
   }
