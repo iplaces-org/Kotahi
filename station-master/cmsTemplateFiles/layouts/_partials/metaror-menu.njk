@@ -355,6 +355,28 @@
     }
   }
 
+  /* a11y: on small screens the menu toggle must stay keyboard-reachable
+     (visually hidden, not display:none), and closed-menu links must not
+     take focus while invisible. */
+  @media screen and (max-width: 768px) {
+    input#menu-btn {
+      display: block;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #menu-btn:focus-visible + label.menu-icon {
+      outline: 3px solid #fff;
+      outline-offset: 2px;
+    }
+    #menu-btn:not(:checked) ~ nav#menu {
+      visibility: hidden;
+    }
+  }
+
   .mobile-only {
     display: none;
     @media screen and (max-width: 768px) {
@@ -388,22 +410,23 @@
   {{ station.trial }}
 </div>
 {% endif %}
-<div id="sticky-menu">
+<div id="sticky-menu" role="banner">
 {% include "_partials/logo.njk" %}
-  <input type="checkbox" id="menu-btn" /><label
+  <input type="checkbox" id="menu-btn" aria-label="Menu" aria-controls="menu" /><label
     for="menu-btn"
     class="menu-icon"
+    aria-hidden="true"
   >
     <div class="menu"></div>
   </label>
-  <nav id="menu">
-    <a href="/browse">
+  <nav id="menu" aria-label="Main">
+    <a href="/browse" {% if page.url == '/browse/' %}aria-current="page"{% endif %}>
       <span>Browse</span>
     </a>
-    <a href="/archive/" aria-current="page">
+    <a href="/archive/" {% if page.url == '/archive/' %}aria-current="page"{% endif %}>
       <span>Archive</span>
     </a>
-    <a href="/collections/" aria-current="page">
+    <a href="/collections/" {% if page.url == '/collections/' %}aria-current="page"{% endif %}>
       <span>Collections</span>
     </a>
 {# Shown only when the station has a CMS page at /editorial-policy/ (same check as footer.njk). #}
@@ -430,6 +453,18 @@
     const menu_btn = select('#menu-btn')
     const topbar = select('#topbar')
 
+    menu_btn.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        menu_btn.click()
+      }
+    })
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && menu_btn.checked) {
+        menu_btn.click()
+        menu_btn.focus()
+      }
+    })
     menu_btn.addEventListener('input', e => {
       const { checked } = e.target
       const method = checked ? 'add' : 'remove'

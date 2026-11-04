@@ -3,6 +3,7 @@
 {% set title = cmsPage.title %}
 {% block content %}
     <main>
+        <h1 class="visually-hidden">{{ cmsPage.title }}</h1>
         <div class="page-content">
             {{ cmsPage.content | safe }}
         </div>

@@ -4,7 +4,7 @@
             <div class="partner-file-item">
                 <div class="partner-file">
                     <a href="{{ partner.url }}" target="_blank">
-                        <img src="{{partner.image.imageLocalUrl}}" onerror="this.onerror=null; this.src='/kotahi{{cmsConfig.defaultImagesDirectory}}placeholders/partners.png'"/>
+                        <img alt="{{ partner.name or partner.title or partner.url }}" src="{{partner.image.imageLocalUrl}}" onerror="this.onerror=null; this.src='/kotahi{{cmsConfig.defaultImagesDirectory}}placeholders/partners.png'"/>
                     </a>
                 </div>
 

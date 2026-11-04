@@ -23,7 +23,7 @@ permalink: "/archive/index.html"
     .arch-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1.5rem 1rem; }
   }
 </style>
-<div class="arch">
+<main class="arch">
   <h1 class="arch-title">Archive</h1>
   <p class="arch-intro">All issues of {{ station.title | default("iPlaces") }}, published by {{ station.hostOrg.name | default("") }}.</p>
   <div class="arch-grid">
@@ -44,4 +44,4 @@ permalink: "/archive/index.html"
     </a>
     {% endfor %}
   </div>
-</div>
+</main>

@@ -38,6 +38,10 @@ aside.side-section a:not(.button) {
 aside.side-section a:not(.button):hover {
   text-decoration: underline;
 }
+/* Links inside a sentence need more than colour to stand out (WCAG 1.4.1) */
+aside.side-section .about-this__intro a:not(.button) {
+  text-decoration: underline;
+}
 
 /* About-this rows: label above value, label gray uppercase, value dark normal */
 aside.side-section .about-this__row {
@@ -48,7 +52,7 @@ aside.side-section .about-this__label {
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #7a7a72;
+  color: #6b6b63;
   margin-bottom: 0.1rem;
 }
 aside.side-section .about-this__value {
@@ -59,7 +63,7 @@ aside.side-section .about-this__value {
 
 /* DOI: muted, and long-string safe (the page-width lesson) */
 aside.side-section .about-this__doi a {
-  color: #8a8a82;
+  color: #6b6b63;
   overflow-wrap: anywhere;
   word-break: break-word;
   font-size: 0.85rem;

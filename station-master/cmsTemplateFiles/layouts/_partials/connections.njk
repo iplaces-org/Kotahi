@@ -14,9 +14,9 @@
 
 <style>
   .dc-connections { max-width: 760px; margin: 0 auto; }
-  .dc-connections-intro { font-size: 0.85rem; color: #7a7a72; margin: 0 0 1rem; }
-  .dc-connections-loading { font-size: 0.85rem; color: #8a8a83; font-style: italic; }
-  .dc-connections-empty { font-size: 0.9rem; color: #8a8a83; padding: 1rem 0; }
+  .dc-connections-intro { font-size: 0.85rem; color: #6b6b63; margin: 0 0 1rem; }
+  .dc-connections-loading { font-size: 0.85rem; color: #6b6b63; font-style: italic; }
+  .dc-connections-empty { font-size: 0.9rem; color: #6b6b63; padding: 1rem 0; }
   .dc-graph-wrap { width: 100%; margin: 0 0 1.5rem; }
   .dc-graph { width: 100%; height: auto; display: block; }
   .dc-graph .dc-node { cursor: pointer; }
@@ -33,7 +33,7 @@
   .dc-connections li:last-child { border-bottom: none; }
   .dc-connections .dc-rel-title { display: block; font-size: 1rem; font-weight: 600; line-height: 1.35; color: #1b1b1a; text-decoration: none; }
   .dc-connections .dc-rel-title:hover { text-decoration: underline; }
-  .dc-connections .dc-rel-meta { display: block; font-size: 0.8rem; color: #8a8a83; margin-top: 0.2rem; }
+  .dc-connections .dc-rel-meta { display: block; font-size: 0.8rem; color: #6b6b63; margin-top: 0.2rem; }
   .dc-connections .dc-type-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 3px; margin-right: 0.4rem; }
   .dc-connections-foot { margin-top: 0.5rem; font-size: 0.9rem; }
 </style>
@@ -47,9 +47,9 @@
 
   var TYPE_COLORS = {
     'Dataset': '#0f6e56', 'Text': '#185fa5', 'Event': '#c2479b', 'Collection': '#7a5410',
-    'Software': '#5a3a86', 'Other': '#7a7a72', 'JournalArticle': '#185fa5'
+    'Software': '#5a3a86', 'Other': '#6b6b63', 'JournalArticle': '#185fa5'
   };
-  function colorFor(t) { return TYPE_COLORS[t] || '#7a7a72'; }
+  function colorFor(t) { return TYPE_COLORS[t] || '#6b6b63'; }
 
   var REL = [
     { key: 'partOf', label: 'Part of' }, { key: 'parts', label: 'Has part' },
