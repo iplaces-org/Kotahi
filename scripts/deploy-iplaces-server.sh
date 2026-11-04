@@ -196,6 +196,15 @@ guard_brandname_landed() {
   else fail "brandName NOT found in /home/node/app/services/handlebars.service.js (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_sender_name_landed() {
+  hdr "Guard: Patch 32 station name in activity-log lines landed in container"
+  local out n
+  out="$(flycli ssh console --app "$APP" -C "grep -c stationSenderName /home/node/app/controllers/task.controllers.js /home/node/app/controllers/manuscript/manuscript.controllers.js" 2>/dev/null || true)"
+  n="$(printf '%s\n' "$out" | grep -oE ':[0-9]+$' | tr -d ':' | awk '$1>=1' | wc -l | tr -d ' ')"
+  if [[ "$n" == "2" ]]; then ok "stationSenderName present in task + manuscript controllers"
+  else fail "stationSenderName missing in-container (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+}
+
 guard_cms_endpoint_landed() {
   hdr "Guard: cmsUpload endpoint overlay landed in container"
   # Same parsing discipline as guard_patch_landed: grep -c prints exactly the
@@ -280,6 +289,7 @@ run_guards() {
   guard_patch_landed
   guard_cms_endpoint_landed
   guard_brandname_landed
+  guard_sender_name_landed
   guard_latest_patch_landed
   guard_lc_writeback_landed
   guard_env_preserved

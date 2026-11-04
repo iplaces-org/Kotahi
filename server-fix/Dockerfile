@@ -115,3 +115,18 @@ COPY server-fix/overlays/services/orcidAuthorLink.service.js /home/node/app/dist
 #     2026.11.03-0 image's plain copy of api/rest/orcid/orcid.js + Patch 30.
 COPY server-fix/overlays/api/rest/orcid/orcid.js /home/node/app/api/rest/orcid/orcid.js
 COPY server-fix/overlays/api/rest/orcid/orcid.js /home/node/app/dist/api/rest/orcid/orcid.js
+
+# (Patch 32) Activity-log lines say "sent by <station>" instead of
+#     "sent by Kotahi". manuscript.controllers.js (overlay 3b above) calls the
+#     iPlaces-only helper services/stationSenderName.js. task.controllers.js is
+#     NOT overlaid: its one "sent by Kotahi to ${recipient.name}" line is
+#     patched in place in the image's own copies, and the build fails loudly
+#     if that line isn't found (so an upstream change can't slip through).
+COPY packages/server/services/stationSenderName.js /home/node/app/services/stationSenderName.js
+COPY packages/server/services/stationSenderName.js /home/node/app/dist/services/stationSenderName.js
+RUN for f in /home/node/app/controllers/task.controllers.js /home/node/app/dist/controllers/task.controllers.js; do \
+      grep -qF 'sent by Kotahi to ${recipient.name}' "$f" || { echo "Patch 32: task line not found in $f"; exit 1; }; \
+      sed -i "s#sent by Kotahi to \${recipient.name}#sent by \${await require('../services/stationSenderName')(typeof n !== 'undefined' ? n?.task?.groupId : undefined)} to \${recipient.name}#" "$f"; \
+      grep -qF 'stationSenderName' "$f" && ! grep -qF 'sent by Kotahi' "$f" || { echo "Patch 32: sed failed in $f"; exit 1; }; \
+      node --check "$f" || exit 1; \
+    done
