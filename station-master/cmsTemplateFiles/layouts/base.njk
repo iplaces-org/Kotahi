@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{% if lang %}{{lang}}{% else %} {{site.lang}}{% endif %}" class="no-js">
+<html lang="{{ lang or site.lang or 'en' }}" class="no-js">
 
     <head>
         <meta charset="UTF-8">
@@ -201,10 +201,12 @@
     </head>
     <body class="{{class}} {% block bodyclass %}{% endblock %}">
 
+        <a class="skip-link" href="#content-start">Skip to content</a>
         {% block topbar %}
             {% include "_partials/metaror-menu.njk" %}
         {% endblock %}
 
+        <div id="content-start" tabindex="-1"></div>
         {% block side %}{% endblock %}
 
         {% block content %}
@@ -228,7 +230,7 @@
         {% block printpreview %}{% endblock %}
 
         <button id="back-to-top" class="back-to-top" aria-label="Back to top">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="
               width: 42px;
               height: 42px;
               fill: #0470c0;
@@ -265,7 +267,7 @@
                 const offset = window.visualViewport.width > 768 ? 100 : 40
                 window.scrollTo({ 
                   top: content.offsetTop - offset,
-                  behavior: 'instant',)
+                  behavior: 'instant',
                 })
               })  
             })

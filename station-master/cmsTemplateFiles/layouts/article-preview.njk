@@ -110,12 +110,12 @@
 {% endfor %}
 
 <div id="main-container">
-   <div class="article-preview-header">
+   <div class="article-preview-header" role="region" aria-labelledby="article-title">
             <span class="topics">
                 {{ article.headerInfo.topics }}
             </span>
-            <span class="article-title">
-                {{ article.headerInfo.title }}</span>
+            <h1 class="article-title" id="article-title">
+                {{ article.headerInfo.title }}</h1>
             <ul class="authors metadata">
                 {% for mth in article.parsedSubmission.moreThanHumanAuthors %}
                     {% if mth.position == 'First' %}{{ mthAuthorLi(mth, rorArray) }}{% endif %}
@@ -138,7 +138,7 @@
                          {% endfor %}
                         </span>
                         {% if author.orcid %}
-                            <a class="orcid" target="_blank" style="vertical-align: middle;" href="https://orcid.org/{{ author.orcid }}"></a>
+                            <a class="orcid" target="_blank" rel="noopener" style="vertical-align: middle;" href="https://orcid.org/{{ author.orcid }}" aria-label="ORCID profile for {{ ([author.firstName, author.lastName] | select | join(' ')) | trim }} (opens in new tab)"></a>
                         {% endif %}
                     </li>
                 {% endfor %}
@@ -227,7 +227,7 @@
                    var rid = rorFromIds(c.nameIdentifiers);
                    if (rid) html += rorBadge(rid);
                    var orcid = orcidOf(c);
-                   if (orcid) html += ' <a class="orcid" href="https://orcid.org/' + esc(orcid) + '" target="_blank" rel="noopener" title="ORCID"></a>';
+                   if (orcid) html += ' <a class="orcid" href="https://orcid.org/' + esc(orcid) + '" target="_blank" rel="noopener" title="ORCID" aria-label="ORCID profile (opens in new tab)"></a>';
                    var li = document.createElement("li");
                    li.innerHTML = html;
                    list.appendChild(li);
