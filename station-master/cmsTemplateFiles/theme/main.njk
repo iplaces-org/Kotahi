@@ -1567,3 +1567,7 @@ p.footer-host { font-weight: 600; }
     white-space: nowrap; border: 0;
 }
 .footer-container a { text-decoration: underline; }
+
+/* Keep focused/anchored elements clear of the sticky header (WCAG 2.4.11) */
+html { scroll-padding-top: 120px; }
+@media screen and (max-width: 768px) { html { scroll-padding-top: 80px; } }
