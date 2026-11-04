@@ -17,8 +17,20 @@ permalink: /assets/css/theme/elife.css
 }
 
 .tabbed [type="radio"] {
-	/* hiding the inputs */
-	display: none;
+	/* visually hidden but keyboard-operable (arrow keys switch tabs) */
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+.tabbed [type="radio"]:nth-of-type(1):focus-visible ~ .tabs .tab:nth-of-type(1) label,
+.tabbed [type="radio"]:nth-of-type(2):focus-visible ~ .tabs .tab:nth-of-type(2) label,
+.tabbed [type="radio"]:nth-of-type(3):focus-visible ~ .tabs .tab:nth-of-type(3) label,
+.tabbed [type="radio"]:nth-of-type(4):focus-visible ~ .tabs .tab:nth-of-type(4) label {
+	outline: 3px solid #0470c0;
+	outline-offset: 2px;
 }
 
 .tabs {
@@ -96,7 +108,10 @@ permalink: /assets/css/theme/elife.css
 
 /* The Close Button */
 .close {
-  color: #aaa;
+  color: #6b6b63;
+  background: none;
+  border: 0;
+  line-height: 1;
   float: right;
   font-size: 34px;
   font-weight: bold;

@@ -1,11 +1,11 @@
 {% set isGated = article.parsedSubmission.accessLevel and article.parsedSubmission.accessLevel != "public" %}
 <div class="tabbed">
-    <input type="radio" id="tab1" name="css-tabs" checked>
-    <input type="radio" id="tab2" name="css-tabs">
-    <input type="radio" id="tab3" name="css-tabs">
-    {% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME[0] and article.parsedSubmission.GEOME[0].url %}<input type="radio" id="tab4" name="css-tabs">{% endif %}
+    <input type="radio" id="tab1" name="css-tabs" checked aria-label="Full text">
+    <input type="radio" id="tab2" name="css-tabs" aria-label="Revisions">
+    <input type="radio" id="tab3" name="css-tabs" aria-label="Connections">
+    {% if article.parsedSubmission.GEOME and article.parsedSubmission.GEOME[0] and article.parsedSubmission.GEOME[0].url %}<input type="radio" id="tab4" name="css-tabs" aria-label="GEOME">{% endif %}
 
-    <ul class="tabs">
+    <ul class="tabs" aria-hidden="true">
         <li class="tab"><label for="tab1">Full text</label></li>
         <li class="tab"><label for="tab2">Revisions</label></li>
         <li class="tab"><label for="tab3">Connections</label></li>

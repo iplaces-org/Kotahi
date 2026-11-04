@@ -190,8 +190,8 @@ aside.side-section .button:hover {
                    href="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ article.shortId }}"
                    target="_blank">Download</a>
                 {% endif %}
-                <a class="button button--icon-citation button--action" id="cite-button" rel="nofollow">Cite</a>
-                <a class="button button--icon-share button--action" id="share-button" rel="nofollow">Share</a>
+                <a class="button button--icon-citation button--action" id="cite-button" rel="nofollow" href="#citeModal" role="button" aria-haspopup="dialog">Cite</a>
+                <a class="button button--icon-share button--action" id="share-button" rel="nofollow" href="#shareModal" role="button" aria-haspopup="dialog">Share</a>
               </div>
             </div>
           </dd>
@@ -412,12 +412,12 @@ aside.side-section .button:hover {
   </div>
 </aside>
 
-<div id="citeModal" class="modal modal--cite">
+<div id="citeModal" class="modal modal--cite" role="dialog" aria-modal="true" aria-labelledby="citeModalTitle">
   <!-- Modal content -->
   <div class="modal-content modal-content--cite">
     <div class="modal-content__top">
-      <h5 class="modal-content__title">Cite this article</h5>
-      <span id="closeCiteModal" class="close modal-content__close-button">&times;</span>
+      <h2 class="modal-content__title" id="citeModalTitle">Cite this article</h2>
+      <button type="button" id="closeCiteModal" class="close modal-content__close-button" aria-label="Close">&times;</button>
     </div>
     <div class="modal-content__body">
       <div id="citedArea">
@@ -445,12 +445,12 @@ aside.side-section .button:hover {
 </div>
 
 
-<div id="shareModal" class="modal" style="align-items: center;justify-content: center;background: #0470c022;z-index: 9999;backdrop-filter: blur(4px);">
+<div id="shareModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle" style="align-items: center;justify-content: center;background: #0470c022;z-index: 9999;backdrop-filter: blur(4px);">
   <!-- Modal content -->
   <div class="modal-content">
     <div class="modal-content__top">
-    <h5 class="modal-content__title">Share this article</h5>
-    <span id="closeShareModal" class="close modal-content__close-button">&times;</span>
+    <h2 class="modal-content__title" id="shareModalTitle">Share this article</h2>
+    <button type="button" id="closeShareModal" class="close modal-content__close-button" aria-label="Close">&times;</button>
     </div>
     <div class="modal-content__body">
     <div class="form-item">
@@ -481,22 +481,43 @@ var shareBtn = document.getElementById("share-button");
 var span = document.getElementsByClassName("close")[0];
 
 // When the user clicks on the button, open the modal
-citeBtn.onclick = function() {
-  citeModal.style.display = "flex";
+// Dialogs: move focus in on open, Escape closes, focus returns to the opener.
+var lastOpener = null;
+function openModal(modal, opener, closeBtn) {
+  lastOpener = opener;
+  modal.style.display = "flex";
+  closeBtn.focus();
+}
+function closeModal(modal) {
+  modal.style.display = "none";
+  if (lastOpener) lastOpener.focus();
+}
+citeBtn.onclick = function(e) {
+  e.preventDefault();
+  openModal(citeModal, citeBtn, closeCiteModal);
 }
 
-shareBtn.onclick = function() {
-  shareModal.style.display = "flex";
+shareBtn.onclick = function(e) {
+  e.preventDefault();
+  openModal(shareModal, shareBtn, closeShareModal);
 }
 
-// When the user clicks on <span> (x), close the modal
+citeBtn.addEventListener('keydown', function(e) { if (e.key === ' ') { e.preventDefault(); citeBtn.click(); } });
+shareBtn.addEventListener('keydown', function(e) { if (e.key === ' ') { e.preventDefault(); shareBtn.click(); } });
+
 closeCiteModal.onclick = function() {
-  citeModal.style.display = "none";
+  closeModal(citeModal);
 }
 
 closeShareModal.onclick = function() {
-  shareModal.style.display = "none";
+  closeModal(shareModal);
 }
+
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  if (citeModal.style.display === "flex") closeModal(citeModal);
+  if (shareModal.style.display === "flex") closeModal(shareModal);
+});
 
 function copyToClipboard() {
   const div = document.getElementById("citedArea");
