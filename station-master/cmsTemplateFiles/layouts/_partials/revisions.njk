@@ -32,7 +32,10 @@
   .dc-rev-toggle:hover { text-decoration: underline; }
   .dc-rev-detail { display: none; margin-top: 0.6rem; }
   .dc-rev-detail.open { display: block; }
-  .dc-rev-diff { display: grid; grid-template-columns: 130px 1fr; gap: 0.4rem 0.6rem; align-items: start; }
+  .dc-rev-diff { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 0.4rem 0.6rem; align-items: start; }
+  .dc-rev-dvals { min-width: 0; }
+  .dc-rev-before, .dc-rev-after, .dc-rev-newval { overflow-wrap: anywhere; }
+  @media (max-width: 600px) { .dc-rev-diff { grid-template-columns: minmax(0, 1fr); } .dc-rev-dfield { padding-top: 0.6rem; } }
   .dc-rev-dfield { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: #78716c; padding-top: 0.15rem; }
   .dc-rev-dvals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; }
   .dc-rev-before { background: #fef2f2; color: #991b1b; padding: 0.08rem 0.35rem; text-decoration: line-through; word-break: break-word; }

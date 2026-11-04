@@ -335,3 +335,32 @@ section.manuscript a,
     padding-left: 0 !important;
   }
 }
+/* ---- Reflow guard (WCAG 1.4.10) -------------------------------------
+   body is display:flex, so its children default to min-width:auto and
+   grow to fit the longest unbreakable string anywhere inside (a long URL
+   in an abstract, a DOI, revision JSON). On phones that made the whole
+   article column wider than the screen and cut text off on the right.
+   Let the columns shrink and let long strings wrap instead. */
+#main-container,
+#main-container > *,
+main,
+aside,
+.tabbed,
+.tab-content,
+.article-preview-header,
+footer,
+.footer-container,
+.footer-container--top {
+  min-width: 0;
+  max-width: 100%;
+}
+.tab-content,
+aside.side-section,
+.article-preview-header,
+.footer-container {
+  overflow-wrap: anywhere;
+}
+@media screen and (max-width: 768px) {
+  .tabs { flex-wrap: wrap; row-gap: 4px; }
+  .footer-container--top { flex-wrap: wrap; }
+}
