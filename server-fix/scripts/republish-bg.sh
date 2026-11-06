@@ -4,7 +4,7 @@
 # fly ssh connection). Progress: bash server-fix/scripts/republish-bg.sh --status
 set -e
 if [ "$1" = "--status" ]; then
-  fly ssh console -a iplaces-test-server -C "sh -c 'grep -E \"^pass|REPUBLISH|FAILED\" /tmp/republish.log | tail -15'"
+  fly ssh console -a iplaces-test-server -C "grep -a -E pass|REPUBLISH /tmp/republish.log" | tail -15
   exit 0
 fi
 B64=$(base64 < "$(dirname "$0")/republish.js" | tr -d '\n')
