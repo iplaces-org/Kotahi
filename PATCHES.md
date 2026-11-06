@@ -402,6 +402,32 @@ plain "iPlaces"; the helper never throws.
 
 Only new log lines change; lines already in the database keep "Kotahi".
 
+## Patch 33 — reviewers never receive author email addresses (2026-11-06)
+
+### What it does
+A reviewer's Metadata tab showed the station author field as raw JSON,
+author email addresses included, because the GraphQL `manuscript` query hands
+the whole submission to anyone with a role on the record. Now the
+`Manuscript.submission` field resolver (shared by every query that returns a
+manuscript or published manuscript) calls `submissionForUser`, which removes
+every key containing "email", at any depth, unless the user is a global admin,
+the station's group manager or group admin, an editor of the record (senior,
+handling, editor; checked on the version and its first version) or one of its
+authors. Reviewers, invited reviewers, collaborative reviewers and anonymous
+callers get no emails.
+
+- `manuscript.controllers.js` (overlay 3b): `userMaySeeAuthorEmails`,
+  `submissionForUser` (reuses Patch 19's `stripEmails`).
+- `manuscript.resolvers.js`: not overlaid. The Dockerfile patches the
+  `submission(parent)` resolver in the image's own plain and dist copies and
+  fails the build if either line isn't found exactly once. Re-check after
+  every base-image bump.
+- `deploy-iplaces-server.sh`: `guard_reviewer_emails_landed`.
+- Client (`repeatable-group-spike`): the read-only Metadata tab renders
+  `StationAuthorsInput` and `AuthorsInput` as a name list (name, ROR
+  affiliation, ORCID link), never an email; the JSON fallback for unknown
+  object fields drops email keys too.
+
 ## 2026.11.03-0 re-pin notes (2026-11-03)
 - Patch 15: `createManuscript` is gone upstream; the submit-blocked check is
   now on `createSubmission: and(userCanCreateSubmission, userIsNotSubmitBlocked)`.

@@ -951,6 +951,57 @@ const withoutEmails = manuscript => {
   return manuscript
 }
 
+// iplaces Patch 33: author email addresses go only to the people who handle
+// the record: admins, the station's group managers and group admins, its
+// editors (senior, handling, editor) and its own authors. Reviewers, invited
+// reviewers and everyone else get the submission with every email key
+// removed. Called by the Manuscript.submission field resolver, so it covers
+// every query that returns a manuscript (review page, dashboards, decision
+// page) in one place.
+const userMaySeeAuthorEmails = async (userId, manuscript) => {
+  if (!userId || !manuscript) return false
+  if (await cachedGet(`userIsAdmin:${userId}`)) return true
+
+  if (manuscript.groupId) {
+    if (await cachedGet(`userIsGM:${userId}:${manuscript.groupId}`)) return true
+
+    if (await cachedGet(`userIsGroupAdmin:${userId}:${manuscript.groupId}`))
+      return true
+  }
+
+  const ids = [manuscript.id, manuscript.parentId].filter(Boolean)
+
+  for (const id of ids) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await cachedGet(`userIsEditor:${userId}:${id}`)) return true
+  }
+
+  if (!ids.length) return false
+
+  const authorRecord = await Team.relatedQuery('members')
+    .for(
+      Team.query()
+        .whereIn('objectId', ids)
+        .where({ role: 'author', objectType: 'manuscript' }),
+    )
+    .findOne({ userId })
+
+  return !!authorRecord
+}
+
+/** The submission as the given user may see it: unchanged for the people
+ *  listed above, without any email key for everyone else. */
+const submissionForUser = async (manuscript, userId) => {
+  const submission =
+    typeof manuscript?.submission === 'string'
+      ? JSON.parse(manuscript.submission)
+      : manuscript?.submission
+
+  if (!submission) return submission
+  if (await userMaySeeAuthorEmails(userId, manuscript)) return submission
+  return stripEmails(submission)
+}
+
 const manuscriptsPublishedSinceDate = async (
   startDate,
   limit,
@@ -2563,6 +2614,7 @@ module.exports = {
   submissionWithFields,
   submitAuthorProofingFeedback,
   submitManuscript,
+  submissionForUser, // iplaces Patch 33
   supplementaryFiles,
   unarchiveManuscripts,
   unreviewedPreprints,
