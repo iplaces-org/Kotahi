@@ -59,6 +59,11 @@
         <meta name="citation_publisher" content="{{ station.hostOrg.name | escape }}">
 {% endif %}
         <meta name="citation_abstract_html_url" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">
+{# Record license (same rule as article-preview / side.njk). #}
+{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
+{% if lic.url and (ctAl == "" or ctAl == "public") %}
+        <link rel="license" href="{{ lic.url }}">
+{% endif %}
 {% if ctAl == "" or ctAl == "public" %}
         <meta name="citation_pdf_url" content="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ article.shortId }}">
 {% endif %}
@@ -91,6 +96,7 @@
               "author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],
               "identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
               "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",
+              {% if lic.url %}"license": "{{ lic.url }}",{% endif %}
               "isPartOf": { "@type": "Periodical", "name": "{{ station.title }}" },
               "about": { "@id": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html#project" },
               "publisher": {
@@ -141,6 +147,7 @@
           {% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %}"usageInfo": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
           "publishingPrinciples": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
           "conditionsOfAccess": {{ (lcConditionsOfAccess(article.parsedSubmission.$localContext) + '') | dump | safe }},{% endif %}
+          {% if lic.url %}"license": "{{ lic.url }}",{% endif %}
           "isPartOf": {
             "@type": "Periodical",
             "name": "{{ station.title }}"

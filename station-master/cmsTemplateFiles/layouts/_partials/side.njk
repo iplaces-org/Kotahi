@@ -196,6 +196,12 @@ aside.side-section .button:hover {
               </div>
               {% endif %}
 
+              {% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
+              <div class="about-this__row">
+                <span class="about-this__label">License</span>
+                <span class="about-this__value">{% if lic.url %}<a href="{{ lic.url }}"{% if not isGated %} rel="license"{% endif %}>{{ lic.label }}</a>{% else %}{{ lic.label }}{% endif %}</span>
+              </div>
+
               <div class="about-this__buttons">
                 {% if not isGated %}
                 <a class="button button--icon-download button--action" id="download-button" rel="nofollow"
