@@ -63,17 +63,54 @@ const ReadonlyFieldData = ({
     return <LocalContext readonly value={data} />
   }
 
-  if (fieldDefinition?.component === 'AuthorsInput' && Array.isArray(data)) {
-    return (data || []).map((author, i) => {
-      const firstName = author.firstName || '?'
-      const lastName = author.lastName || '?'
+  // iplaces: both author components render as a name list. Email addresses
+  // are never shown here (the server also strips them for reviewers), and
+  // ids are left out.
+  if (
+    ['AuthorsInput', 'StationAuthorsInput'].includes(
+      fieldDefinition?.component,
+    ) &&
+    Array.isArray(data)
+  ) {
+    return data.map((author, i) => {
+      const name =
+        joinParts(
+          [
+            textOf(author.lastName),
+            joinParts(
+              [textOf(author.firstName), textOf(author.middleName)],
+              ' ',
+            ),
+          ],
+          ', ',
+        ) || '?'
 
-      const affiliation = author.affiliation ? ` (${author.affiliation})` : ''
+      const affiliation = joinParts(
+        [textOf(author.ror), textOf(author.affiliation)],
+        '; ',
+      )
+
+      const orcid = textOf(author.orcid).replace(
+        /^https?:\/\/(www\.)?orcid\.org\//,
+        '',
+      )
 
       return (
-        <p key={i}>
-          {lastName}, {firstName}
-          <Affiliation>{affiliation}</Affiliation> <Email>{author.email}</Email>
+        <p key={author.id || i}>
+          {name}
+          {affiliation ? <Affiliation> ({affiliation})</Affiliation> : null}
+          {orcid ? (
+            <>
+              {' '}
+              <a
+                href={`https://orcid.org/${orcid}`}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                ORCID {orcid}
+              </a>
+            </>
+          ) : null}
         </p>
       )
     })
@@ -454,7 +491,12 @@ const ReadonlyFieldData = ({
   if (data && typeof data === 'object') {
     return (
       <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-        {JSON.stringify(data, null, 1)}
+        {JSON.stringify(
+          data,
+          // iplaces: never print an email address in the fallback either
+          (key, value) => (/e-?mail/i.test(key) ? undefined : value),
+          1,
+        )}
       </pre>
     )
   }
