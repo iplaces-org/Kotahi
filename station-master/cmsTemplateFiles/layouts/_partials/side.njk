@@ -146,10 +146,21 @@ aside.side-section .button:hover {
             <div class="about-this">
               <p class="about-this__intro">{{ station.shortName | default(station.title) }} has curated this project application. <a href="{{ station.hostOrg.url | default("#") }}">About {{ station.shortName | default(station.title) }}’s process</a></p>
 
-              {% if article.headerInfo.publishedOn %}
+              {# Published = original publication date (datePublished, same as
+                 citation_publication_date, JSON-LD and DataCite); the date the
+                 record went online here is shown separately when it differs. #}
+              {% set atOnline = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else "" %}
+              {% set atOrig = (article.parsedSubmission.datePublished | default("", true) | string) | trim %}
+              {% if atOrig or atOnline %}
               <div class="about-this__row">
                 <span class="about-this__label">Published</span>
-                <span class="about-this__value">{{ (article.headerInfo.publishedOn | string).split('T')[0] }}</span>
+                <span class="about-this__value">{{ atOrig or atOnline }}</span>
+              </div>
+              {% endif %}
+              {% if atOrig and atOnline and atOnline != atOrig %}
+              <div class="about-this__row">
+                <span class="about-this__label">Online at {{ station.shortName | default(station.title) }}</span>
+                <span class="about-this__value">{{ atOnline }}</span>
               </div>
               {% endif %}
 
@@ -426,7 +437,8 @@ aside.side-section .button:hover {
           {{- author.lastName -}}, {{ author.firstName[0] }}.{% if author.middleName and author.middleName.length > 0 %} {{ author.middleName[0] }}.{% endif %}
           {% if not loop.last %}{% if loop.index == loop.length - 1 %}, & {% else %}, {% endif %}{% endif %}
         {% endfor %}
-        {% set pubYear = article.headerInfo.publishedOn.split('-')[0] %}
+        {# Citation year = original publication year, falling back to the online date. #}
+        {% set pubYear = ((article.parsedSubmission.datePublished | default("", true) | string) | trim or (article.headerInfo.publishedOn | default("", true) | string)) | truncate(4, true, "") %}
         ({{ pubYear }}).
         <span style="font-style: italic;">{{ article.parsedSubmission.$title or 'Untitled' }}</span>.
         {{ station.title | default("iPlaces") }}. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
