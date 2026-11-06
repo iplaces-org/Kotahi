@@ -1,0 +1,1 @@
+WITH chain AS (SELECT COALESCE(parent_id, id) AS root, min(published) AS first FROM manuscripts WHERE published IS NOT NULL GROUP BY 1) UPDATE manuscripts m SET submission = m.submission || jsonb_build_object('firstPublishedOn', to_char(c.first AT TIME ZONE 'UTC', 'YYYY-MM-DD')) FROM chain c WHERE c.root = COALESCE(m.parent_id, m.id) AND m.submission->>'firstPublishedOn' IS NULL;

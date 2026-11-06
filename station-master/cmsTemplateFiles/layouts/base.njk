@@ -33,10 +33,11 @@
 {% set ctAlRaw = article.parsedSubmission.accessLevel %}
 {% set ctAl = ((ctAlRaw.value | default(ctAlRaw)) | default("")) | string | lower | trim %}
 {# citation_publication_date = original publication date (the record's
-   datePublished, same value as JSON-LD datePublished); falls back to the date
-   the record went online at iPlaces. citation_online_date = iPlaces online date. #}
+   datePublished, same value as JSON-LD datePublished); else the first date the
+   record went online (firstPublishedOn, Patch 34); else the last publish date.
+   citation_online_date = the last publish date. #}
 {% set ctOnline = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else "" %}
-{% set ctOrig = (article.parsedSubmission.datePublished | default("", true) | string) | trim %}
+{% set ctOrig = ((article.parsedSubmission.datePublished | default("", true) | string) | trim) or ((article.parsedSubmission.firstPublishedOn | default("", true) | string) | trim) %}
 {% set ctDate = ctOrig or ctOnline %}
         <meta name="citation_title" content="{{ article.parsedSubmission.$title | striptags | trim | escape }}">
 {% for au in article.headerInfo.authorNames %}
@@ -87,7 +88,7 @@
               "name": "{{ article.parsedSubmission.$title | safe }}",
               "abstract": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
               "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
-              {% if article.parsedSubmission.datePublished %}"datePublished": "{{ article.parsedSubmission.datePublished }}",{% endif %}
+              {% set ldDate = article.parsedSubmission.datePublished or article.parsedSubmission.firstPublishedOn %}{% if ldDate %}"datePublished": "{{ ldDate }}",{% endif %}
               "author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],
               "identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
               "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",
@@ -133,7 +134,7 @@
           "abstract": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
           "description": "{{ (article.parsedSubmission.$abstract | striptags | trim) or station.mission }}",
           "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
-          {% if article.parsedSubmission.datePublished %}"datePublished": "{{ article.parsedSubmission.datePublished }}",{% endif %}
+          {% set ldDate = article.parsedSubmission.datePublished or article.parsedSubmission.firstPublishedOn %}{% if ldDate %}"datePublished": "{{ ldDate }}",{% endif %}
           {% if article.headerInfo.authorNames.length %}"author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
           {% if article.parsedSubmission.$doi %}"identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
           "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",{% endif %}

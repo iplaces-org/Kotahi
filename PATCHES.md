@@ -535,3 +535,24 @@ When Coko publishes a newer `cokoapps/kotahi-server` image:
 - Do not touch the `iplaces-test-db2` database or switch ORCID to production
   without explicit instruction.
 - Commit before any risky change so there is a rollback point.
+
+## Patch 34 — first online date as the fallback publication date (2026-11-06)
+
+### What it does
+`manuscripts.published` is reset on every (re)publish, so it can't stand in
+for a publication date. On publish, if `submission.firstPublishedOn` is not
+set yet, it is set once (YYYY-MM-DD) to the earliest `published` date of any
+version of the record, or to now on a first publish, and never overwritten.
+
+The publication date everywhere is `submission.datePublished` (the editor's
+original date) when filled in, else `firstPublishedOn`, else the last publish
+date. When an editor fills in `datePublished` later, it takes over on the next
+publish/rebuild.
+
+- `manuscript.controllers.js` (overlay): `publishManuscript` sets it.
+- `fieldsTransformers.js` (overlay): DataCite `publicationYear` and `Issued`
+  fall back to it.
+- Shared Flax templates: `base.njk` (citation_publication_date, JSON-LD
+  datePublished) and `_partials/side.njk` (Published row, Cite year).
+- Backfill for records published before this patch:
+  `server-fix/scripts/first-online-date/1-check.sql`, `2-fix.sql`.
