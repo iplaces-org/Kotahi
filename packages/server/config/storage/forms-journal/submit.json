@@ -825,6 +825,11 @@
           "id": "eedb8338-02f7-47fc-a150-3aa805051461",
           "label": "All rights reserved",
           "value": "All rights reserved"
+        },
+        {
+          "id": "5b0f3c2e-8d1a-4c6e-9f2b-7a4e1d6c3b90",
+          "label": "Community terms (see Local Contexts Project)",
+          "value": "LocalContexts"
         }
       ],
       "component": "Select",

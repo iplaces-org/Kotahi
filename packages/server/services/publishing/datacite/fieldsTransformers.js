@@ -613,7 +613,8 @@ const getAlternateIdentifiers = submission => {
    chosen from a form Select) into a full DataCite rights object using
    the lookup below. Lookup is case-insensitive; rightsIdentifier is
    emitted lowercase per DataCite's documented convention. An unknown
-   non-empty value is emitted as free-text rights; empty emits nothing.
+   non-empty value is emitted as free-text rights; empty and
+   "LocalContexts" (community terms) emit nothing.
    Local Contexts labels/notices are handled separately by getRightsList
    and merged in index.js. */
 const SPDX_LICENSES = {
@@ -665,6 +666,11 @@ const SPDX_KEYS_LOWER = Object.keys(SPDX_LICENSES).reduce((acc, k) => {
 const getSpdxRights = submission => {
   const raw = submission?.license ? String(submission.license).trim() : ''
   if (!raw) return []
+
+  // "Community terms (see Local Contexts Project)": no license entry; the
+  // record's Local Contexts labels and notices fill rightsList instead
+  // (getRightsList, merged in index.js).
+  if (raw.toLowerCase() === 'localcontexts') return []
 
   if (raw === 'All rights reserved')
     return [{ rights: 'All rights reserved' }]
