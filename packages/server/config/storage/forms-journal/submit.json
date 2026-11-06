@@ -778,7 +778,8 @@
         {
           "id": "879a2088-9cf5-4abc-8d7a-cf826d6b7309",
           "label": "CC BY 4.0",
-          "value": "CC-BY-4.0"
+          "value": "CC-BY-4.0",
+          "defaultValue": 1
         },
         {
           "id": "319ddf76-311a-4afe-a91a-189df53c4b85",
