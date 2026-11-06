@@ -8,6 +8,10 @@ eleventyExcludeFromCollections: true
     <loc>{{ station.baseUrl }}/{{ station.pathSlug }}/</loc>
     <changefreq>weekly</changefreq>
   </url>
+  <url>
+    <loc>{{ station.baseUrl }}/{{ station.pathSlug }}/clockss/</loc>
+    <changefreq>weekly</changefreq>
+  </url>
 {% for issue in issues.list %}
   <url>
     <loc>{{ station.baseUrl }}/{{ station.pathSlug }}/issue/{{ issue.slug }}/index.html</loc>

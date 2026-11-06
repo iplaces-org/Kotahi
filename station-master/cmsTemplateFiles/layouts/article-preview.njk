@@ -163,7 +163,10 @@
             
            <span class="header-doi-and-licenses">
                 {% if cmsLayout.publishConfig.licenseUrl %}
-                    <a href="{{cmsLayout.publishConfig.licenseUrl}}">
+                    {# rel="license" (CLOCKSS / Creative Commons) only on records whose content is open #}
+                    {% set lpRaw = article.parsedSubmission.accessLevel %}
+                    {% set lpAl = ((lpRaw.value | default(lpRaw)) | default("")) | string | lower | trim %}
+                    <a href="{{cmsLayout.publishConfig.licenseUrl}}"{% if lpAl == "" or lpAl == "public" %} rel="license"{% endif %}>
                         {{cmsLayout.publishConfig.licenseUrl}}
                     </a>
                 {% endif %}

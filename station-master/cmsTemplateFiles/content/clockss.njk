@@ -1,0 +1,59 @@
+---
+layout: base.njk
+class: section-latest
+permalink: "/clockss/index.html"
+eleventyExcludeFromCollections: true
+---
+{#- CLOCKSS manifest page (station level). CLOCKSS's crawler starts here: the
+    permission statement below must stay word for word as CLOCKSS supplied it.
+    Lists only records whose content is open (accessLevel empty or "public"),
+    because the statement declares the Archival Unit open; members-only records
+    are left out so their content is never harvested. Follows the station's own
+    list rules (hideConferencePapers). Year = original publication date
+    (datePublished), else the date the record went online. -#}
+{% set siteBase = station.baseUrl + "/" + station.pathSlug %}
+{% set kept = [] %}{% set years = [] %}
+{% for a in articleQuery.articles %}
+  {% set alRaw = a.parsedSubmission.accessLevel %}
+  {% set al = ((alRaw.value | default(alRaw)) | default("")) | string | lower | trim %}
+  {% set hidden = station.hideConferencePapers and ('ConferencePaper' in a.submission) %}
+  {% if (al == "" or al == "public") and not hidden %}
+    {% set dOrig = (a.parsedSubmission.datePublished | default("", true) | string) | trim %}
+    {% set dOnline = (a.headerInfo.publishedOn | string).split('T')[0] if a.headerInfo.publishedOn else "" %}
+    {% set y = ((dOrig or dOnline) | string).slice(0, 4) or "Undated" %}
+    {% set _ = kept.push({ a: a, y: y }) %}
+    {% if not (y in years) %}{% set _ = years.push(y) %}{% endif %}
+  {% endif %}
+{% endfor %}
+<style>
+  body.section-latest .page-content { padding-left: 0 !important; padding-right: 0 !important; }
+  .clk { max-width: 940px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .clk h1 { font-family: Georgia, "Times New Roman", serif; font-size: 2rem; font-weight: 600; margin: 0 0 0.6rem; color: #1b1b1a; }
+  .clk-permission { font-size: 1rem; font-weight: 600; margin: 0 0 0.8rem; }
+  .clk-intro { font-size: 0.9rem; color: #57534e; line-height: 1.55; margin: 0 0 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid #1b1b1a; }
+  .clk h2 { font-family: Georgia, serif; font-size: 1.3rem; margin: 2rem 0 0.6rem; }
+  .clk ol { padding-left: 1.2rem; }
+  .clk li { margin: 0 0 0.5rem; line-height: 1.45; overflow-wrap: anywhere; }
+  .clk .clk-pdf { font-size: 0.85rem; margin-left: 0.4rem; }
+  @media (max-width: 700px) { .clk { padding: 1.5rem 1rem 3rem; } }
+</style>
+<main class="clk">
+  <h1>{{ station.title or cmsLayout.publishConfig.title }}: CLOCKSS manifest</h1>
+  <p class="clk-permission">CLOCKSS system has permission to ingest, preserve, and serve this open access Archival Unit.</p>
+  <p class="clk-intro">Records published by {{ station.title or cmsLayout.publishConfig.title }}{% if station.hostOrg.name %}, {{ station.hostOrg.name }}{% endif %}, by year. Content is licensed <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a> unless otherwise stated on the record. Record metadata is always open.</p>
+  {% if years.length %}
+  <nav aria-label="Years"><p>{% for y in years | sort(true) %}<a href="#y{{ y }}">{{ y }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p></nav>
+  {% for y in years | sort(true) %}
+  <section>
+    <h2 id="y{{ y }}">{{ y }}</h2>
+    <ol>
+      {% for k in kept %}{% if k.y == y %}
+      <li><a href="{{ siteBase }}{{ cmsConfig.defaultArticleDirectory }}{{ k.a.shortId }}/index.html">{{ (k.a.headerInfo.title or k.a.parsedSubmission.$title) | safe }}</a>{% if k.a.parsedSubmission.$doi %} · https://doi.org/{{ k.a.parsedSubmission.$doi }}{% endif %}<a class="clk-pdf" href="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ k.a.shortId }}">PDF</a></li>
+      {% endif %}{% endfor %}
+    </ol>
+  </section>
+  {% endfor %}
+  {% else %}
+  <p>No open records published yet.</p>
+  {% endif %}
+</main>
