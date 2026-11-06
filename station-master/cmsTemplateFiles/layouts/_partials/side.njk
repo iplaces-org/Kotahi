@@ -147,8 +147,9 @@ aside.side-section .button:hover {
               <p class="about-this__intro">{{ station.shortName | default(station.title) }} has curated this project application. <a href="{{ station.hostOrg.url | default("#") }}">About {{ station.shortName | default(station.title) }}’s process</a></p>
 
               {# Published = original publication date (datePublished, same as
-                 citation_publication_date, JSON-LD and DataCite); the date the
-                 record went online here is shown separately when it differs. #}
+                 citation_publication_date, JSON-LD and DataCite). headerInfo.publishedOn
+                 is reset on every (re)publish, so it is labelled "Last update"
+                 and shown only when it differs. #}
               {% set atOnline = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else "" %}
               {% set atOrig = (article.parsedSubmission.datePublished | default("", true) | string) | trim %}
               {% if atOrig or atOnline %}
@@ -159,7 +160,7 @@ aside.side-section .button:hover {
               {% endif %}
               {% if atOrig and atOnline and atOnline != atOrig %}
               <div class="about-this__row">
-                <span class="about-this__label">Online at {{ station.shortName | default(station.title) }}</span>
+                <span class="about-this__label">Last update</span>
                 <span class="about-this__value">{{ atOnline }}</span>
               </div>
               {% endif %}
