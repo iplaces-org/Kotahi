@@ -205,6 +205,15 @@ guard_sender_name_landed() {
   else fail "stationSenderName missing in-container (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
 }
 
+guard_reviewer_emails_landed() {
+  hdr "Guard: Patch 33 author emails hidden from reviewers landed in container"
+  local out n
+  out="$(flycli ssh console --app "$APP" -C "grep -c submissionForUser /home/node/app/api/graphql/manuscript/manuscript.resolvers.js /home/node/app/dist/api/graphql/manuscript/manuscript.resolvers.js /home/node/app/controllers/manuscript/manuscript.controllers.js" 2>/dev/null || true)"
+  n="$(printf '%s\n' "$out" | grep -oE ':[0-9]+$' | tr -d ':' | awk '$1>=1' | wc -l | tr -d ' ')"
+  if [[ "$n" == "3" ]]; then ok "submissionForUser present in both resolver copies + manuscript controller"
+  else fail "submissionForUser missing in-container (raw: $(printf '%s' "$out" | tr '\n' ' '))"; fi
+}
+
 guard_cms_endpoint_landed() {
   hdr "Guard: cmsUpload endpoint overlay landed in container"
   # Same parsing discipline as guard_patch_landed: grep -c prints exactly the
@@ -290,6 +299,7 @@ run_guards() {
   guard_cms_endpoint_landed
   guard_brandname_landed
   guard_sender_name_landed
+  guard_reviewer_emails_landed
   guard_latest_patch_landed
   guard_lc_writeback_landed
   guard_env_preserved

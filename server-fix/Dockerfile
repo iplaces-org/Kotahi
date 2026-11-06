@@ -130,3 +130,20 @@ RUN for f in /home/node/app/controllers/task.controllers.js /home/node/app/dist/
       grep -qF 'stationSenderName' "$f" && ! grep -qF 'sent by Kotahi' "$f" || { echo "Patch 32: sed failed in $f"; exit 1; }; \
       node --check "$f" || exit 1; \
     done
+
+# (Patch 33) Reviewers never receive author email addresses. The
+#     Manuscript.submission field resolver (every query that returns a
+#     manuscript) now goes through submissionForUser in manuscript.controllers.js
+#     (overlay 3b), which strips email keys unless the user is an admin, a
+#     group manager/admin, an editor of the record or one of its authors.
+#     manuscript.resolvers.js is NOT overlaid: these two lines are patched in
+#     the image's own plain and dist copies, and the build fails if either
+#     line isn't there. Re-check after every base-image bump.
+RUN for f in /home/node/app/api/graphql/manuscript/manuscript.resolvers.js /home/node/app/dist/api/graphql/manuscript/manuscript.resolvers.js; do \
+      [ "$(grep -cF '  submission(parent) {' "$f")" = 1 ] || { echo "Patch 33: submission resolver not found once in $f"; exit 1; }; \
+      [ "$(grep -cF 'return JSON.stringify(parent.submission)' "$f")" = 1 ] || { echo "Patch 33: stringify line not found once in $f"; exit 1; }; \
+      sed -i "s#  submission(parent) {#  submission(parent, _args, ctx) {#" "$f"; \
+      sed -i "s#return JSON.stringify(parent.submission)#return require('../../../controllers/manuscript/manuscript.controllers').submissionForUser(parent, ctx \&\& ctx.userId).then(s => JSON.stringify(s))#" "$f"; \
+      grep -qF 'submissionForUser(parent, ctx && ctx.userId)' "$f" && ! grep -qF 'return JSON.stringify(parent.submission)' "$f" || { echo "Patch 33: sed failed in $f"; exit 1; }; \
+      node --check "$f" || exit 1; \
+    done
