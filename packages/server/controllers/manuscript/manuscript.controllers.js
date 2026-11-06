@@ -1409,6 +1409,36 @@ const publishManuscript = async (id, groupId) => {
   const prevStatus = manuscript.status
 
   const newPublishedDate = new Date()
+
+  /* iplaces Patch 34: remember the first online date. `published` is reset on
+     every (re)publish, so the first date a record went online is kept once in
+     submission.firstPublishedOn (YYYY-MM-DD) and never overwritten. Station
+     pages, citation tags and DataCite use it as the publication date only
+     when the editor has not filled in submission.datePublished. For a new
+     version, the earliest published date of any version of the record wins. */
+  if (manuscript.submission && !manuscript.submission.firstPublishedOn) {
+    let firstOnline = newPublishedDate
+
+    try {
+      const rootId = manuscript.parentId || manuscript.id
+
+      const earliest = await Manuscript.query()
+        .where(qb => qb.where('id', rootId).orWhere('parentId', rootId))
+        .whereNotNull('published')
+        .min('published as first')
+        .first()
+
+      if (earliest && earliest.first && new Date(earliest.first) < firstOnline)
+        firstOnline = new Date(earliest.first)
+    } catch (e) {
+      console.error('Patch 34: earliest published lookup failed', e.message)
+    }
+
+    manuscript.submission.firstPublishedOn = firstOnline
+      .toISOString()
+      .split('T')[0]
+  }
+
   // We update the manuscript in advance, so that external services such as Flax
   // will be able to retrieve it as a "published" manuscript. If all publishing steps
   // fail, we will revert these changes at the end.

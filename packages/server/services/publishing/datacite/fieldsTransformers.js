@@ -387,7 +387,8 @@ const getPublisherWithOverride = (formData, submission) => {
 
 /* iplaces Patch 4c: publicationYear no longer hardcoded to the current
    year. Priority: submission.publicationYear (4-digit), else the year of
-   submission.datePublished, else the current year (legacy behavior). */
+   submission.datePublished, else (Patch 34) the year of
+   submission.firstPublishedOn, else the current year (legacy behavior). */
 const getPublicationYear = (submission, publishDate) => {
   const explicit = submission && submission.publicationYear
 
@@ -399,6 +400,11 @@ const getPublicationYear = (submission, publishDate) => {
 
   if (parsed && !Number.isNaN(parsed.getTime()))
     return parsed.getUTCFullYear()
+
+  const firstOnline = submission && submission.firstPublishedOn
+
+  if (firstOnline && /^\d{4}/.test(String(firstOnline)))
+    return parseInt(String(firstOnline).slice(0, 4), 10)
 
   return publishDate.getUTCFullYear()
 }
@@ -447,7 +453,11 @@ const getFormDates = (submission, publishDate) => {
   const dates = []
   const submitted = isoish(submission.dateReceived)
   const accepted = isoish(submission.dateAccepted)
-  const issued = isoish(submission.datePublished) || isoish(submission.$issueYear)
+  // Patch 34: with no original date, Issued is the first online date.
+  const issued =
+    isoish(submission.datePublished) ||
+    isoish(submission.$issueYear) ||
+    isoish(submission.firstPublishedOn)
 
   if (submitted) dates.push({ dateType: 'Submitted', date: submitted })
   dates.push({
