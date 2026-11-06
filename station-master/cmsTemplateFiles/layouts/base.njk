@@ -32,13 +32,21 @@
 {% if article.parsedSubmission.$title %}
 {% set ctAlRaw = article.parsedSubmission.accessLevel %}
 {% set ctAl = ((ctAlRaw.value | default(ctAlRaw)) | default("")) | string | lower | trim %}
-{% set ctDate = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else article.parsedSubmission.datePublished %}
+{# citation_publication_date = original publication date (the record's
+   datePublished, same value as JSON-LD datePublished); falls back to the date
+   the record went online at iPlaces. citation_online_date = iPlaces online date. #}
+{% set ctOnline = (article.headerInfo.publishedOn | string).split('T')[0] if article.headerInfo.publishedOn else "" %}
+{% set ctOrig = (article.parsedSubmission.datePublished | default("", true) | string) | trim %}
+{% set ctDate = ctOrig or ctOnline %}
         <meta name="citation_title" content="{{ article.parsedSubmission.$title | striptags | trim | escape }}">
 {% for au in article.headerInfo.authorNames %}
         <meta name="citation_author" content="{{ ([au.lastName, ([au.firstName, au.middleName] | select | join(' '))] | select | join(', ')) | trim | escape }}">
 {% endfor %}
 {% if ctDate %}
         <meta name="citation_publication_date" content="{{ ctDate | string | replace('-', '/') }}">
+{% endif %}
+{% if ctOnline %}
+        <meta name="citation_online_date" content="{{ ctOnline | replace('-', '/') }}">
 {% endif %}
 {% if article.parsedSubmission.$doi %}
         <meta name="citation_doi" content="{{ article.parsedSubmission.$doi }}">
