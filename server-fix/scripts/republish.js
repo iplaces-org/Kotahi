@@ -15,7 +15,13 @@ const main = async () => {
   await config.init()
   db.init()
 
-  const { publishManuscript } = require('./controllers/manuscript/manuscript.controllers')
+  // Since 2026.11.03 the plain tree has TypeScript-only models; the running
+  // server uses the compiled copy in dist/, so load the controller from there.
+  const fs = require('fs')
+  const ctrl = fs.existsSync('./dist/controllers/manuscript/manuscript.controllers.js')
+    ? './dist/controllers/manuscript/manuscript.controllers'
+    : './controllers/manuscript/manuscript.controllers'
+  const { publishManuscript } = require(ctrl)
 
   const group = await db('groups').where({ name: groupName }).first()
   if (!group) throw new Error(`no group ${groupName}`)
