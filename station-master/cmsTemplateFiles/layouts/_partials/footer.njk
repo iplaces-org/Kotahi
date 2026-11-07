@@ -147,7 +147,8 @@
 {# Shown only when the station has a CMS page at /editorial-policy/ (Flax builds the same list via content/pages/page.njk). #}
 {% set edPolicy = [] %}{% for p in (cmsPages.pages or []) %}{% if p.url == "/editorial-policy/" %}{% set _ = edPolicy.push(p) %}{% endif %}{% endfor %}
 {% if edPolicy.length %}      · <a href="{{ edPolicy[0].url }}">Editorial policy</a>
-{% endif %}      </p>
+{% endif %}      · <a href="{{ station.baseUrl }}/{{ station.pathSlug }}/clockss/" title="Records preserved with CLOCKSS">Preservation</a>
+      </p>
 </div>
     </div>
 
