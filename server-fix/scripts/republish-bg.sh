@@ -11,9 +11,13 @@
 #     the server can't be reached, or any record fails.
 # Ctrl-C stops watching only; the job keeps running on the server.
 # Watch a job that is already running:  bash server-fix/scripts/republish-bg.sh --watch
+# DataCite only (no Flax rebuild; light and fast, for records that already have a DOI):
+#   bash server-fix/scripts/republish-bg.sh --datacite-only gumpstation 130 16 55
 set -u
 APP=iplaces-test-server
 URL=https://iplaces-test-server.fly.dev/
+JS=republish.js
+if [ "${1:-}" = "--datacite-only" ]; then JS=republish-datacite.js; shift; fi
 [ "${1:-}" = "--watch" ] || [ $# -ge 2 ] || { echo "usage: bash $0 <group> <shortId>...  (or --watch)"; exit 2; }
 
 alert() {
@@ -23,7 +27,7 @@ alert() {
 fail() { echo; echo "*** REPUBLISH FAILED: $1 ***"; alert "$1" "Republish FAILED" Basso; exit 1; }
 
 probe() {
-  fly ssh console -a $APP -C "sh -c 'echo PROBE_OK; test -f /tmp/republish.log || echo NOLOG; grep -a -e ^pass -e REPUBLISH /tmp/republish.log 2>/dev/null; grep -l republish[.]js /proc/[0-9]*/cmdline 2>/dev/null | head -1 | sed s/^/ALIVE/'" 2>&1
+  fly ssh console -a $APP -C "sh -c 'echo PROBE_OK; test -f /tmp/republish.log || echo NOLOG; grep -a -e ^pass -e REPUBLISH /tmp/republish.log 2>/dev/null; grep -l republish /proc/[0-9]*/cmdline 2>/dev/null | head -1 | sed s/^/ALIVE/'" 2>&1
 }
 
 caffeinate -i -w $$ &
@@ -33,8 +37,8 @@ if [ "$1" = "--watch" ]; then
   echo "Watching the running job; this window must stay open."
 else
   probe | grep -q '^ALIVE' && fail "a republish job is already running on the server; watch it with --watch"
-  B64=$(base64 < "$(dirname "$0")/republish.js" | tr -d '\n')
-fly ssh console -a $APP -C "sh -c 'echo $B64 | base64 -d > /home/node/app/republish.js && : > /tmp/republish.log && cd /home/node/app && setsid nohup node republish.js $* >> /tmp/republish.log 2>&1 < /dev/null & echo started'" \
+  B64=$(base64 < "$(dirname "$0")/$JS" | tr -d '\n')
+fly ssh console -a $APP -C "sh -c 'echo $B64 | base64 -d > /home/node/app/$JS && : > /tmp/republish.log && cd /home/node/app && setsid nohup node $JS $* >> /tmp/republish.log 2>&1 < /dev/null & echo started'" \
   | grep -q started || fail "could not start the job on the server"
 echo "Started $1 ($(($# - 1)) records). Watching; this window must stay open."
 fi
