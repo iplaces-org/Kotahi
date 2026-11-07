@@ -27,7 +27,7 @@ alert() {
 fail() { echo; echo "*** REPUBLISH FAILED: $1 ***"; alert "$1" "Republish FAILED" Basso; exit 1; }
 
 upload() {
-  local b64; b64=$(base64 < "$(dirname "$0")/$1" | tr -d '\\n')
+  local b64; b64=$(base64 < "$(dirname "$0")/$1" | tr -d '\n')
   fly ssh console -a $APP -C "sh -c 'echo $b64 | base64 -d > /home/node/app/$1'" >/dev/null 2>&1 || fail "could not copy $1 to the server"
 }
 probe() { fly ssh console -a $APP -C "sh /home/node/app/republish-probe.sh" 2>&1; }
