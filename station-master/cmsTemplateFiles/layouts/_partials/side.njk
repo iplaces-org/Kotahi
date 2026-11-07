@@ -144,7 +144,7 @@ aside.side-section .button:hover {
           <dt class="review-timeline__event review-timeline__event--revised" id="about-this-heading">About this article</dt>
           <dd class="review-timeline__detail review-timeline__event--revised">
             <div class="about-this">
-              <p class="about-this__intro">{{ station.shortName | default(station.title) }} has curated this project application. <a href="{{ station.hostOrg.url | default("#") }}">About {{ station.shortName | default(station.title) }}’s process</a></p>
+              <p class="about-this__intro">{{ station.shortName | default(station.title) }} has curated this project application. {% set sideEdPolicy = [] %}{% for p in (cmsPages.pages or []) %}{% if p.url == "/editorial-policy/" %}{% set _ = sideEdPolicy.push(p) %}{% endif %}{% endfor %}<a href="{% if sideEdPolicy.length %}{{ station.baseUrl }}/{{ station.pathSlug }}{{ sideEdPolicy[0].url }}{% else %}{{ station.hostOrg.url | default("#") }}{% endif %}">About {{ station.shortName | default(station.title) }}’s process</a></p>
 
               {# Published = original publication date (datePublished, same as
                  citation_publication_date, JSON-LD and DataCite), else the first online
