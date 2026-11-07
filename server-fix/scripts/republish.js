@@ -1,14 +1,17 @@
 // iplaces one-off: republish records by station + short id, the same code path
-// as the editor's Publish button. Publishes each record twice (second pass
-// picks up the DOI write-back, so Flax and DataCite both get the new data).
+// as the editor's Publish button. One pass per record (records that already
+// have a DOI need only one publish; Patch 31 saves the DOI before the Flax
+// rebuild). Add --twice for a record whose DOI is being minted for the first time.
 // Run inside the server container from /home/node/app:
 //   node republish.js gumpstation 130 16 55
 /* eslint-disable no-console, no-restricted-syntax, no-await-in-loop */
 const sleep = ms => new Promise(r => setTimeout(r, ms))
-const GAP_MS = 20000
+const GAP_MS = 3000
 
 const main = async () => {
-  const [groupName, ...shortIds] = process.argv.slice(2)
+  const args = process.argv.slice(2)
+  const passes = args.includes('--twice') ? [1, 2] : [1]
+  const [groupName, ...shortIds] = args.filter(a => !a.startsWith('--'))
   if (!groupName || !shortIds.length) throw new Error('usage: node republish.js <group> <shortId>...')
 
   const { config, db } = require('@coko/server')
@@ -34,7 +37,7 @@ const main = async () => {
     targets.push({ sid, id: latest.id })
   }
 
-  for (const pass of [1, 2]) {
+  for (const pass of passes) {
     for (const t of targets) {
       const res = await publishManuscript(t.id, group.id)
       const failed = (res.steps || []).filter(s => !s.succeeded)
