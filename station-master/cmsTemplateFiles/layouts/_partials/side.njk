@@ -198,11 +198,6 @@ aside.side-section .button:hover {
               {% endif %}
 
               {% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
-              <div class="about-this__row">
-                <span class="about-this__label">License</span>
-                <span class="about-this__value">{% if lic.url %}<a href="{{ lic.url }}"{% if not isGated %} rel="license"{% endif %}>{{ lic.label }}</a>{% else %}{{ lic.label }}{% endif %}</span>
-              </div>
-
               <div class="about-this__buttons">
                 {% if not isGated %}
                 <a class="button button--icon-download button--action" id="download-button" rel="nofollow"
@@ -217,18 +212,21 @@ aside.side-section .button:hover {
         </dl>
       </div>
 
-      {# ---- Local Contexts (stays OUTSIDE the gate: rights info is tombstone-visible) ---- #}
+      {# ---- Rights: the record's license, then its Local Contexts labels and notices.
+           Always shown, and OUTSIDE the gate: rights info is tombstone-visible. ---- #}
       {% set lc =
         (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.$localContext)
         or (article.parsedSubmission and article.parsedSubmission.$localContext)
       %}
 
-            {% if lc and lc.url and (lc.label or lc.notice) %}
+      {% set hasLc = lc and lc.url and (lc.label or lc.notice) %}
         <hr />
-        <div class="review-timeline-container local-context-container">
-          <dl class="review-timeline" aria-label="Local Contexts">
-            <dt class="review-timeline__event review-timeline__event--revised">Local Contexts</dt>
+        <div class="review-timeline-container local-context-container rights-container">
+          <dl class="review-timeline" aria-label="Rights">
+            <dt class="review-timeline__event review-timeline__event--revised">Rights</dt>
             <dd class="review-timeline__detail review-timeline__event--revised">
+              <p class="rights-license">{% if lic.url %}<a href="{{ lic.url }}"{% if not isGated %} rel="license"{% endif %}>{{ lic.label }}</a>{% elif licKey == "LocalContexts" and lc and lc.url %}<a href="{{ lc.url }}" target="_blank" rel="noopener noreferrer">{{ lic.label }}</a>{% else %}{{ lic.label }}{% endif %}</p>
+              {% if hasLc %}
               {% if lc.label %}
                 <div class="local-context-labels">
                   {% for label in lc.label %}
@@ -250,10 +248,10 @@ aside.side-section .button:hover {
               {% endif %}
 
               {% if station.otc %}<p class="local-context__about"><a href="{{ station.baseUrl | default("") }}/{{ cmsConfig.group.name }}/local-contexts/index.html">About Local Contexts at {{ station.shortName | default(station.title) }}</a></p>{% endif %}
+              {% endif %}
             </dd>
           </dl>
         </div>
-      {% endif %}
 
       {% if not isGated %}
       {# ---- Add supplementary files (gated: file actions are member-only on restricted items) ---- #}
