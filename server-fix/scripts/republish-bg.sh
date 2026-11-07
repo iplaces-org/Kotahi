@@ -26,20 +26,24 @@ alert() {
 }
 fail() { echo; echo "*** REPUBLISH FAILED: $1 ***"; alert "$1" "Republish FAILED" Basso; exit 1; }
 
-probe() {
-  fly ssh console -a $APP -C "sh -c 'echo PROBE_OK; test -f /tmp/republish.log || echo NOLOG; grep -a -e ^pass -e REPUBLISH /tmp/republish.log 2>/dev/null; grep -l republis[h] /proc/[0-9]*/cmdline 2>/dev/null | head -1 | sed s/^/ALIVE/'" 2>&1
+upload() {
+  local b64; b64=$(base64 < "$(dirname "$0")/$1" | tr -d '
+')
+  fly ssh console -a $APP -C "sh -c 'echo $b64 | base64 -d > /home/node/app/$1'" >/dev/null 2>&1 || fail "could not copy $1 to the server"
 }
+probe() { fly ssh console -a $APP -C "sh /home/node/app/republish-probe.sh" 2>&1; }
 
 caffeinate -i -w $$ &
 
 curl -s -o /dev/null --max-time 30 $URL
+upload republish-probe.sh
 if [ "$1" = "--watch" ]; then
   echo "Watching the running job; this window must stay open."
 else
   probe | grep -q '^ALIVE' && fail "a republish job is already running on the server; watch it with --watch"
-  B64=$(base64 < "$(dirname "$0")/$JS" | tr -d '\n')
-fly ssh console -a $APP -C "sh -c 'echo $B64 | base64 -d > /home/node/app/$JS && : > /tmp/republish.log && cd /home/node/app && setsid nohup node $JS $* >> /tmp/republish.log 2>&1 < /dev/null & echo started'" \
-  | grep -q started || fail "could not start the job on the server"
+  upload "$JS"
+  fly ssh console -a $APP -C "sh -c ': > /tmp/republish.log && cd /home/node/app && setsid nohup node $JS $* >> /tmp/republish.log 2>&1 < /dev/null & echo started'" \
+    | grep -q started || fail "could not start the job on the server"
 echo "Started $1 ($(($# - 1)) records). Watching; this window must stay open."
 fi
 
