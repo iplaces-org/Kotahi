@@ -19,7 +19,7 @@ eleventyExcludeFromCollections: true
   {% set alRaw = a.parsedSubmission.accessLevel %}
   {% set al = ((alRaw.value | default(alRaw)) | default("")) | string | lower | trim %}
   {% set hidden = station.hideConferencePapers and ('ConferencePaper' in a.submission) %}
-  {% set licRaw = a.parsedSubmission.license %}
+  {% import "_partials/licenses.njk" as licenses %}{% set licRaw = a.parsedSubmission.license %}
   {% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}
   {% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
   {% if (al == "" or al == "public") and lic.open and lic.url and not hidden %}

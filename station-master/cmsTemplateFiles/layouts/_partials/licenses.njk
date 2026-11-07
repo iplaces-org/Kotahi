@@ -1,0 +1,22 @@
+{#- Record licences, keyed by the SPDX values of the form's License field
+    (submission.license). Imported where needed:
+      {% import "_partials/licenses.njk" as licenses %}
+    A record with no licence uses station.defaultLicense, else `default`.
+    open = content may be listed as open access (CLOCKSS manifest, rel=license).
+    A value not listed here (free text) is shown as text and treated as not open.
+    Kept as a template rather than a data file: Flax's Eleventy build does not
+    pick up new files in data/. -#}
+{% set default = "CC-BY-4.0" %}
+{% set list = {
+  "CC-BY-4.0":       { "label": "CC BY 4.0",       "url": "https://creativecommons.org/licenses/by/4.0/",       "open": true },
+  "CC-BY-SA-4.0":    { "label": "CC BY-SA 4.0",    "url": "https://creativecommons.org/licenses/by-sa/4.0/",    "open": true },
+  "CC-BY-NC-4.0":    { "label": "CC BY-NC 4.0",    "url": "https://creativecommons.org/licenses/by-nc/4.0/",    "open": true },
+  "CC-BY-NC-SA-4.0": { "label": "CC BY-NC-SA 4.0", "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/", "open": true },
+  "CC-BY-ND-4.0":    { "label": "CC BY-ND 4.0",    "url": "https://creativecommons.org/licenses/by-nd/4.0/",    "open": true },
+  "CC-BY-NC-ND-4.0": { "label": "CC BY-NC-ND 4.0", "url": "https://creativecommons.org/licenses/by-nc-nd/4.0/", "open": true },
+  "CC0-1.0":         { "label": "CC0 1.0 (public domain)", "url": "https://creativecommons.org/publicdomain/zero/1.0/", "open": true },
+  "MIT":             { "label": "MIT License",      "url": "https://opensource.org/license/mit/",                 "open": true },
+  "Apache-2.0":      { "label": "Apache License 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0",       "open": true },
+  "All rights reserved": { "label": "All rights reserved", "url": "", "open": false },
+  "LocalContexts":   { "label": "Community terms (see Local Contexts Project)", "url": "", "open": false }
+} %}
