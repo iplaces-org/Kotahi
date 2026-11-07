@@ -165,7 +165,7 @@
                 {# Record license: the form's License field (submission.license, SPDX), else
                    station.defaultLicense, else data/licenses.json default (CC BY 4.0).
                    rel="license" only on records whose content is public. #}
-                {% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
+                {% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
                 {% set lpRaw = article.parsedSubmission.accessLevel %}
                 {% set lpAl = ((lpRaw.value | default(lpRaw)) | default("")) | string | lower | trim %}
                 {% if lic.url %}
