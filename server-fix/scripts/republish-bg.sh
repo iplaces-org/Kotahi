@@ -27,7 +27,7 @@ alert() {
 fail() { echo; echo "*** REPUBLISH FAILED: $1 ***"; alert "$1" "Republish FAILED" Basso; exit 1; }
 
 probe() {
-  fly ssh console -a $APP -C "sh -c 'echo PROBE_OK; test -f /tmp/republish.log || echo NOLOG; grep -a -e ^pass -e REPUBLISH /tmp/republish.log 2>/dev/null; grep -l republish /proc/[0-9]*/cmdline 2>/dev/null | head -1 | sed s/^/ALIVE/'" 2>&1
+  fly ssh console -a $APP -C "sh -c 'echo PROBE_OK; test -f /tmp/republish.log || echo NOLOG; grep -a -e ^pass -e REPUBLISH /tmp/republish.log 2>/dev/null; grep -l republis[h] /proc/[0-9]*/cmdline 2>/dev/null | head -1 | sed s/^/ALIVE/'" 2>&1
 }
 
 caffeinate -i -w $$ &
