@@ -36,6 +36,8 @@ eleventyExcludeFromCollections: true
   .clk h1 { font-family: Georgia, "Times New Roman", serif; font-size: 2rem; font-weight: 600; margin: 0 0 0.6rem; color: #1b1b1a; }
   .clk-permission { font-size: 1rem; font-weight: 600; margin: 0 0 0.8rem; }
   .clk-intro { font-size: 0.9rem; color: #57534e; line-height: 1.55; margin: 0 0 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid #1b1b1a; }
+  .clk-years { font-size: 0.95rem; line-height: 1.8; margin: 0 0 1rem; }
+  .clk-years a { display: inline; margin: 0; }
   .clk h2 { font-family: Georgia, serif; font-size: 1.3rem; margin: 2rem 0 0.6rem; }
   .clk ol { padding-left: 1.2rem; }
   .clk li { margin: 0 0 0.5rem; line-height: 1.45; overflow-wrap: anywhere; }
@@ -47,7 +49,9 @@ eleventyExcludeFromCollections: true
   <p class="clk-permission">CLOCKSS system has permission to ingest, preserve, and serve this open access Archival Unit.</p>
   <p class="clk-intro">Records published by {{ station.title or cmsLayout.publishConfig.title }}{% if station.hostOrg.name %}, {{ station.hostOrg.name }}{% endif %}, by year. Each record's content license is shown with it. Record metadata is always open.</p>
   {% if years.length %}
-  <nav aria-label="Years"><p>{% for y in years | sort(true) %}<a href="#y{{ y }}">{{ y }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p></nav>
+  {#- A div, not <nav>: the site menu partial styles every <nav> on the page
+      (flex, full height), which pushed the list below the footer. -#}
+  <div class="clk-years" role="navigation" aria-label="Years">{% for y in years | sort(true) %}<a href="#y{{ y }}">{{ y }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</div>
   {% for y in years | sort(true) %}
   <section>
     <h2 id="y{{ y }}">{{ y }}</h2>
