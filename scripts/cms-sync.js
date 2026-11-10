@@ -119,6 +119,11 @@ async function main() {
   if (cmd === 'push') return push(ctx)
   if (cmd === 'restore') return restore(ctx)
 
+  for (const name of groups) {
+    const gaps = stationJsonGaps(live[name]['data/station.json'])
+    if (gaps.length) console.log(`! ${name}: data/station.json still needs ${gaps.join(', ')} (set them under "stationJson" in station-master/manifest.json)`)
+  }
+
   // ---- compare
   const rows = shared.map(p => {
     const statuses = {}
@@ -192,6 +197,11 @@ async function push(ctx, readSource, opts = {}) {
   for (const g of groups) {
     plan[g] = []
     creates[g] = new Set()
+    const gaps = opts.allowOwned ? [] : stationJsonGaps(stationJson[g] ?? live[g]['data/station.json'])
+    if (gaps.length) {
+      problems.push(`${g}: data/station.json still needs ${gaps.join(', ')}. Add them under "stationJson" > "${g}" in station-master/manifest.json, then push again. Nothing pushed to ${g}.`)
+      continue
+    }
     const candidates = requested.length ? [...requested] : Object.keys(master).filter(p => !isOwned(p))
     if (!requested.length) for (const p of createIfMissing) if (!candidates.includes(p)) candidates.push(p)
     if (!requested.length && stationJson[g] !== undefined && !candidates.includes('data/station.json')) candidates.push('data/station.json')
@@ -222,7 +232,7 @@ async function push(ctx, readSource, opts = {}) {
   }
 
   // Kotahi CMS pages (not files) every station must have: created when missing, never overwritten.
-  const pages = readSource || requested.length ? {} : await planPages(ctx, stationJson, problems)
+  const pages = readSource || requested.length ? {} : await planPages({ ...ctx, groups: groups.filter(g => !problems.some(m => m.startsWith(`${g}: data/station.json still needs`))) }, stationJson, problems)
 
   for (const msg of problems) console.log(`! ${msg}`)
   const pageCount = g => (pages[g] || []).length
@@ -255,10 +265,18 @@ async function push(ctx, readSource, opts = {}) {
   if (!args['skip-preflight']) {
     const todo = groups.filter(x => plan[x].length)
     const changes = Object.fromEntries(todo.map(g => [g, Object.fromEntries(plan[g].map(p => [p, source(g, p)]))]))
-    const results = preflightAll(todo, live, changes)
+    const firstPush = new Set(todo.filter(g => !state[g]))
+    const results = preflightAll(todo, live, changes, firstPush)
     const failed = []
     for (const g of todo) {
       const r = results[g]
+      if (r.unpublished) {
+        // A brand-new station: Flax has no data for it yet, so there is nothing to build
+        // against and nothing live to break. Push it, and the rebuild below is its first
+        // Publish, with the manifest's station.json, so it never goes out with FIXMEs.
+        console.log(`pre-flight ${g}: new station, never Published; no pre-flight build, the rebuild after the push publishes it`)
+        continue
+      }
       const baseNote = r.base ? `; current CMS builds ${r.base.pages} pages${r.base.exit ? ' (FAILS too: publishing as-is would 403)' : ' (so the change breaks it)'}` : ''
       console.log(`pre-flight ${g}: ${r.recs} records; with changes ${r.cand.pages} pages, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}${baseNote}`)
       if (!r.ok) { console.log(r.cand.log); failed.push(g) }
@@ -346,16 +364,42 @@ async function planPages(ctx, stationJson, problems) {
   return out
 }
 
+// Fields in data/station.json (as a push would leave it) that are still empty or FIXME.
+// A station with any of these is never pushed or rebuilt, so no site goes live with
+// "FIXME-STATION-TITLE" on it. Fix: add the values under "stationJson" in the manifest.
+// Seed or editor placeholder text that must never go live.
+const PLACEHOLDER = /FIXME|^\s*one sentence about/i
+const STATION_REQUIRED = ['title', 'shortName', 'pathSlug', 'mission', 'hostOrg.name']
+function stationJsonGaps(raw) {
+  let st
+  try { st = JSON.parse(raw ?? '{}') } catch (_) { return ['(not valid JSON)'] }
+  const get = k => k.split('.').reduce((o, x) => (o == null ? o : o[x]), st)
+  const gaps = STATION_REQUIRED.filter(k => !get(k) || PLACEHOLDER.test(String(get(k))))
+  for (const [k, v] of Object.entries(st)) if (!STATION_REQUIRED.some(r => r === k || r.startsWith(`${k}.`)) && /FIXME/.test(JSON.stringify(v))) gaps.push(k)
+  return gaps
+}
+
+const defaultMission = host => `A place-based journal documenting research, teaching, and community work at the ${host.replace(/^the /i, '')}, published through the iPlaces network.`
+
 function stationJsonUpdates(manifest, groups, live) {
   const spec = manifest.stationJson || {}
   const out = {}
   for (const g of groups) {
     const raw = live[g]['data/station.json']
-    if (raw === undefined || (!spec['*'] && !spec[g])) continue
+    if (raw === undefined) continue
     const cur = JSON.parse(raw)
     const next = { ...cur }
     for (const [k, v] of Object.entries(spec['*'] || {})) if (!(k in next)) next[k] = v
     Object.assign(next, spec[g] || {})
+    // Never leave the seed's FIXMEs where a safe default exists: the slug is the
+    // group name, and the mission is the standard sentence built from the host.
+    const unset = v => !v || PLACEHOLDER.test(String(v))
+    if (unset(next.pathSlug)) next.pathSlug = g
+    const host = next.hostOrg && !unset(next.hostOrg.name) ? next.hostOrg.name : null
+    // The standard sentence follows the host name on every push (so a renamed host
+    // updates it); a mission a station wrote itself, or the manifest sets, is kept.
+    const standard = /^A place-based journal documenting research, teaching, and community work at the .*, published through the iPlaces network\.$/
+    if (host && !(spec[g] || {}).mission && (unset(next.mission) || standard.test(next.mission))) next.mission = defaultMission(host)
     if (canon(next) === canon(cur)) continue
     out[g] = /\n\s+"/.test(raw) ? `${JSON.stringify(next, null, 2)}\n` : JSON.stringify(next)
   }
@@ -374,7 +418,7 @@ function stationJsonUpdates(manifest, groups, live) {
 // Flax's eleventy.config.js beforeBuild deletes every non-asset directory in
 // inputDir.replace("src", "public"), so the input sits under a throwaway
 // /tmp/cms-sync/src/<g> with a throwaway "public" twin. Never build from /app/src.
-function preflightAll(groups, live, changes) {
+function preflightAll(groups, live, changes, firstPush = new Set()) {
   if (!groups.length) return {}
   const payload = {}
   for (const g of groups) {
@@ -385,7 +429,7 @@ function preflightAll(groups, live, changes) {
   }
   const data = '/tmp/cms-sync-preflight.json'
   const runner = '/tmp/cms-sync-preflight.js'
-  flaxUpload(data, JSON.stringify(payload))
+  flaxUpload(data, JSON.stringify({ stations: payload }))
   flaxUpload(runner, PREFLIGHT_RUNNER)
   const out = fly(`sh -c 'cd ${FLAX_ROOT} && node ${runner} ${data} ${FLAX_ROOT}; rm -f ${runner} ${data}'`)
   const m = out.match(/PREFLIGHT_JSON=(.*)/)
@@ -394,7 +438,10 @@ function preflightAll(groups, live, changes) {
   for (const g of groups) {
     const r = results[g]
     if (r.error) throw new Error(`pre-flight ${g}: ${r.error}. Nothing was pushed.`)
-    if (!(r.recs > 0)) throw new Error(`pre-flight: no records found in ${FLAX_ROOT}/src/${g}/data/articleQuery.json; publish ${g} once, then re-run. Nothing was pushed.`)
+    if (r.recs < 0 && firstPush.has(g)) { r.unpublished = true; continue }
+    if (r.recs < 0) throw new Error(`pre-flight: ${FLAX_ROOT}/src/${g}/data/articleQuery.json is missing; click Publish in the ${g} CMS once, then re-run. Nothing was pushed.`)
+    // Zero records is normal for a new station; anywhere else it means Flax's data is stale.
+    if (r.recs === 0) console.log(`! pre-flight ${g}: 0 records. Fine for a new station; if ${g} has published records, stop and check it before typing yes.`)
     // The recipe-11a check: one article page per record, plus a homepage.
     r.ok = r.cand.exit === 0 && r.cand.index && r.cand.pages === r.recs
   }
@@ -405,7 +452,7 @@ function preflightAll(groups, live, changes) {
 const PREFLIGHT_RUNNER = String.raw`
 const fs = require('fs'), path = require('path'), { spawnSync } = require('child_process')
 const [data, ROOT] = process.argv.slice(2)
-const all = JSON.parse(fs.readFileSync(data, 'utf8'))
+const { stations: all } = JSON.parse(fs.readFileSync(data, 'utf8'))
 const R = '/tmp/cms-sync'
 const results = {}
 const count = (f, re) => { try { return (fs.readFileSync(f, 'utf8').match(re) || []).length } catch (_) { return -1 } }
@@ -436,7 +483,7 @@ for (const [g, { live, changes }] of Object.entries(all)) {
   }
   try {
     const recs = count(aq, /shortId/g)
-    if (!(recs > 0)) { results[g] = { recs }; continue }
+    if (recs < 0) { results[g] = { recs }; continue }
     const cand = build({ ...live, ...changes })
     const ok = cand.exit === 0 && cand.index && cand.pages === recs
     results[g] = { recs, cand, base: ok ? null : build(live) }
