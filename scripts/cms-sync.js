@@ -377,16 +377,27 @@ function stationJsonGaps(raw) {
   return gaps
 }
 
+const defaultMission = host => `A place-based journal documenting research, teaching, and community work at the ${host.replace(/^the /i, '')}, published through the iPlaces network.`
+
 function stationJsonUpdates(manifest, groups, live) {
   const spec = manifest.stationJson || {}
   const out = {}
   for (const g of groups) {
     const raw = live[g]['data/station.json']
-    if (raw === undefined || (!spec['*'] && !spec[g])) continue
+    if (raw === undefined) continue
     const cur = JSON.parse(raw)
     const next = { ...cur }
     for (const [k, v] of Object.entries(spec['*'] || {})) if (!(k in next)) next[k] = v
     Object.assign(next, spec[g] || {})
+    // Never leave the seed's FIXMEs where a safe default exists: the slug is the
+    // group name, and the mission is the standard sentence built from the host.
+    const unset = v => !v || /FIXME/.test(String(v))
+    if (unset(next.pathSlug)) next.pathSlug = g
+    const host = next.hostOrg && !unset(next.hostOrg.name) ? next.hostOrg.name : null
+    // The standard sentence follows the host name on every push (so a renamed host
+    // updates it); a mission a station wrote itself, or the manifest sets, is kept.
+    const standard = /^A place-based journal documenting research, teaching, and community work at the .*, published through the iPlaces network\.$/
+    if (host && !(spec[g] || {}).mission && (unset(next.mission) || standard.test(next.mission))) next.mission = defaultMission(host)
     if (canon(next) === canon(cur)) continue
     out[g] = /\n\s+"/.test(raw) ? `${JSON.stringify(next, null, 2)}\n` : JSON.stringify(next)
   }
