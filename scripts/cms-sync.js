@@ -367,12 +367,14 @@ async function planPages(ctx, stationJson, problems) {
 // Fields in data/station.json (as a push would leave it) that are still empty or FIXME.
 // A station with any of these is never pushed or rebuilt, so no site goes live with
 // "FIXME-STATION-TITLE" on it. Fix: add the values under "stationJson" in the manifest.
+// Seed or editor placeholder text that must never go live.
+const PLACEHOLDER = /FIXME|^\s*one sentence about/i
 const STATION_REQUIRED = ['title', 'shortName', 'pathSlug', 'mission', 'hostOrg.name']
 function stationJsonGaps(raw) {
   let st
   try { st = JSON.parse(raw ?? '{}') } catch (_) { return ['(not valid JSON)'] }
   const get = k => k.split('.').reduce((o, x) => (o == null ? o : o[x]), st)
-  const gaps = STATION_REQUIRED.filter(k => !get(k) || /FIXME/.test(String(get(k))))
+  const gaps = STATION_REQUIRED.filter(k => !get(k) || PLACEHOLDER.test(String(get(k))))
   for (const [k, v] of Object.entries(st)) if (!STATION_REQUIRED.some(r => r === k || r.startsWith(`${k}.`)) && /FIXME/.test(JSON.stringify(v))) gaps.push(k)
   return gaps
 }
@@ -391,7 +393,7 @@ function stationJsonUpdates(manifest, groups, live) {
     Object.assign(next, spec[g] || {})
     // Never leave the seed's FIXMEs where a safe default exists: the slug is the
     // group name, and the mission is the standard sentence built from the host.
-    const unset = v => !v || /FIXME/.test(String(v))
+    const unset = v => !v || PLACEHOLDER.test(String(v))
     if (unset(next.pathSlug)) next.pathSlug = g
     const host = next.hostOrg && !unset(next.hostOrg.name) ? next.hostOrg.name : null
     // The standard sentence follows the host name on every push (so a renamed host
