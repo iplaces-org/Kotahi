@@ -64,7 +64,15 @@
       "mission": "A place-based journal documenting research, teaching, and community work at Bailey Station on Tetiaroa, French Polynesia, published through the iPlaces network."
     },
     "itemaohi": {
-      "pathSlug": "itemaohi"
+      "title": "Journal of Itemaohi",
+      "seriesTitle": "Journal of Itemaohi",
+      "shortName": "Itemaohi",
+      "pathSlug": "itemaohi",
+      "hostOrg": {
+        "name": "Université de la Polynésie française",
+        "url": "https://www.upf.pf/",
+        "ror": ""
+      }
     }
   },
   "createIfMissing": [
