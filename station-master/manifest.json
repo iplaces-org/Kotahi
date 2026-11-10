@@ -41,12 +41,12 @@
       }
     },
     "bamfieldmsc": {
-      "title": "iPlaces Bamfield Marine Science Centre",
-      "seriesTitle": "iPlaces Bamfield Marine Science Centre",
+      "title": "iPlaces Bamfield Marine Sciences Centre",
+      "seriesTitle": "iPlaces Bamfield Marine Sciences Centre",
       "shortName": "iPlaces BMSC",
       "pathSlug": "bamfieldmsc",
       "hostOrg": {
-        "name": "Bamfield Marine Science Centre",
+        "name": "Bamfield Marine Sciences Centre",
         "url": "https://bamfieldmsc.com/",
         "ror": "https://ror.org/039cthy03"
       }
