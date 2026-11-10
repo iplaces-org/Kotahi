@@ -25,7 +25,11 @@
  *   --manifest FILE    default station-master/manifest.json (built-in default if absent)
  *   --out DIR          where live copies + drift.md go (default cms-sync-out/<timestamp>)
  *   --diff PATH        also print `diff -u master live` for that file, per station
- *   KOTAHI_TOKEN env   bearer token (group admin); needed for rebuild, maybe for push
+ *   --as USERNAME      mint the token for this global admin (default: the oldest one)
+ *   --no-mint          never mint; use KOTAHI_TOKEN or go without
+ *   KOTAHI_TOKEN env   bearer token. When unset, drift/push/restore mint one over
+ *                      `fly ssh` on the server (scripts/cms-sync-mint-token.js) and
+ *                      keep it in memory only, so no browser copy-paste is needed.
  *
  * Node 18+, no dependencies.
  */
@@ -33,6 +37,7 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
+const zlib = require('zlib')
 const { execFileSync } = require('child_process')
 
 const DEFAULT_MANIFEST = {
@@ -90,6 +95,7 @@ async function main() {
   console.log(`stations ${groups.join(', ')}\n`)
 
   if (cmd === 'verify') return verify(groups)
+  if (!process.env.KOTAHI_TOKEN && !args['no-mint']) await mintToken(server)
 
   const allGroups = await gql(server, null, '{ groups { id name } }')
   const live = {}
@@ -252,15 +258,17 @@ async function push(ctx, readSource, opts = {}) {
 
   // ---- pre-flight: build each station with the candidate files, on the Flax machine
   if (!args['skip-preflight']) {
-    for (const g of groups.filter(x => plan[x].length)) {
-      const files = Object.fromEntries(plan[g].map(p => [p, source(g, p)]))
-      const r = preflight(g, live[g], files)
-      console.log(`pre-flight ${g}: ${r.recs} records; current CMS builds ${r.base.pages} pages${r.base.exit ? ' (FAILS: publishing as-is would 403)' : ''}; with changes ${r.cand.pages} pages, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}`)
-      if (!r.ok) {
-        console.log(r.cand.log)
-        throw new Error(`pre-flight build failed for ${g}; nothing was pushed to any station`)
-      }
+    const todo = groups.filter(x => plan[x].length)
+    const changes = Object.fromEntries(todo.map(g => [g, Object.fromEntries(plan[g].map(p => [p, source(g, p)]))]))
+    const results = preflightAll(todo, live, changes)
+    const failed = []
+    for (const g of todo) {
+      const r = results[g]
+      const baseNote = r.base ? `; current CMS builds ${r.base.pages} pages${r.base.exit ? ' (FAILS too: publishing as-is would 403)' : ' (so the change breaks it)'}` : ''
+      console.log(`pre-flight ${g}: ${r.recs} records; with changes ${r.cand.pages} pages, exit ${r.cand.exit}${r.cand.index ? '' : ', NO index.html'}${baseNote}`)
+      if (!r.ok) { console.log(r.cand.log); failed.push(g) }
     }
+    if (failed.length) throw new Error(`pre-flight build failed for ${failed.join(', ')}; nothing was pushed to any station`)
   }
 
   if (!args.yes && !(await confirm(`Push ${total} change(s) now? Type yes: `))) {
@@ -359,83 +367,140 @@ function stationJsonUpdates(manifest, groups, live) {
   return out
 }
 
-function preflight(g, liveFiles, files) {
-  // Builds the station exactly as a Publish would right now: the live CMS files
-  // (read by this script), plus Flax's own data/articleQuery.json. Not a copy of
-  // /app/src/<g>, which can hold stale files the CMS no longer has (20 Oct: wams
-  // built fine from a leftover data/issues.json, then 403'd on publish).
-  //
-  // Flax's eleventy.config.js beforeBuild deletes every non-asset directory in
-  // inputDir.replace("src", "public"), so the input sits under a throwaway
-  // .../src/<g> with a throwaway "public" twin. Never build from /app/src.
-  const R = '/tmp/cms-sync'
-  const IN = `${R}/src/${g}`
-  const OUT = `${R}/public/${g}`
-  const enc = obj => Object.fromEntries(Object.entries(obj)
-    .filter(([p]) => p !== 'data/articleQuery.json')
-    .map(([p, c]) => [p, Buffer.from(c).toString('base64')]))
-  flaxUpload(`${R}-base.json`, JSON.stringify(enc(liveFiles)))
-  flaxUpload(`${R}-cand.json`, JSON.stringify(enc({ ...liveFiles, ...files })))
-  const write = which => `node -e 'const fs=require("fs"),path=require("path");const d=JSON.parse(fs.readFileSync("${R}-${which}.json"));for(const[k,v] of Object.entries(d)){const f=path.join("${IN}",k);fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,Buffer.from(v,"base64"))}'`
-  const fresh = which => [
-    `rm -rf ${R}/src ${R}/public && mkdir -p ${IN}/data ${R}/public`,
-    write(which),
-    `cp ${FLAX_ROOT}/src/${g}/data/articleQuery.json ${IN}/data/articleQuery.json`,
-  ].join(' && ')
-  const build = log => `npx eleventy --pathprefix=${g} --input=${IN} --output=${OUT} > ${R}/${log}.log 2>&1`
-  const out = flaxRun([
-    `mkdir -p ${R}`,
-    `cd ${FLAX_ROOT}`,
-    `echo RECS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l)`,
-    fresh('base'),
-    `${build('base')}; echo BASE_EXIT=$?`,
-    `echo BASE_PAGES=$(ls ${OUT}/articles 2>/dev/null | wc -l)`,
-    fresh('cand'),
-    `${build('cand')}; echo CAND_EXIT=$?`,
-    `echo CAND_PAGES=$(ls ${OUT}/articles 2>/dev/null | wc -l)`,
-    `test -f ${OUT}/index.html && echo CAND_INDEX=1`,
-    `echo ---LOG; grep -iE "error|problem" ${R}/cand.log | head -20; tail -3 ${R}/cand.log`,
-    `rm -rf ${R}/src ${R}/public ${R}-base.json ${R}-cand.json`,
-  ].join('\n'))
-  const num = k => Number((out.match(new RegExp(`${k}=(\\d+)`)) || [])[1])
-  const recs = num('RECS')
-  const base = { exit: num('BASE_EXIT'), pages: num('BASE_PAGES') }
-  const cand = { exit: num('CAND_EXIT'), pages: num('CAND_PAGES'), index: /CAND_INDEX=1/.test(out), log: out.split('---LOG')[1] || out }
-  if (!(recs > 0)) throw new Error(`pre-flight: no records found in ${FLAX_ROOT}/src/${g}/data/articleQuery.json; publish ${g} once, then re-run. Nothing was pushed.`)
-  // The recipe-11a check: one article page per record, plus a homepage.
-  const ok = cand.exit === 0 && cand.index && cand.pages === recs
-  return { ok, recs, base, cand }
+// One upload and one fly ssh run for every station: the Flax machine builds
+// each station in turn, exactly as a Publish would right now: the live CMS
+// files (read by this script) with the candidate changes on top, plus Flax's
+// own data/articleQuery.json. Not a copy of /app/src/<g>, which can hold stale
+// files the CMS no longer has (20 Oct: wams built fine from a leftover
+// data/issues.json, then 403'd on publish). The current, unchanged CMS is
+// built only when a candidate build fails, to tell "the change breaks it" from
+// "it was already broken".
+//
+// Flax's eleventy.config.js beforeBuild deletes every non-asset directory in
+// inputDir.replace("src", "public"), so the input sits under a throwaway
+// /tmp/cms-sync/src/<g> with a throwaway "public" twin. Never build from /app/src.
+function preflightAll(groups, live, changes) {
+  if (!groups.length) return {}
+  const payload = {}
+  for (const g of groups) {
+    payload[g] = {
+      live: Object.fromEntries(Object.entries(live[g]).filter(([p]) => p !== 'data/articleQuery.json')),
+      changes: Object.fromEntries(Object.entries(changes[g]).filter(([p]) => p !== 'data/articleQuery.json')),
+    }
+  }
+  const data = '/tmp/cms-sync-preflight.json'
+  const runner = '/tmp/cms-sync-preflight.js'
+  flaxUpload(data, JSON.stringify(payload))
+  flaxUpload(runner, PREFLIGHT_RUNNER)
+  const out = fly(`sh -c 'cd ${FLAX_ROOT} && node ${runner} ${data} ${FLAX_ROOT}; rm -f ${runner} ${data}'`)
+  const m = out.match(/PREFLIGHT_JSON=(.*)/)
+  if (!m) throw new Error(`pre-flight did not report back; nothing was pushed. Output:\n${out.slice(-2000)}`)
+  const results = JSON.parse(m[1])
+  for (const g of groups) {
+    const r = results[g]
+    if (r.error) throw new Error(`pre-flight ${g}: ${r.error}. Nothing was pushed.`)
+    if (!(r.recs > 0)) throw new Error(`pre-flight: no records found in ${FLAX_ROOT}/src/${g}/data/articleQuery.json; publish ${g} once, then re-run. Nothing was pushed.`)
+    // The recipe-11a check: one article page per record, plus a homepage.
+    r.ok = r.cand.exit === 0 && r.cand.index && r.cand.pages === r.recs
+  }
+  return results
 }
 
-// Copy a (possibly large) text file to the Flax machine in base64 chunks.
-function flaxUpload(dest, content) {
-  const b64 = Buffer.from(content).toString('base64')
-  fly(`sh -c 'rm -f ${dest}.b64'`)
-  for (let i = 0; i < b64.length; i += 60000) fly(`sh -c 'printf %s ${b64.slice(i, i + 60000)} >> ${dest}.b64'`)
-  fly(`sh -c 'base64 -d ${dest}.b64 > ${dest} && rm -f ${dest}.b64'`)
+// Runs on the Flax machine (node is there): node runner.js <payload.json> <flaxRoot>
+const PREFLIGHT_RUNNER = String.raw`
+const fs = require('fs'), path = require('path'), { spawnSync } = require('child_process')
+const [data, ROOT] = process.argv.slice(2)
+const all = JSON.parse(fs.readFileSync(data, 'utf8'))
+const R = '/tmp/cms-sync'
+const results = {}
+const count = (f, re) => { try { return (fs.readFileSync(f, 'utf8').match(re) || []).length } catch (_) { return -1 } }
+const pagesIn = d => { try { return fs.readdirSync(d).length } catch (_) { return 0 } }
+for (const [g, { live, changes }] of Object.entries(all)) {
+  const IN = R + '/src/' + g, OUT = R + '/public/' + g
+  const aq = ROOT + '/src/' + g + '/data/articleQuery.json'
+  const build = files => {
+    fs.rmSync(R + '/src', { recursive: true, force: true })
+    fs.rmSync(R + '/public', { recursive: true, force: true })
+    for (const [k, v] of Object.entries(files)) {
+      const f = path.join(IN, k)
+      fs.mkdirSync(path.dirname(f), { recursive: true })
+      fs.writeFileSync(f, v)
+    }
+    fs.mkdirSync(IN + '/data', { recursive: true })
+    fs.mkdirSync(R + '/public', { recursive: true })
+    fs.copyFileSync(aq, IN + '/data/articleQuery.json')
+    const r = spawnSync('npx', ['eleventy', '--pathprefix=' + g, '--input=' + IN, '--output=' + OUT], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    const log = (r.stdout || '') + (r.stderr || '')
+    const lines = log.split('\n')
+    return {
+      exit: r.status === null ? 1 : r.status,
+      pages: pagesIn(OUT + '/articles'),
+      index: fs.existsSync(OUT + '/index.html'),
+      log: lines.filter(l => /error|problem/i.test(l)).slice(0, 20).concat(lines.slice(-4)).join('\n'),
+    }
+  }
+  try {
+    const recs = count(aq, /shortId/g)
+    if (!(recs > 0)) { results[g] = { recs }; continue }
+    const cand = build({ ...live, ...changes })
+    const ok = cand.exit === 0 && cand.index && cand.pages === recs
+    results[g] = { recs, cand, base: ok ? null : build(live) }
+  } catch (e) {
+    results[g] = { error: String(e.message || e) }
+  }
 }
+fs.rmSync(R, { recursive: true, force: true })
+console.log('PREFLIGHT_JSON=' + JSON.stringify(results))
+`
 
-// Ship a script to the Flax machine, then run it.
-function flaxRun(script) {
-  const tag = `/tmp/cms-sync-${process.pid}.sh`
-  flaxUpload(tag, script)
-  return fly(`sh -c 'sh ${tag}; rm -f ${tag}'`)
+// Copy a (possibly large) text file to a machine: gzip, then base64 in chunks
+// (each chunk is one fly ssh call, so fewer and bigger chunks is faster; Linux
+// caps a single argument at 128 KiB). Decoded with node, which every image has.
+const CHUNK = 100000
+function flyUpload(app, dest, content) {
+  const b64 = zlib.gzipSync(Buffer.from(content)).toString('base64')
+  fly(`sh -c 'rm -f ${dest}.b64'`, app)
+  for (let i = 0; i < b64.length; i += CHUNK) fly(`sh -c 'printf %s ${b64.slice(i, i + CHUNK)} >> ${dest}.b64'`, app)
+  fly(`sh -c 'node -e "const fs=require(\\"fs\\");fs.writeFileSync(\\"${dest}\\",require(\\"zlib\\").gunzipSync(Buffer.from(fs.readFileSync(\\"${dest}.b64\\",\\"utf8\\"),\\"base64\\")))" && rm -f ${dest}.b64'`, app)
 }
+const flaxUpload = (dest, content) => flyUpload(FLAX_APP, dest, content)
 
-function fly(cmd) {
+function fly(cmd, app = FLAX_APP) {
   for (let attempt = 1; ; attempt++) {
     try {
-      return execFileSync('fly', ['ssh', 'console', '-a', FLAX_APP, '-C', cmd], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
+      return execFileSync('fly', ['ssh', 'console', '-a', app, '-C', cmd], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] })
     } catch (err) {
-      if (attempt >= 2) throw new Error(`fly ssh failed: ${(err.stderr || err.message).toString().slice(0, 400)}`)
+      if (attempt >= 2) throw new Error(`fly ssh (${app}) failed: ${(err.stderr || err.message).toString().slice(0, 400)}`)
     }
   }
 }
 
+// A Kotahi token for a global admin, minted inside the server container with
+// Kotahi's own signing key (scripts/cms-sync-mint-token.js). Kept in this
+// process only: never printed, never written to a file or the Keychain.
+const SERVER_APP = process.env.CMS_SYNC_SERVER_APP || 'iplaces-test-server'
+async function mintToken(server) {
+  process.stdout.write(`token    minting over fly ssh on ${SERVER_APP} … `)
+  // The server auto-stops when idle; wake it before ssh.
+  for (let i = 0; i < 5; i++) {
+    try { await fetch(`${server}/healthcheck`); break } catch (_) { await new Promise(r => setTimeout(r, 3000)) }
+  }
+  const remote = '/home/node/app/.cms-sync-mint.js'
+  flyUpload(SERVER_APP, remote, fs.readFileSync(path.join(__dirname, 'cms-sync-mint-token.js'), 'utf8'))
+  const as = args.as ? ` --as ${String(args.as).replace(/[^\w.@-]/g, '')}` : ''
+  const out = fly(`sh -c 'cd /home/node/app && node ${remote}${as}; rm -f ${remote}'`, SERVER_APP)
+  const token = (out.match(/^TOKEN=(\S+)/m) || [])[1]
+  if (!token) throw new Error(`could not mint a token: ${(out.match(/MINT_FAILED=.*/) || [out.slice(-400)])[0]}. Set KOTAHI_TOKEN by hand instead.`)
+  process.env.KOTAHI_TOKEN = token
+  console.log(`done, for ${(out.match(/^USER=(.*)$/m) || [])[1]} (in memory only)\n`)
+}
+
 async function verify(groups) {
   let bad = 0
+  // One fly ssh call for every station.
+  const all = fly(`sh -c '${groups.map(g => `echo ==${g}; echo PAGES=$(ls ${FLAX_ROOT}/public/${g}/articles 2>/dev/null | wc -l); echo IDS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l); test -f ${FLAX_ROOT}/public/${g}/index.html && echo INDEX=1`).join('; ')}; true'`)
   for (const g of groups) {
-    const out = fly(`sh -c 'echo PAGES=$(ls ${FLAX_ROOT}/public/${g}/articles 2>/dev/null | wc -l); echo IDS=$(grep -o shortId ${FLAX_ROOT}/src/${g}/data/articleQuery.json | wc -l); test -f ${FLAX_ROOT}/public/${g}/index.html && echo INDEX=1; true'`)
+    const out = (all.split(`==${g}\n`)[1] || '').split('\n==')[0]
     const pages = Number((out.match(/PAGES=(\d+)/) || [])[1])
     const recs = Number((out.match(/IDS=(\d+)/) || [])[1])
     let code = 0
@@ -631,7 +696,7 @@ function renderReport({ server, masterDir, groups, rows, extras, manifest }) {
 function parseArgs(argv) {
   const out = { _: [] }
   for (let i = 0; i < argv.length; i++) {
-    const BOOL = ['dry-run', 'yes', 'force', 'skip-preflight']
+    const BOOL = ['dry-run', 'yes', 'force', 'skip-preflight', 'no-mint']
     const key = argv[i].slice(2)
     if (argv[i].startsWith('--')) out[key] = BOOL.includes(key) ? true : argv[++i]
     else out._.push(argv[i])
