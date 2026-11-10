@@ -25,11 +25,7 @@
  *   --manifest FILE    default station-master/manifest.json (built-in default if absent)
  *   --out DIR          where live copies + drift.md go (default cms-sync-out/<timestamp>)
  *   --diff PATH        also print `diff -u master live` for that file, per station
- *   --as USERNAME      mint the token for this global admin (default: the oldest one)
- *   --no-mint          never mint; use KOTAHI_TOKEN or go without
- *   KOTAHI_TOKEN env   bearer token. When unset, drift/push/restore mint one over
- *                      `fly ssh` on the server (scripts/cms-sync-mint-token.js) and
- *                      keep it in memory only, so no browser copy-paste is needed.
+ *   KOTAHI_TOKEN env   bearer token (group admin); needed for rebuild, maybe for push
  *
  * Node 18+, no dependencies.
  */
@@ -95,7 +91,6 @@ async function main() {
   console.log(`stations ${groups.join(', ')}\n`)
 
   if (cmd === 'verify') return verify(groups)
-  if (!process.env.KOTAHI_TOKEN && !args['no-mint']) await mintToken(server)
 
   const allGroups = await gql(server, null, '{ groups { id name } }')
   const live = {}
@@ -475,26 +470,6 @@ function fly(cmd, app = FLAX_APP) {
   }
 }
 
-// A Kotahi token for a global admin, minted inside the server container with
-// Kotahi's own signing key (scripts/cms-sync-mint-token.js). Kept in this
-// process only: never printed, never written to a file or the Keychain.
-const SERVER_APP = process.env.CMS_SYNC_SERVER_APP || 'iplaces-test-server'
-async function mintToken(server) {
-  process.stdout.write(`token    minting over fly ssh on ${SERVER_APP} … `)
-  // The server auto-stops when idle; wake it before ssh.
-  for (let i = 0; i < 5; i++) {
-    try { await fetch(`${server}/healthcheck`); break } catch (_) { await new Promise(r => setTimeout(r, 3000)) }
-  }
-  const remote = '/home/node/app/.cms-sync-mint.js'
-  flyUpload(SERVER_APP, remote, fs.readFileSync(path.join(__dirname, 'cms-sync-mint-token.js'), 'utf8'))
-  const as = args.as ? ` --as ${String(args.as).replace(/[^\w.@-]/g, '')}` : ''
-  const out = fly(`sh -c 'cd /home/node/app && node ${remote}${as}; rm -f ${remote}'`, SERVER_APP)
-  const token = (out.match(/^TOKEN=(\S+)/m) || [])[1]
-  if (!token) throw new Error(`could not mint a token: ${(out.match(/MINT_FAILED=.*/) || [out.slice(-400)])[0]}. Set KOTAHI_TOKEN by hand instead.`)
-  process.env.KOTAHI_TOKEN = token
-  console.log(`done, for ${(out.match(/^USER=(.*)$/m) || [])[1]} (in memory only)\n`)
-}
-
 async function verify(groups) {
   let bad = 0
   // One fly ssh call for every station.
@@ -696,7 +671,7 @@ function renderReport({ server, masterDir, groups, rows, extras, manifest }) {
 function parseArgs(argv) {
   const out = { _: [] }
   for (let i = 0; i < argv.length; i++) {
-    const BOOL = ['dry-run', 'yes', 'force', 'skip-preflight', 'no-mint']
+    const BOOL = ['dry-run', 'yes', 'force', 'skip-preflight']
     const key = argv[i].slice(2)
     if (argv[i].startsWith('--')) out[key] = BOOL.includes(key) ? true : argv[++i]
     else out._.push(argv[i])
