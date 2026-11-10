@@ -41,15 +41,15 @@
       }
     },
     "bamfieldmsc": {
-      "title": "iPlaces Bamfield",
-      "seriesTitle": "iPlaces Bamfield",
-      "shortName": "Bamfield",
+      "title": "iPlaces Bamfield Marine Science Centre",
+      "seriesTitle": "iPlaces Bamfield Marine Science Centre",
+      "shortName": "iPlaces BMSC",
       "pathSlug": "bamfieldmsc",
       "mission": "A place-based journal documenting research, teaching, and community work at the Bamfield Marine Sciences Centre, Bamfield, British Columbia, published through the iPlaces network.",
       "hostOrg": {
-        "name": "Bamfield Marine Sciences Centre",
+        "name": "Bamfield Marine Science Centre",
         "url": "https://bamfieldmsc.com/",
-        "ror": ""
+        "ror": "https://ror.org/039cthy03"
       }
     },
     "baileystation": {
