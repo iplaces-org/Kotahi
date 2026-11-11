@@ -11,6 +11,7 @@ const Team = require('../models/team/team.model')
 const EmailTemplate = require('../models/emailTemplate/emailTemplate.model')
 const ArticleTemplate = require('../models/articleTemplate/articleTemplate.model')
 const Config = require('../models/config/config.model')
+const CmsLayout = require('../models/cmsLayout/cmsLayout.model')
 
 const seedConfig = require('./seedConfig')
 const seedForms = require('./seedForms')
@@ -21,6 +22,91 @@ const { seedNotifications } = require('./seedNotifications')
 
 const defaultTemplatePath = path.resolve(__dirname, '../utils//pdfTemplates')
 const userTemplatePath = path.resolve(__dirname, '../config/journal/export')
+
+// iPlaces Patch 37: every station gets its own brand colours instead of
+// Kotahi's default green. Runs at every boot, but only touches a group whose
+// colours are still the Kotahi default (#3aae2a, which also fails the 4.5:1
+// contrast check), so colours set by hand are never overwritten.
+// Every colour here passes 4.5:1 against white.
+const DEFAULT_GREENS = ['#3aae2a', '#4a7c59']
+
+const STATION_COLOURS = {
+  gumpstation: ['#2b6cb0', '#475569'],
+  wams: ['#0f766e', '#4b5563'],
+  bamfieldmsc: ['#6b46c1', '#57534e'],
+  baileystation: ['#b4441c', '#5b5b5b'],
+  itemaohi: ['#9d174d', '#52525b'],
+}
+
+// New stations take the first of these that no other group uses yet.
+const ROTATION = [
+  ['#1d4ed8', '#4b5563'],
+  ['#7e22ce', '#52525b'],
+  ['#be185d', '#57534e'],
+  ['#0e7490', '#475569'],
+  ['#c2410c', '#5b5b5b'],
+  ['#a16207', '#57534e'],
+  ['#3f51b5', '#4b5563'],
+  ['#8d4b2b', '#52525b'],
+]
+
+const isDefaultGreen = colour =>
+  !colour || DEFAULT_GREENS.includes(String(colour).toLowerCase())
+
+const assignStationColours = async (group, config, trx) => {
+  if (!config) return
+  const identity = (config.formData && config.formData.groupIdentity) || {}
+  if (!isDefaultGreen(identity.primaryColor)) return
+
+  let colours = STATION_COLOURS[group.name]
+
+  if (!colours) {
+    const others = await Config.query(trx).where({ active: true })
+
+    const used = others
+      .filter(c => c.id !== config.id)
+      .map(c =>
+        String(
+          (c.formData &&
+            c.formData.groupIdentity &&
+            c.formData.groupIdentity.primaryColor) ||
+            '',
+        ).toLowerCase(),
+      )
+
+    colours =
+      ROTATION.find(([primary]) => !used.includes(primary)) ||
+      ROTATION[others.length % ROTATION.length]
+  }
+
+  const [primaryColor, secondaryColor] = colours
+
+  const formData = {
+    ...config.formData,
+    groupIdentity: { ...identity, primaryColor, secondaryColor },
+  }
+
+  await Config.query(trx)
+    .patch({ formData: JSON.stringify(formData) })
+    .findById(config.id)
+
+  // eslint-disable-next-line no-param-reassign
+  config.formData = formData
+
+  // The public site keeps its own copy (cms_layouts), made from the config
+  // the first time the CMS is opened. Update it too if it is still green.
+  const layout = await CmsLayout.query(trx).findOne({ groupId: group.id })
+
+  if (layout && isDefaultGreen(layout.primaryColor)) {
+    await CmsLayout.query(trx)
+      .patch({ primaryColor, secondaryColor })
+      .findById(layout.id)
+  }
+
+  logger.info(
+    `    Set brand colours ${primaryColor} / ${secondaryColor} for "${group.name}".`,
+  )
+}
 
 const createGroupAndRelatedData = async (
   groupName,
@@ -58,6 +144,7 @@ const createGroupAndRelatedData = async (
 
   // Seed config and link it to the created group
   const config = await seedConfig(group, instanceName, index, { trx })
+  await assignStationColours(group, config, trx)
 
   // Seed forms and link it to the created group
   await seedForms(group, config, { trx })
