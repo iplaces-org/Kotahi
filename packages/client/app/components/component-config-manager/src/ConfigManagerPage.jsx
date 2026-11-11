@@ -40,26 +40,40 @@ const ConfigManagerPage = () => {
     checkDatacite().catch(() => {})
   }, [])
 
-  const { data: metadata, loading: loadingMetadata } = useQuery(
-    GET_SUBMISSION_FORM,
-    {
-      variables: {
-        groupId,
-      },
+  const {
+    data: currentMetadata,
+    previousData: previousMetadata,
+    loading: loadingMetadata,
+  } = useQuery(GET_SUBMISSION_FORM, {
+    variables: {
+      groupId,
     },
-  )
+  })
 
-  const { loading, error, data } = useQuery(GET_CONFIG_AND_EMAIL_TEMPLATES, {
+  const {
+    loading,
+    error,
+    data: currentData,
+    previousData,
+  } = useQuery(GET_CONFIG_AND_EMAIL_TEMPLATES, {
     variables: { id: config?.id },
     fetchPolicy: 'network-only',
   })
 
-  const { data: hasCoarTokenData, loading: loadingHasCoarToken } = useQuery(
-    HAS_TOKEN,
-    {
-      variables: { name: 'coar', groupId },
-    },
-  )
+  const {
+    data: currentHasCoarTokenData,
+    previousData: previousHasCoarTokenData,
+    loading: loadingHasCoarToken,
+  } = useQuery(HAS_TOKEN, {
+    variables: { name: 'coar', groupId },
+  })
+
+  // iPlaces: keep the page mounted while these queries refetch (for example
+  // after an image upload on the General tab). Without the previous data the
+  // full-page spinner replaced the form on every refetch and the page jumped.
+  const metadata = currentMetadata ?? previousMetadata
+  const data = currentData ?? previousData
+  const hasCoarTokenData = currentHasCoarTokenData ?? previousHasCoarTokenData
 
   const handleRefreshCoarAuthToken = async () => {
     const { data: coarRefreshData, errors: coarRefreshError } =

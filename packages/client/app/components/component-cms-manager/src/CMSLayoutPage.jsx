@@ -18,7 +18,17 @@ import {
 } from '../../../queries'
 
 const CMSLayoutPage = () => {
-  const { loading, data, error } = useQuery(GET_CMS_LAYOUT)
+  const {
+    loading,
+    data: currentData,
+    previousData,
+    error,
+  } = useQuery(GET_CMS_LAYOUT)
+
+  // iPlaces: keep the form mounted while the layout refetches (for example
+  // after a logo upload). Showing the full-page spinner on every refetch made
+  // the page jump several times and threw away the unsaved form values.
+  const data = currentData ?? previousData
   const [updateCMSLayout] = useMutation(UPDATE_CMS_LAYOUT)
   const [updateCMSPageInfo] = useMutation(UPDATE_CMS_PAGE_DATA)
   const [rebuildFlaxSite] = useMutation(REBUILD_FLAX_SITE)
@@ -119,7 +129,7 @@ const CMSLayoutPage = () => {
     return initialData
   }
 
-  if (loading) return <Spinner fullpage />
+  if (loading && !data) return <Spinner fullpage />
   if (error) return <CommsErrorBanner error={error} />
   if (!data.cmsLayout) return <CommsErrorBanner error={error} />
 
