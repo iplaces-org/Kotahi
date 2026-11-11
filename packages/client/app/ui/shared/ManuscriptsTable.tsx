@@ -1051,6 +1051,11 @@ export type ManuscriptsTableColumn = {
    * Renders a select dropdown instead of a static badge.
    */
   editable?: boolean
+  /**
+   * iplaces: pins the column to that edge while the rest of the table scrolls
+   * sideways (antd fixed columns), so a wide table never hides it.
+   */
+  fixed?: 'left' | 'right'
   /** Applies to 'options', 'status', 'reviewerStatus' and 'date' datatypes */
   filterable?: boolean
   /**
@@ -1895,6 +1900,9 @@ const ManuscriptsTable = ({
           onChange: onPageChange,
         }}
         rowSelection={rowSelection}
+        // iplaces: scroll wide tables inside the table, so the pinned
+        // actions column (Control, View, Publish) always stays on screen.
+        scroll={{ x: 'max-content' }}
       />
     </>
   )
