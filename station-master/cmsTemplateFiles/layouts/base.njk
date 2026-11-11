@@ -69,10 +69,10 @@
 {% endif %}
         <meta name="citation_abstract_html_url" content="{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html">
 {# Record license (same rule as article-preview / side.njk). #}
-{% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
-{% if lic.url and (ctAl == "" or ctAl == "public") %}
-        <link rel="license" href="{{ lic.url }}">
-{% endif %}
+{% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKeys = [] %}{% for k in (licRaw if (licRaw and licRaw.join) else [licRaw]) %}{% set kk = (k | default("", true)) | string | trim %}{% if kk and not (kk in licKeys) %}{% set _ = licKeys.push(kk) %}{% endif %}{% endfor %}{% if not licKeys.length %}{% set _ = licKeys.push(station.defaultLicense or licenses.default or "CC-BY-4.0") %}{% endif %}{% set lics = [] %}{% set licUrls = [] %}{% set licAllOpen = true %}{% for kk in licKeys %}{% set le = licenses.list[kk] if (licenses and licenses.list and licenses.list[kk]) else {"label": kk, "url": "", "open": false} %}{% set _ = lics.push({"key": kk, "label": le.label, "url": le.url, "open": le.open}) %}{% if le.url %}{% set _ = licUrls.push(le.url) %}{% endif %}{% if not (le.open and le.url) %}{% set licAllOpen = false %}{% endif %}{% endfor %}
+{% if ctAl == "" or ctAl == "public" %}{% for u in licUrls %}
+        <link rel="license" href="{{ u }}">
+{% endfor %}{% endif %}
 {% if ctAl == "" or ctAl == "public" %}
         <meta name="citation_pdf_url" content="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ article.shortId }}">
 {% endif %}
@@ -105,7 +105,7 @@
               "author": [{% set ldSep = joiner(',') %}{% for m in mthAll %}{% if m and m.name and m.position == 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}{% for au in article.headerInfo.authorNames %}{{ ldSep() }}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% endfor %}{% for m in mthAll %}{% if m and m.name and m.position != 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}],
               "identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"{{ 'https://handle.test.datacite.org/' if article.parsedSubmission.$doiIsTest else 'https://doi.org/' }}{{ article.parsedSubmission.$doi }}"},
               "sameAs": "{{ 'https://handle.test.datacite.org/' if article.parsedSubmission.$doiIsTest else 'https://doi.org/' }}{{ article.parsedSubmission.$doi }}",
-              {% if lic.url %}"license": "{{ lic.url }}",{% endif %}
+              {% if licUrls.length == 1 %}"license": "{{ licUrls[0] }}",{% elif licUrls.length > 1 %}"license": [{% for u in licUrls %}"{{ u }}"{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
               "isPartOf": { "@type": "Periodical", "name": "{{ station.title }}" },
               "about": { "@id": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html#project" },
               "publisher": {
@@ -156,7 +156,7 @@
           {% if article.parsedSubmission.$localContext and article.parsedSubmission.$localContext.label %}"usageInfo": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
           "publishingPrinciples": [{{ lcLabelGraphs(article.parsedSubmission.$localContext) | safe }}],
           "conditionsOfAccess": {{ (lcConditionsOfAccess(article.parsedSubmission.$localContext) + '') | dump | safe }},{% endif %}
-          {% if lic.url %}"license": "{{ lic.url }}",{% endif %}
+          {% if licUrls.length == 1 %}"license": "{{ licUrls[0] }}",{% elif licUrls.length > 1 %}"license": [{% for u in licUrls %}"{{ u }}"{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
           "isPartOf": {
             "@type": "Periodical",
             "name": "{{ station.title }}"

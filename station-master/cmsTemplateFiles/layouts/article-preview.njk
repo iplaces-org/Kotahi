@@ -165,14 +165,10 @@
                 {# Record license: the form's License field (submission.license, SPDX), else
                    station.defaultLicense, else data/licenses.json default (CC BY 4.0).
                    rel="license" only on records whose content is public. #}
-                {% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
+                {% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKeys = [] %}{% for k in (licRaw if (licRaw and licRaw.join) else [licRaw]) %}{% set kk = (k | default("", true)) | string | trim %}{% if kk and not (kk in licKeys) %}{% set _ = licKeys.push(kk) %}{% endif %}{% endfor %}{% if not licKeys.length %}{% set _ = licKeys.push(station.defaultLicense or licenses.default or "CC-BY-4.0") %}{% endif %}{% set lics = [] %}{% set licUrls = [] %}{% set licAllOpen = true %}{% for kk in licKeys %}{% set le = licenses.list[kk] if (licenses and licenses.list and licenses.list[kk]) else {"label": kk, "url": "", "open": false} %}{% set _ = lics.push({"key": kk, "label": le.label, "url": le.url, "open": le.open}) %}{% if le.url %}{% set _ = licUrls.push(le.url) %}{% endif %}{% if not (le.open and le.url) %}{% set licAllOpen = false %}{% endif %}{% endfor %}
                 {% set lpRaw = article.parsedSubmission.accessLevel %}
                 {% set lpAl = ((lpRaw.value | default(lpRaw)) | default("")) | string | lower | trim %}
-                {% if lic.url %}
-                    <a href="{{ lic.url }}"{% if lpAl == "" or lpAl == "public" %} rel="license"{% endif %}>License: {{ lic.label }}</a>
-                {% else %}
-                    <span class="header-license">License: {{ lic.label }}</span>
-                {% endif %}
+                <span class="header-license">{{ "Licenses" if lics.length > 1 else "License" }}: {% for l in lics %}{% if l.url %}<a href="{{ l.url }}"{% if lpAl == "" or lpAl == "public" %} rel="license"{% endif %}>{{ l.label }}</a>{% else %}{{ l.label }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</span>
             </span>
 
            <script>
