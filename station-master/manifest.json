@@ -49,7 +49,8 @@
         "name": "Bamfield Marine Sciences Centre",
         "url": "https://bamfieldmsc.com/",
         "ror": "https://ror.org/039cthy03"
-      }
+      },
+      "contactEmail": "bamfieldmsc@iplacesalliance.org"
     },
     "baileystation": {
       "title": "iPlaces Bailey Station",
@@ -61,7 +62,8 @@
         "url": "https://www.tetiaroasociety.org/",
         "ror": "https://ror.org/04p8xrf95"
       },
-      "mission": "A place-based journal documenting research, teaching, and community work at Bailey Station on Tetiaroa, French Polynesia, published through the iPlaces network."
+      "mission": "A place-based journal documenting research, teaching, and community work at Bailey Station on Tetiaroa, French Polynesia, published through the iPlaces network.",
+      "contactEmail": "baileystation@iplacesalliance.org"
     },
     "itemaohi": {
       "title": "Journal of ʻIte Maʻohi",
@@ -72,7 +74,8 @@
         "name": "Université de la Polynésie française",
         "url": "https://www.upf.pf/",
         "ror": ""
-      }
+      },
+      "contactEmail": "itemaohi@iplacesalliance.org"
     }
   },
   "createIfMissing": [
