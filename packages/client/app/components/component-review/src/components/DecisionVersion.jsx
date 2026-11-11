@@ -569,6 +569,7 @@ const DecisionVersion = ({
                 publishManuscript={publishManuscript}
                 unpublish={unpublish}
                 updateAda={updateAda}
+                updateManuscript={updateManuscript}
               />
             </AdminSection>
           )}

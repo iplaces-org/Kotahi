@@ -19,11 +19,7 @@ import {
   SectionActionInfo,
   SectionAction,
 } from './style'
-import {
-  ActionButton,
-  DataciteTestModeBanner,
-  SectionContent,
-} from '../../../shared'
+import { ActionButton, Checkbox, SectionContent } from '../../../shared'
 import Alert from './publishing/Alert'
 import PublishingResponse from './publishing/PublishingResponse'
 import { getLanguages } from '../../../../i18n'
@@ -60,6 +56,19 @@ const PublishWrapper = styled.div`
   }
 `
 
+// iplaces: per-record test DOI checkbox
+const TestDoiRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${grid(1)};
+`
+
+const TestDoiHelp = styled.p`
+  color: ${th('color.text')};
+  font-size: ${th('fontSizeBaseSmall')};
+  margin: 0;
+`
+
 const AdaStatusWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -75,6 +84,7 @@ const Publish = ({
   publishManuscript,
   unpublish,
   updateAda,
+  updateManuscript,
 }) => {
   // Hooks from the old world
   const config = useContext(ConfigContext)
@@ -90,6 +100,15 @@ const Publish = ({
   const [isRefreshingAdaStatus, setIsRefreshingAdaStatus] = useState(false)
 
   const { t } = useTranslation()
+
+  // iplaces: per-record test DOI, saved on the record as submission.$testDoi
+  const [testDoi, setTestDoi] = useState(!!manuscript.submission?.$testDoi)
+
+  const handleTestDoiChange = e => {
+    const checked = !!e?.target?.checked
+    setTestDoi(checked)
+    updateManuscript(manuscript.id, { submission: { $testDoi: checked } })
+  }
 
   const notAccepted = !['accepted', 'published', 'unpublished'].includes(
     manuscript.status,
@@ -183,7 +202,26 @@ const Publish = ({
           <Title>{t('decisionPage.decisionTab.Publishing')}</Title>
         </SectionHeader>
 
-        <DataciteTestModeBanner />
+        {/* iplaces: per-record test DOI. Hidden when the whole station is
+            already on test DOIs (the site-wide bar says so). */}
+        {!config?.publishing?.datacite?.useSandbox && updateManuscript && (
+          <TestDoiRow>
+            <Checkbox
+              checked={testDoi}
+              handleChange={handleTestDoiChange}
+              id={`test-doi-${manuscript.id}`}
+              label={t('decisionPage.decisionTab.publishWithTestDoi')}
+              value="testDoi"
+            />
+            <TestDoiHelp>
+              {manuscript.submission?.$doiIsTest
+                ? t('decisionPage.decisionTab.hasTestDoi', {
+                    doi: manuscript.submission?.$doi,
+                  })
+                : t('decisionPage.decisionTab.publishWithTestDoiHelp')}
+            </TestDoiHelp>
+          </TestDoiRow>
+        )}
 
         <SectionRowGrid>
           <SectionActionInfo>
