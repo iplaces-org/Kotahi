@@ -608,3 +608,22 @@ Real DOIs stay per station, entered by hand.
   https://handle.test.datacite.org/<doi> (public, no login) and are marked
   "(test DOI)"; citation_doi, JSON-LD identifier, DataCite Commons button,
   connections and revisions panels are left out for test DOIs.
+
+## Patch 37 — every station gets its own brand colours (2026-11-11)
+
+Kotahi seeds every new group with the same green (`#3aae2a`), in both
+`configs.form_data.groupIdentity` (the Kotahi app) and, the first time the
+CMS is opened, `cms_layouts` (the public station pages). That green also
+fails the 4.5:1 contrast check against white.
+
+`server-fix/overlays/scripts/seedGroups.js` now calls
+`assignStationColours` right after `seedConfig`. If a group's primary colour
+is still the Kotahi default, it sets a primary and secondary colour: a fixed
+pair for the five current stations, otherwise the first pair from a rotation
+of eight that no other group uses yet. It also updates that group's
+`cms_layouts` row if one exists and is still green. Colours set by hand are
+never touched. Every colour in the lists passes 4.5:1 against white.
+
+Server-only (seedGroups runs at boot). The public pages pick up a changed
+`cms_layouts` colour on the next Flax rebuild (CMS > Layout > Publish, or a
+cms-sync push).

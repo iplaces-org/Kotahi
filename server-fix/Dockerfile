@@ -99,6 +99,7 @@ COPY packages/server/config/defaultEmailTemplates.js \
 #      seedGroups.js writes the @mention template itself and finds the Task
 #      notification template by its exact subject, so it needs the same change.
 #      Pinned to the 2026.11.03-0 image's plain copy + 4 Patch 29 edits.
+#      Patch 37 adds assignStationColours (distinct brand colours per station).
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/scripts/seedGroups.js
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/dist/scripts/seedGroups.js
 
