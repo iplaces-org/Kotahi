@@ -88,7 +88,12 @@ const Branding = ({
           deleteFile={deleteFile}
           entityId={cmsLayout.id}
           name={brandLogoInput.name}
-          onChange={value => onDataChanged(brandLogoInput.name, value[0])}
+          onChange={value => {
+            // iPlaces: the list holds the existing logo (a file object) and
+            // then the new upload (an id), so take the newest entry's id.
+            const last = value[value.length - 1]
+            onDataChanged(brandLogoInput.name, last?.id ?? last)
+          }}
           setFieldValue={formikProps.setFieldValue}
           setTouched={formikProps.setTouched}
           type={brandLogoInput.type}
