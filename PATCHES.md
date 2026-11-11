@@ -609,6 +609,21 @@ Real DOIs stay per station, entered by hand.
   "(test DOI)"; citation_doi, JSON-LD identifier, DataCite Commons button,
   connections and revisions panels are left out for test DOIs.
 
+### Patch 35d — reserve a DOI without publishing (2026-11-11)
+
+- New mutation `reserveDataciteDoi(id)` (config.graphql, config.resolvers.js,
+  permission `userCanPublishManuscript`) calls `reserveDoi` in
+  datacite/index.js. It creates a DRAFT DOI at DataCite: the same DOI that
+  Publish will use (prefix + record id, or the suffix of an existing `$doi`).
+  Drafts don't resolve, aren't public, and can still be deleted at DataCite.
+- The record gets `doi`, `submission.$doi`, `$doiIsTest` and
+  `$doiReserved: true`. Publish later finds the draft and PUTs it with event
+  'publish' (existing code path), and sets `$doiReserved: false`.
+- Follows test mode: a test station or a record with `$testDoi` reserves on
+  the sandbox with the shared test account. Refuses published records and
+  records from another station (group-id header).
+- Client: "Reserve DOI" button in the record's Publishing section.
+
 ## Patch 37 — every station gets its own brand colours (2026-11-11)
 
 Kotahi seeds every new group with the same green (`#3aae2a`), in both

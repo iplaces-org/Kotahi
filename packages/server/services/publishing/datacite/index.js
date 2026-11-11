@@ -403,8 +403,51 @@ const checkDataciteConnection = async datacite => {
   )
 }
 
+/** iplaces: reserve a DOI without publishing ("draft" DOI at DataCite).
+ * The DOI is the one Publish would use (prefix + record id, or the suffix of
+ * an existing $doi). It creates a draft at DataCite: drafts don't resolve,
+ * aren't public, and can still be deleted at DataCite. Publishing the record
+ * later finds the draft and turns it into a findable DOI (PUT, event
+ * 'publish'), keeping the same DOI. Returns { doi, isTest, alreadyThere }. */
+const reserveDoi = async manuscript => {
+  const activeConfig = configForRecord(
+    await Config.getCached(manuscript.groupId),
+    manuscript,
+  )
+
+  const active = getActiveDatacite(activeConfig.formData.publishing.datacite)
+  if (!active.login) throw new Error('DataCite is not set up for this station.')
+
+  const { $doi } = manuscript.submission || {}
+  const [, existingSuffix] = ($doi || '').match(/10\.\d{4,9}\/(.+)$/i) || []
+  const suffix = existingSuffix || manuscript.id
+  const doi = getDoi(suffix, activeConfig)
+
+  let alreadyThere = false
+
+  try {
+    await requestToDatacite('get', `dois/${doi}`, null, activeConfig)
+    alreadyThere = true
+  } catch (err) {
+    if (err.response?.status !== 404) throw err
+  }
+
+  if (!alreadyThere) {
+    const prefix = doi.split('/')[0]
+    await requestToDatacite(
+      'post',
+      'dois',
+      { type: 'dois', attributes: { doi, prefix, suffix } },
+      activeConfig,
+    )
+  }
+
+  return { doi, isTest: active.useSandbox, alreadyThere }
+}
+
 module.exports = {
   checkDataciteConnection,
+  reserveDoi,
   configForRecord,
   requestToDatacite,
   publishToDatacite,

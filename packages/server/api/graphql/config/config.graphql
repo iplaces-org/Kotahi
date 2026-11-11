@@ -7,6 +7,8 @@ extend type Query {
 
 extend type Mutation {
   updateConfig(id: ID!, input: ConfigInput): Config!
+  # iplaces: reserve a DataCite DOI (draft) for a record without publishing
+  reserveDataciteDoi(id: ID!): String!
 }
 
 type Config {
