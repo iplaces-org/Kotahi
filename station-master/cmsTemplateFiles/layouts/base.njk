@@ -40,9 +40,17 @@
 {% set ctOrig = ((article.parsedSubmission.datePublished | default("", true) | string) | trim) or ((article.parsedSubmission.firstPublishedOn | default("", true) | string) | trim) %}
 {% set ctDate = ctOrig or ctOnline %}
         <meta name="citation_title" content="{{ article.parsedSubmission.$title | striptags | trim | escape }}">
+{# Authors in DataCite creator order: First-position more-than-human authors, people, other more-than-human authors. #}
+{% set mthAll = article.parsedSubmission.moreThanHumanAuthors or [] %}
+{% for m in mthAll %}{% if m and m.name and m.position == 'First' %}
+        <meta name="citation_author" content="{{ m.name | trim | escape }}">
+{% endif %}{% endfor %}
 {% for au in article.headerInfo.authorNames %}
         <meta name="citation_author" content="{{ ([au.lastName, ([au.firstName, au.middleName] | select | join(' '))] | select | join(', ')) | trim | escape }}">
 {% endfor %}
+{% for m in mthAll %}{% if m and m.name and m.position != 'First' %}
+        <meta name="citation_author" content="{{ m.name | trim | escape }}">
+{% endif %}{% endfor %}
 {% if ctDate %}
         <meta name="citation_publication_date" content="{{ ctDate | string | replace('-', '/') }}">
 {% endif %}
@@ -94,7 +102,7 @@
               "abstract": "{{ article.parsedSubmission.$abstract | striptags | trim }}",
               "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
               {% set ldDate = article.parsedSubmission.datePublished or article.parsedSubmission.firstPublishedOn %}{% if ldDate %}"datePublished": "{{ ldDate }}",{% endif %}
-              "author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],
+              "author": [{% set ldSep = joiner(',') %}{% for m in mthAll %}{% if m and m.name and m.position == 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}{% for au in article.headerInfo.authorNames %}{{ ldSep() }}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% endfor %}{% for m in mthAll %}{% if m and m.name and m.position != 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}],
               "identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
               "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",
               {% if lic.url %}"license": "{{ lic.url }}",{% endif %}
@@ -141,7 +149,7 @@
           "description": "{{ (article.parsedSubmission.$abstract | striptags | trim) or station.mission }}",
           "url": "{{ station.baseUrl }}/{{ station.pathSlug }}{{ cmsConfig.defaultArticleDirectory }}{{ article.shortId }}/index.html",
           {% set ldDate = article.parsedSubmission.datePublished or article.parsedSubmission.firstPublishedOn %}{% if ldDate %}"datePublished": "{{ ldDate }}",{% endif %}
-          {% if article.headerInfo.authorNames.length %}"author": [{% for au in article.headerInfo.authorNames %}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
+          {% if article.headerInfo.authorNames.length or mthAll.length %}"author": [{% set ldSep = joiner(',') %}{% for m in mthAll %}{% if m and m.name and m.position == 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}{% for au in article.headerInfo.authorNames %}{{ ldSep() }}{"@type":"Person","name":"{{ ([au.firstName, au.middleName, au.lastName] | select | join(' ')) | replace('  ', ' ') | trim }}"{% if au.orcid %},"@id":"https://orcid.org/{{ au.orcid }}"{% endif %}}{% endfor %}{% for m in mthAll %}{% if m and m.name and m.position != 'First' %}{{ ldSep() }}{"@type":"Organization","name":"{{ m.name | trim }}"{% if m.identifier %},"@id":"{{ m.identifier }}"{% endif %}}{% endif %}{% endfor %}],{% endif %}
           {% if article.parsedSubmission.$doi %}"identifier": {"@type":"PropertyValue","propertyID":"https://registry.identifiers.org/registry/doi","value":"doi:{{ article.parsedSubmission.$doi }}","url":"https://doi.org/{{ article.parsedSubmission.$doi }}"},
           "sameAs": "https://doi.org/{{ article.parsedSubmission.$doi }}",{% endif %}
           {% if article.parsedSubmission.geolocation %}"spatialCoverage": { "@type": "Place", "name": "{{ article.parsedSubmission.geolocation }}" },{% endif %}
