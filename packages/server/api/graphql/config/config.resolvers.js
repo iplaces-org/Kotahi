@@ -7,6 +7,13 @@ const {
   updateConfig,
 } = require('../../../controllers/config/config.controllers')
 
+// iplaces: see services/publishing/datacite/index.js checkDataciteConnection
+const Config = require('../../../models/config/config.model')
+
+const {
+  checkDataciteConnection,
+} = require('../../../services/publishing/datacite')
+
 module.exports = {
   Query: {
     config: async (_, { id }) => {
@@ -14,6 +21,11 @@ module.exports = {
     },
     oldConfig: () => {
       return getOldConfig()
+    },
+    dataciteConnectionCheck: async (_, __, ctx) => {
+      const groupId = ctx.req.headers['group-id']
+      const config = await Config.query().findOne({ groupId, active: true })
+      return checkDataciteConnection(config?.formData?.publishing?.datacite)
     },
   },
   Mutation: {
