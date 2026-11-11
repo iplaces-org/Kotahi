@@ -151,7 +151,10 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: [...getSpdxRights(submission), ...getRightsList($freshLocalContext)],
+      rightsList: [
+        ...getSpdxRights(submission),
+        ...getRightsList($freshLocalContext),
+      ],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
@@ -273,7 +276,10 @@ const checkPayload = async (manuscript, activeConfig) => {
       ],
       descriptions: getDescriptions($abstract),
       subjects: getSubjects(submission),
-      rightsList: [...getSpdxRights(submission), ...getRightsList($freshLocalContext)],
+      rightsList: [
+        ...getSpdxRights(submission),
+        ...getRightsList($freshLocalContext),
+      ],
       fundingReferences: getAllFundingReferences(submission),
       relatedIdentifiers: [
         ...getRelatedIdentifiers(meta, $dois),
@@ -333,7 +339,10 @@ const checkDataciteConnection = async datacite => {
         false,
         `Repository ${login} is not on ${server}. If it is a ${other} DataCite repository, switch the station to ${other} DOIs or enter the ${mode} login.`,
       )
-    return result(false, `Could not reach ${server} (${status || err.message}).`)
+    return result(
+      false,
+      `Could not reach ${server} (${status || err.message}).`,
+    )
   }
 
   try {
@@ -350,7 +359,10 @@ const checkDataciteConnection = async datacite => {
         false,
         `${server} refused the password for ${login} (HTTP ${status}).`,
       )
-    return result(false, `Could not check the login on ${server} (${status || err.message}).`)
+    return result(
+      false,
+      `Could not check the login on ${server} (${status || err.message}).`,
+    )
   }
 
   return result(

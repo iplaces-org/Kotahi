@@ -44,7 +44,9 @@ const {
 const {
   getActiveDatacite,
 } = require('../../services/publishing/datacite/utils')
-const { localContext: fetchLocalContext } = require('../localContext/localContext.controller')
+const {
+  localContext: fetchLocalContext,
+} = require('../localContext/localContext.controller')
 
 const {
   publishToAda,
@@ -306,9 +308,7 @@ const createNewVersion = async id => {
   // next station rebuild. A new version is unpublished until an editor
   // publishes it; the site keeps showing the last published version.
   if (newVersion.published) {
-    await Manuscript.query()
-      .findById(newVersion.id)
-      .patch({ published: null })
+    await Manuscript.query().findById(newVersion.id).patch({ published: null })
     newVersion.published = null
   }
 
@@ -1497,7 +1497,9 @@ const publishManuscript = async (id, groupId) => {
         }
       }
     } catch (e) {
-      logger.error('Patch 12 refreshLocalContextWriteback failed; keeping stored snapshot')
+      logger.error(
+        'Patch 12 refreshLocalContextWriteback failed; keeping stored snapshot',
+      )
       logger.error(e)
     }
   }
@@ -1554,7 +1556,9 @@ const publishManuscript = async (id, groupId) => {
             .findById(id)
             .patch({ doi, submission: update.submission })
         } catch (e) {
-          logger.error(`Patch 31: early DOI save failed for ${id}: ${e.message}`)
+          logger.error(
+            `Patch 31: early DOI save failed for ${id}: ${e.message}`,
+          )
         }
 
         succeeded = true
@@ -2496,7 +2500,9 @@ const updateManuscript = async (id, input) => {
       await rebuildCMSSite(saved.groupId, { manuscriptId: id })
       logger.info(`Patch 16: Flax rebuild OK after unpublish of ${id}`)
     } catch (e) {
-      logger.error(`Patch 16: Flax rebuild FAILED after unpublish: ${e.message}`)
+      logger.error(
+        `Patch 16: Flax rebuild FAILED after unpublish: ${e.message}`,
+      )
     }
   }
 

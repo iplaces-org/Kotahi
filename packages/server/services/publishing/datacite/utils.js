@@ -46,9 +46,7 @@ const getDoi = (suffix, activeConfig) => {
   prefix = prefix.replace(/\/+$/, '')
 
   if (!/^10\.\d{4,9}$/.test(prefix))
-    throw new Error(
-      `Unrecognised DOI prefix "${configuredPrefix}"`,
-    )
+    throw new Error(`Unrecognised DOI prefix "${configuredPrefix}"`)
   return `${prefix}/${suffix}`
 }
 
