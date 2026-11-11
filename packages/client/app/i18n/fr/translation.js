@@ -170,6 +170,7 @@ const fr = {
         contactez votre administrateur système pour obtenir de l'aide.`,
       'Drop it here': 'Déposez-le ici',
       'Change profile picture': 'Changer la photo de profil',
+      'Remove profile picture': 'Supprimer la photo de profil',
       'Mute all discussion email notifications':
         'Désactiver toutes les notifications par e-mail pour les discussions',
       ORCID: 'ORCID',

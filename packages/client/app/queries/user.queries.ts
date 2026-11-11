@@ -125,6 +125,16 @@ export const UPDATE_USERNAME = gql`
   }
 `
 
+// iplaces Patch 36: takes the logged-in user's own picture off
+export const REMOVE_PROFILE_PICTURE = gql`
+  mutation RemoveProfilePicture {
+    removeProfilePicture {
+      id
+      profilePicture
+    }
+  }
+`
+
 export const UPDATE_LANGUAGE = gql`
   mutation UpdateLanguage($id: ID!, $preferredLanguage: String!) {
     updateLanguage(id: $id, preferredLanguage: $preferredLanguage) {
