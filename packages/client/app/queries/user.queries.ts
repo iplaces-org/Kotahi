@@ -125,7 +125,7 @@ export const UPDATE_USERNAME = gql`
   }
 `
 
-// iplaces Patch 36: takes the logged-in user's own picture off
+// iplaces Patch 38: takes the logged-in user's own picture off
 export const REMOVE_PROFILE_PICTURE = gql`
   mutation RemoveProfilePicture {
     removeProfilePicture {
