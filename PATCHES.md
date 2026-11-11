@@ -583,3 +583,14 @@ stations configured before this behave exactly as before.
 
 Client side (repeatable-group-spike): test fields on the DataCite settings,
 test-mode banner, connection status after Save, and the Save fix.
+
+### Patch 35b — shared iPlaces DataCite test account (2026-11-11)
+
+Erin: ticking "Use test DOIs" should be all a station needs. In test mode
+`getActiveDatacite` now uses, in order: the station's own testLogin /
+testPassword / testDoiPrefix (config only, not in the form), then the shared
+iPlaces test account from the server environment, then the real value.
+Shared account = Fly secrets on iplaces-test-server:
+IPLACES_DATACITE_TEST_LOGIN, IPLACES_DATACITE_TEST_PASSWORD,
+IPLACES_DATACITE_TEST_PREFIX (a DataCite Fabrica Test repository).
+Real DOIs stay per station, entered by hand.

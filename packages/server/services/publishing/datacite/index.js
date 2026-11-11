@@ -306,7 +306,13 @@ const checkDataciteConnection = async datacite => {
   const server = url.replace('https://', '')
   const result = (ok, message) => ({ ok, mode, server, message })
 
-  if (!login) return result(false, 'No DataCite login, so no DOIs are minted.')
+  if (!login)
+    return result(
+      false,
+      mode === 'test'
+        ? 'No DataCite test account on the server (Fly secrets IPLACES_DATACITE_TEST_LOGIN / _PASSWORD / _PREFIX), so no test DOIs are minted.'
+        : 'No DataCite login, so no DOIs are minted.',
+    )
   if (!password) return result(false, 'No DataCite password.')
   if (!doiPrefix) return result(false, 'No DOI prefix.')
 
@@ -368,7 +374,7 @@ const checkDataciteConnection = async datacite => {
   return result(
     true,
     mode === 'test'
-      ? `Test DOIs: ${server} accepted ${login} with prefix ${prefix}. Test DOIs do not resolve at doi.org.`
+      ? `Test DOIs: ${server} accepted ${login} with prefix ${prefix}${login === process.env.IPLACES_DATACITE_TEST_LOGIN ? ' (shared iPlaces test account)' : ''}. Test DOIs do not resolve at doi.org.`
       : `Real DOIs: ${server} accepted ${login} with prefix ${prefix}. Published records get real, permanent DOIs.`,
   )
 }
