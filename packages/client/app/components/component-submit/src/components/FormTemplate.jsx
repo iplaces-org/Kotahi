@@ -426,6 +426,11 @@ const FormTemplate = ({
                 .filter(
                   element =>
                     element.component &&
+                    // iplaces: no empty Manuscript File heading when the record has no file
+                    !(
+                      element.component === 'ManuscriptFile' &&
+                      !submittedManuscriptFile
+                    ) &&
                     (showEditorOnlyFields ||
                       element.hideFromAuthors !== 'true'),
                 )
