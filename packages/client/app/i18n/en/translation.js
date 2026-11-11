@@ -769,10 +769,18 @@ const en = {
       adaLogin: 'ADA username',
       adaPassword: 'ADA password',
       Datacite: 'Datacite',
-      dataciteLogin: 'Datacite username',
-      datacitePassword: 'Datacite password',
-      dataciteUseSandbox: 'Publish to Datacite sandbox',
-      dataciteDoiPrefix: 'Datacite DOI prefix',
+      dataciteLogin: 'Real DOIs: DataCite repository ID',
+      datacitePassword: 'Real DOIs: DataCite password',
+      dataciteUseSandbox: 'Use test DOIs (DataCite sandbox)',
+      dataciteUseSandboxHelp:
+        "Ticked: records get test DOIs from api.test.datacite.org using the shared iPlaces test account. Nothing else to fill in, and the real settings below are kept for later. Test DOIs do not resolve at doi.org. Unticked: records get real, permanent DOIs from this station's own repository below. Before unticking, unpublish or delete test records, or they get real DOIs when republished.",
+      dataciteDoiPrefix: 'Real DOIs: DOI prefix',
+      dataciteTestModeBanner:
+        'Test DOIs: this station uses the DataCite sandbox',
+      dataciteTestModeBannerDetail:
+        'Publishing gives records test DOIs that do not resolve at doi.org. Switch to real DOIs in Configuration > Integrations and Publishing > DataCite.',
+      dataciteCheckTitle: 'DataCite check',
+      dataciteCheckRunning: 'Checking the DataCite settings…',
       publishedArticleLocationPrefixDatacite:
         'Datacite published article location',
       publisher: 'Publisher',
