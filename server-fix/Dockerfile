@@ -187,5 +187,4 @@ RUN for f in /home/node/app/api/graphql/user/user.graphql /home/node/app/dist/ap
       ! grep -qF 'removeProfilePicture' "$f" || { echo "Patch 38: removeProfilePicture already in $f (upstream added it? drop this patch)"; exit 1; }; \
       cat /tmp/iplaces-user-extension.graphql >> "$f"; \
       grep -qF 'removeProfilePicture' "$f" || { echo "Patch 38: append failed in $f"; exit 1; }; \
-    done; \
-    rm /tmp/iplaces-user-extension.graphql
+    done
