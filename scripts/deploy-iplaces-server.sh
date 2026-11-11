@@ -35,7 +35,7 @@ CONTAINER_MS_CTRL_PATH="/home/node/app/controllers/manuscript/manuscript.control
 LATEST_PATCH_MARKER="getRelatedItems"
 PUBLIC_URL="https://iplaces-test-server.fly.dev/"
 EXPECTED_CLIENT_URL="https://publish.iplacesalliance.org"
-EXPECTED_INSTANCE_GROUPS="gumpstation:journal,wams:journal"
+EXPECTED_INSTANCE_GROUPS="gumpstation:journal,wams:journal,bamfieldmsc:journal,baileystation:journal,itemaohi:journal"
 BASE_IMAGE_FINGERPRINT="objectType: 'group'"  # 2026.11.03-0 (10.12 had 'Group')
 BASE_IMAGE_FINGERPRINT_PATH="services/queryCache.service.js"
 # -----------------------------------------------------------------------------
