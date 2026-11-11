@@ -126,7 +126,7 @@ module.exports = {
       return deleteUser(id, ctx.req.headers['group-id'])
     },
 
-    // iplaces Patch 36: own picture only (ctx.userId, never an id argument)
+    // iplaces Patch 38: own picture only (ctx.userId, never an id argument)
     async removeProfilePicture(_, __, ctx) {
       return removeProfilePicture(ctx.userId)
     },

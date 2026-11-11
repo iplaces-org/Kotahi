@@ -58,7 +58,7 @@ const overlaid = new Set(
   ),
 )
 
-// Extra schema that server-fix/Dockerfile APPENDS to an image file (Patch 36):
+// Extra schema that server-fix/Dockerfile APPENDS to an image file (Patch 38):
 // server-fix/schema-extensions/<name>.graphql goes onto <name>/<name>.graphql.
 const EXT_DIR = 'server-fix/schema-extensions'
 

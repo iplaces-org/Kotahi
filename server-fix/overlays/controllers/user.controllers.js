@@ -812,7 +812,7 @@ const updateEmail = async (id, email) => {
   })
 }
 
-// iplaces Patch 36: a user can take their own profile picture off. Kotahi only
+// iplaces Patch 38: a user can take their own profile picture off. Kotahi only
 // had upload (which replaces the old picture), so there was no way back to the
 // default avatar. Clears users.profile_picture, then deletes the file the way
 // profileUpload does for a replaced picture.

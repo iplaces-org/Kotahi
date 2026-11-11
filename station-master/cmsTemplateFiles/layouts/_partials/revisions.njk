@@ -1,4 +1,4 @@
-{% if article.parsedSubmission.$doi %}
+{% if article.parsedSubmission.$doi and not article.parsedSubmission.$doiIsTest %}
 <section id="datacite-revisions" class="dc-revisions" data-doi="{{ article.parsedSubmission.$doi }}">
   <p class="dc-rev-intro">Provenance history for this DOI, recorded by DataCite. Each entry is a registered metadata version.</p>
   <p class="dc-rev-loading">Loading revision history…</p>

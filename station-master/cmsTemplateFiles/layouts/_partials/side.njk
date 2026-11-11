@@ -193,7 +193,7 @@ aside.side-section .button:hover {
               {% if article.parsedSubmission.$doi %}
               <div class="about-this__row">
                 <span class="about-this__label">DOI</span>
-                <span class="about-this__value about-this__doi"><a href="https://doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener noreferrer">{{ article.parsedSubmission.$doi }}</a></span>
+                <span class="about-this__value about-this__doi"><a href="{{ 'https://handle.test.datacite.org/' if article.parsedSubmission.$doiIsTest else 'https://doi.org/' }}{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener noreferrer">{{ article.parsedSubmission.$doi }}</a>{% if article.parsedSubmission.$doiIsTest %} (test DOI){% endif %}</span>
               </div>
               {% endif %}
 
@@ -277,7 +277,7 @@ aside.side-section .button:hover {
           <dt class="review-timeline__event review-timeline__event--revised">Related works</dt>
           <dd class="review-timeline__detail review-timeline__event--revised">
             <ul class="related-works" id="related-works"><li>Loading…</li></ul>
-            {% if article.parsedSubmission.$doi %}
+            {% if article.parsedSubmission.$doi and not article.parsedSubmission.$doiIsTest %}
             <div class="related-works__more">
               <a class="button button--action" href="https://commons.datacite.org/doi.org/{{ article.parsedSubmission.$doi }}" target="_blank" rel="noopener noreferrer">DataCite Commons</a>
             </div>
@@ -450,7 +450,7 @@ aside.side-section .button:hover {
         {% set pubYear = ((article.parsedSubmission.datePublished | default("", true) | string) | trim or (article.parsedSubmission.firstPublishedOn | default("", true) | string) | trim or (article.headerInfo.publishedOn | default("", true) | string)) | truncate(4, true, "") %}
         ({{ pubYear }}).
         <span style="font-style: italic;">{{ (article.parsedSubmission.$title or 'Untitled') | trim }}</span>.
-        {{ station.title | default("iPlaces") }}. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
+        {{ station.title | default("iPlaces") }}. {{ 'https://handle.test.datacite.org/' if article.parsedSubmission.$doiIsTest else 'https://doi.org/' }}{{ article.parsedSubmission.$doi or 'N/A' }}
       </div>
 
       <ol class="cite-downloads__list">
@@ -475,7 +475,7 @@ aside.side-section .button:hover {
     </div>
     <div class="modal-content__body">
     <div class="form-item">
-      <input readonly="" type="input" class="text-field text-field--clipboard" id="copydoi" value="https://doi.org/{{ article.parsedSubmission.$doi }}">
+      <input readonly="" type="input" class="text-field text-field--clipboard" id="copydoi" value="{{ 'https://handle.test.datacite.org/' if article.parsedSubmission.$doiIsTest else 'https://doi.org/' }}{{ article.parsedSubmission.$doi }}">
       <div class="clipboard-container">
         <button class="button button--clipboard" onclick="copyToClipboardDoi()">Copy to clipboard</button>
         <p id="share-copy-status" style="display: none; font-size: 0.85rem; color: green; margin-top: 0.5rem;">

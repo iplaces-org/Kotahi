@@ -99,6 +99,7 @@ COPY packages/server/config/defaultEmailTemplates.js \
 #      seedGroups.js writes the @mention template itself and finds the Task
 #      notification template by its exact subject, so it needs the same change.
 #      Pinned to the 2026.11.03-0 image's plain copy + 4 Patch 29 edits.
+#      Patch 37 adds assignStationColours (distinct brand colours per station).
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/scripts/seedGroups.js
 COPY server-fix/overlays/scripts/seedGroups.js /home/node/app/dist/scripts/seedGroups.js
 
@@ -173,7 +174,7 @@ RUN for f in /home/node/app/api/graphql/manuscript/manuscript.resolvers.js /home
       node --check "$f" || exit 1; \
     done
 
-# (Patch 36) Users can remove their own profile picture. user.graphql is NOT
+# (Patch 38) Users can remove their own profile picture. user.graphql is NOT
 #     overlaid: server-fix/schema-extensions/user.graphql (an extra
 #     `extend type Mutation` block; GraphQL merges extend blocks) is appended to
 #     the image's own plain and dist copies, so nothing else in the image's
@@ -182,9 +183,9 @@ RUN for f in /home/node/app/api/graphql/manuscript/manuscript.resolvers.js /home
 #     user.controllers.js overlay (Patch 17). Rule: permissions.js.
 COPY server-fix/schema-extensions/user.graphql /tmp/iplaces-user-extension.graphql
 RUN for f in /home/node/app/api/graphql/user/user.graphql /home/node/app/dist/api/graphql/user/user.graphql; do \
-      [ -f "$f" ] || { echo "Patch 36: $f not found"; exit 1; }; \
-      ! grep -qF 'removeProfilePicture' "$f" || { echo "Patch 36: removeProfilePicture already in $f (upstream added it? drop this patch)"; exit 1; }; \
+      [ -f "$f" ] || { echo "Patch 38: $f not found"; exit 1; }; \
+      ! grep -qF 'removeProfilePicture' "$f" || { echo "Patch 38: removeProfilePicture already in $f (upstream added it? drop this patch)"; exit 1; }; \
       cat /tmp/iplaces-user-extension.graphql >> "$f"; \
-      grep -qF 'removeProfilePicture' "$f" || { echo "Patch 36: append failed in $f"; exit 1; }; \
+      grep -qF 'removeProfilePicture' "$f" || { echo "Patch 38: append failed in $f"; exit 1; }; \
     done; \
     rm /tmp/iplaces-user-extension.graphql

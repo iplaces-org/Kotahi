@@ -38,6 +38,7 @@ const { emitEvent } = require('../../services/eventManager/eventManager')
 const sanitizeWaxImages = require('../../utils/sanitizeWaxImages')
 const stationSenderName = require('../../services/stationSenderName') // iplaces Patch 32
 const {
+  configForRecord,
   publishToDatacite,
   requestToDatacite,
 } = require('../../services/publishing/datacite')
@@ -1529,7 +1530,12 @@ const publishManuscript = async (id, groupId) => {
     })
   }
 
-  if (getActiveDatacite(activeConfig.formData.publishing.datacite).login) {
+  // iplaces: per-record test DOIs ($testDoi) and station test mode
+  const recordDatacite = getActiveDatacite(
+    configForRecord(activeConfig, manuscript).formData.publishing.datacite,
+  )
+
+  if (recordDatacite.login) {
     const stepLabel = 'Datacite'
     let succeeded = false
     let errorMessage
@@ -1541,6 +1547,9 @@ const publishManuscript = async (id, groupId) => {
         update.submission = {
           ...update.submission,
           $doi: doi,
+          // iplaces: station pages link test DOIs to handle.test.datacite.org
+          // (public) instead of doi.org, and leave them out of Scholar/JSON-LD.
+          $doiIsTest: recordDatacite.useSandbox,
         }
 
         update.doi = doi
@@ -2479,16 +2488,22 @@ const updateManuscript = async (id, input) => {
   if (isUnpublishTransition) {
     const doi = saved.doi || saved.submission?.$doi
 
+    // iplaces: hide a test DOI on the sandbox, a real one on DataCite
+    const savedConfig = configForRecord(
+      activeConfig,
+      saved.submission?.$doiIsTest ? { submission: { $testDoi: true } } : saved,
+    )
+
     if (
       doi &&
-      getActiveDatacite(activeConfig.formData.publishing?.datacite).login
+      getActiveDatacite(savedConfig.formData.publishing?.datacite).login
     ) {
       try {
         await requestToDatacite(
           'PUT',
           `dois/${doi}`,
           { type: 'dois', attributes: { event: 'hide' } },
-          activeConfig,
+          savedConfig,
         )
         logger.info(`Patch 16: DataCite hide OK for ${doi}`)
       } catch (e) {

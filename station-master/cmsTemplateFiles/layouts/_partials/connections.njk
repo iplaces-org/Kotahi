@@ -1,4 +1,4 @@
-{% if article.parsedSubmission.$doi %}
+{% if article.parsedSubmission.$doi and not article.parsedSubmission.$doiIsTest %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 
 <section id="datacite-connections" class="dc-connections" data-doi="{{ article.parsedSubmission.$doi }}" data-title="{{ article.headerInfo.title | striptags }}">
