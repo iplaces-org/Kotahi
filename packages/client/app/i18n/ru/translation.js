@@ -171,6 +171,7 @@ const ru = {
         обратитесь за помощью к системному администратору.`,
       'Drop it here': 'Отпустите здесь',
       'Change profile picture': 'Изменить фото профиля',
+      'Remove profile picture': 'Удалить фото профиля',
       'Mute all discussion email notifications':
         'Отключить все уведомления по электронной почте об обсуждениях',
       ORCID: 'ORCID',

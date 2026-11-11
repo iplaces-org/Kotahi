@@ -45,6 +45,15 @@ const DropzoneRoot = styled.div`
   gap: ${grid(2)};
 `
 
+// The Remove button sits outside DropzoneRoot so clicking it doesn't open
+// the file picker.
+const PictureControls = styled.div`
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${grid(2)};
+`
+
 const StyledCheckbox = styled(Checkbox)`
   padding: ${grid(4)} ${grid(6)};
 `
@@ -157,6 +166,7 @@ const Profile = ({
   currentUser,
   kotahiVersion,
   logoutUser,
+  removeAvatarImage,
   replaceAvatarImage,
   updateUserEmail,
   updateUsername,
@@ -226,11 +236,18 @@ const Profile = ({
         <SectionRow key="profilepicture">
           <div>
             {isCurrentUsersOwnProfile ? (
-              <ProfileDropzone
-                profilePicture={profilePicture}
-                replaceAvatarImage={replaceAvatarImage}
-                t={t}
-              />
+              <PictureControls>
+                <ProfileDropzone
+                  profilePicture={profilePicture}
+                  replaceAvatarImage={replaceAvatarImage}
+                  t={t}
+                />
+                {user.profilePicture && (
+                  <ActionButton onClick={() => removeAvatarImage()}>
+                    {t('profilePage.Remove profile picture')}
+                  </ActionButton>
+                )}
+              </PictureControls>
             ) : (
               <BigProfileImage src={profilePicture} />
             )}

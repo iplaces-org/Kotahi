@@ -172,6 +172,7 @@ const en = {
         contact your system administrator for assistance.`,
       'Drop it here': 'Drop it here',
       'Change profile picture': 'Change profile picture',
+      'Remove profile picture': 'Remove profile picture',
       'Mute all discussion email notifications':
         'Mute all discussion email notifications',
       ORCID: 'ORCID',

@@ -170,6 +170,7 @@ const esLa = {
         ponte en contacto con tu administrador del sistema para obtener ayuda.`,
       'Drop it here': 'Soltarlo aquí',
       'Change profile picture': 'Cambiar imagen de perfil',
+      'Remove profile picture': 'Quitar imagen de perfil',
       'Mute all discussion email notifications':
         'Silenciar todas las notificaciones de correo electrónico de discusión',
       ORCID: 'ORCID',

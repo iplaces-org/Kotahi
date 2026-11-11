@@ -19,6 +19,7 @@ import {
   UPDATE_EMAIL,
   UPDATE_USERNAME,
   UPDATE_LANGUAGE,
+  REMOVE_PROFILE_PICTURE,
   GET_GLOBAL_CHAT_NOTIFICATION_OPTION,
   UPDATE_GLOBAL_CHAT_NOTIFICATION_OPTION,
 } from '../../../queries'
@@ -45,6 +46,7 @@ const ProfilePage = () => {
   const [updateUserEmail] = useMutation(UPDATE_EMAIL)
   const [updateUsername] = useMutation(UPDATE_USERNAME)
   const [updateLanguage] = useMutation(UPDATE_LANGUAGE)
+  const [removeProfilePicture] = useMutation(REMOVE_PROFILE_PICTURE)
 
   const { data: globalChatNotificationUserOption } = useQuery(
     GET_GLOBAL_CHAT_NOTIFICATION_OPTION,
@@ -69,6 +71,11 @@ const ProfilePage = () => {
     })
   }
 
+  const removeAvatarImage = () =>
+    removeProfilePicture().then(() => {
+      refetchUser()
+    })
+
   if (loading) return <Spinner fullpage />
   if (error) return <CommsErrorBanner error={error} />
 
@@ -90,6 +97,7 @@ const ProfilePage = () => {
         globalChatNotificationUserOption?.notificationOption?.option ||
         'inherit'
       }
+      removeAvatarImage={removeAvatarImage}
       replaceAvatarImage={replaceAvatarImage}
       updateGlobalChatNotificationOptIn={updateGlobalChatNotificationOptIn}
       updateLanguage={updateLanguage}
