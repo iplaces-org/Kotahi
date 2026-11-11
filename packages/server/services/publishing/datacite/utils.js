@@ -7,25 +7,40 @@ const getDataciteURL = useSandbox => {
 }
 
 /** iPlaces: the DataCite settings for the mode the station is in.
- * Each station keeps two sets side by side: real (login, password, doiPrefix)
- * and test (testLogin, testPassword, testDoiPrefix). The "Use test DOIs" switch
- * (useSandbox) picks which set is used and which DataCite server is called, so
- * switching between test and real is one tick and nothing has to be retyped.
- * A blank test field falls back to the real one, so a station whose DataCite
- * test repository has the same login (or password, or prefix) can leave it blank.
- * Stations configured before the test fields existed behave exactly as before. */
+ * Unticked "Use test DOIs" (useSandbox false): the station's own real
+ * repository (login, password, doiPrefix), entered by hand per station.
+ * Ticked: api.test.datacite.org with the SHARED iPlaces test account, read
+ * from the server environment (Fly secrets IPLACES_DATACITE_TEST_LOGIN,
+ * IPLACES_DATACITE_TEST_PASSWORD, IPLACES_DATACITE_TEST_PREFIX), so ticking
+ * the box is all a station needs. A station can still override any of them
+ * with testLogin / testPassword / testDoiPrefix in its config (not shown in
+ * the form). If neither is set, the real value is used, as before. */
 const getActiveDatacite = (datacite = {}) => {
   const useSandbox = !!datacite.useSandbox
-  const pickTest = (testValue, realValue) =>
-    useSandbox && testValue ? testValue : realValue
+  const { env } = process
+
+  const pickTest = (stationTest, shared, realValue) =>
+    useSandbox ? stationTest || shared || realValue : realValue
 
   return {
     useSandbox,
     mode: useSandbox ? 'test' : 'real',
     url: getDataciteURL(useSandbox),
-    login: pickTest(datacite.testLogin, datacite.login),
-    password: pickTest(datacite.testPassword, datacite.password),
-    doiPrefix: pickTest(datacite.testDoiPrefix, datacite.doiPrefix),
+    login: pickTest(
+      datacite.testLogin,
+      env.IPLACES_DATACITE_TEST_LOGIN,
+      datacite.login,
+    ),
+    password: pickTest(
+      datacite.testPassword,
+      env.IPLACES_DATACITE_TEST_PASSWORD,
+      datacite.password,
+    ),
+    doiPrefix: pickTest(
+      datacite.testDoiPrefix,
+      env.IPLACES_DATACITE_TEST_PREFIX,
+      datacite.doiPrefix,
+    ),
   }
 }
 
