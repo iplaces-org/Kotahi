@@ -17,7 +17,13 @@ import {
   configTabLabels,
 } from './ui/schema' // Import the function that generates the schema and uiSchema
 
-import { ActionButton, SectionContent, HiddenTabs, Alert } from '../../shared'
+import {
+  ActionButton,
+  SectionContent,
+  HiddenTabs,
+  Alert,
+  DataciteTestModeBanner,
+} from '../../shared'
 import Page from '../../../ui/shared/Page'
 import EmailTemplatesPage from '../../component-email-templates/src/EmailTemplatesPage'
 import emailTemplatesToSchema from './helpers'
@@ -123,6 +129,13 @@ const EmailsTabWrapper = styled(StyledSectionContent)`
       border-color: ${th('color.gray80')};
     }
   }
+`
+
+// iplaces: DataCite mode banner + check result above the Integrations tab
+const DataciteStatus = styled.div`
+  display: grid;
+  gap: ${grid(1)};
+  padding: ${grid(2)} ${grid(7.5)} 0;
 `
 
 // TODO Improve on this hardcoded hack to hide the "Publishing" heading.
@@ -232,6 +245,8 @@ const ConfigManagerForm = ({
   updateConfig,
   updateConfigStatus,
   emailTemplates,
+  dataciteCheck,
+  dataciteChecking,
 }) => {
   const { t } = useTranslation()
   const logoAndFavicon = useRef({})
@@ -314,45 +329,61 @@ const ConfigManagerForm = ({
     },
   }
 
-  const tabSections = useMemo(
+  // One FieldTemplate per tab, made once. rjsf treats a new FieldTemplate
+  // function as a new component, which would remount every field (and lose
+  // focus) on each render.
+  const fieldTemplates = useMemo(
     () =>
-      Object.entries(configTabLabels).map(([key]) => ({
-        label: t(`configPage.${key}Tab`),
-        key,
-        content: (
-          <StyledSectionContent>
-            <StyledForm
-              disabled={disabled}
-              fields={{ DescriptionField }}
-              FieldTemplate={props => (
-                <FieldTemplate
-                  showInstanceType={key === 'general'}
-                  showLabel={key === 'emailNotifications'}
-                  t={t}
-                  {...props}
-                />
-              )}
-              formData={storedFormData.current}
-              liveValidate={liveValidate}
-              noHtml5Validate
-              omitExtraData={omitExtraData}
-              onChange={data =>
-                handlers.form.onChange(data, tabKeyBasedSchema[key], key)
-              }
-              onSubmit={handlers.form.onSubmit}
-              schema={schemas.data[key]}
-              uiSchema={schemas.ui[key]}
-            >
-              {/* The blank fragment that follows is to suppress the submit button.
-              See https://github.com/rjsf-team/react-jsonschema-form/issues/1602 */}
-              {}
-              <></>
-            </StyledForm>
-          </StyledSectionContent>
-        ),
-      })),
+      Object.fromEntries(
+        Object.keys(configTabLabels).map(key => [
+          key,
+          props => (
+            <FieldTemplate
+              showInstanceType={key === 'general'}
+              showLabel={key === 'emailNotifications'}
+              t={t}
+              {...props}
+            />
+          ),
+        ]),
+      ),
     [],
   )
+
+  // iplaces Save fix: the tab forms are rendered on every render with the
+  // CURRENT values (storedFormData.current). They used to be memoised once,
+  // holding the values from page load; anything that re-rendered them after a
+  // Save (the theme refresh that follows a config update does) made rjsf
+  // reset every field to its page-load value, so fields filled in since then
+  // looked empty although the saved data was fine.
+  const tabSections = Object.entries(configTabLabels).map(([key]) => ({
+    label: t(`configPage.${key}Tab`),
+    key,
+    content: (
+      <StyledSectionContent>
+        <StyledForm
+          disabled={disabled}
+          fields={{ DescriptionField }}
+          FieldTemplate={fieldTemplates[key]}
+          formData={storedFormData.current}
+          liveValidate={liveValidate}
+          noHtml5Validate
+          omitExtraData={omitExtraData}
+          onChange={data =>
+            handlers.form.onChange(data, tabKeyBasedSchema[key], key)
+          }
+          onSubmit={handlers.form.onSubmit}
+          schema={schemas.data[key]}
+          uiSchema={schemas.ui[key]}
+        >
+          {/* The blank fragment that follows is to suppress the submit button.
+              See https://github.com/rjsf-team/react-jsonschema-form/issues/1602 */}
+          {}
+          <></>
+        </StyledForm>
+      </StyledSectionContent>
+    ),
+  }))
 
   const emailTab = {
     label: t('emailTemplate.pageTitle'),
@@ -390,6 +421,29 @@ const ConfigManagerForm = ({
       <style>{`html { font-size: 16px; }`}</style>
       <Page title={t('configPage.Configuration')}>
         <StyledContainer>
+          {activeTab === 'integrationsAndPublishing' && (
+            <DataciteStatus>
+              <DataciteTestModeBanner />
+              {(dataciteChecking || dataciteCheck) && (
+                <Alert
+                  message={
+                    dataciteChecking
+                      ? t('configPage.dataciteCheckRunning')
+                      : `${t('configPage.dataciteCheckTitle')}: ${dataciteCheck.message}`
+                  }
+                  showIcon
+                  type={
+                    // eslint-disable-next-line no-nested-ternary
+                    dataciteChecking
+                      ? 'info'
+                      : dataciteCheck.ok
+                        ? 'success'
+                        : 'error'
+                  }
+                />
+              )}
+            </DataciteStatus>
+          )}
           <HiddenTabs
             defaultActiveKey="general"
             onChange={setActiveTab}

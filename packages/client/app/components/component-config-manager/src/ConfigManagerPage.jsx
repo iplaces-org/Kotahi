@@ -1,5 +1,6 @@
-import { useContext, useState } from 'react'
-import { useMutation, useQuery } from '@apollo/client/react'
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useContext, useEffect, useState } from 'react'
+import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
 import { ConfigContext } from '../../config/src'
 import {
   UPDATE_CONFIG,
@@ -9,6 +10,7 @@ import {
   DELETE_FILE,
   GENERATE_NEW_COAR_AUTH_TOKEN,
   HAS_TOKEN,
+  DATACITE_CONNECTION_CHECK,
 } from '../../../queries'
 
 import { CommsErrorBanner } from '../../shared'
@@ -26,6 +28,17 @@ const ConfigManagerPage = () => {
   const [generateNewCoarAuthToken] = useMutation(GENERATE_NEW_COAR_AUTH_TOKEN)
 
   const [updateConfigStatus, setUpdateConfigStatus] = useState(null)
+
+  // iplaces: after load and after every Save, ask the server whether the
+  // DataCite settings work in the mode they are in (test or real).
+  const [
+    checkDatacite,
+    { data: dataciteCheckData, loading: dataciteChecking },
+  ] = useLazyQuery(DATACITE_CONNECTION_CHECK, { fetchPolicy: 'network-only' })
+
+  useEffect(() => {
+    checkDatacite().catch(() => {})
+  }, [])
 
   const { data: metadata, loading: loadingMetadata } = useQuery(
     GET_SUBMISSION_FORM,
@@ -95,6 +108,7 @@ const ConfigManagerPage = () => {
     })
 
     setUpdateConfigStatus(response.data.updateConfig ? 'success' : 'failure')
+    if (response.data.updateConfig) checkDatacite().catch(() => {})
 
     return response
   }
@@ -113,6 +127,8 @@ const ConfigManagerPage = () => {
       config={data.config}
       configId={data.config.id}
       createFile={createFile}
+      dataciteCheck={dataciteCheckData?.dataciteConnectionCheck}
+      dataciteChecking={dataciteChecking}
       deleteFile={deleteFile}
       disabled={!data.config.active}
       emailTemplates={data.emailTemplates}

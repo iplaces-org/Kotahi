@@ -36,6 +36,19 @@ export const GET_GROUPS = gql`
   }
 `
 
+// iplaces: checks this station's DataCite settings against the server its
+// mode points at (server Patch 35). Fails harmlessly on a server without it.
+export const DATACITE_CONNECTION_CHECK = gql`
+  query DataciteConnectionCheck {
+    dataciteConnectionCheck {
+      ok
+      mode
+      server
+      message
+    }
+  }
+`
+
 export const UPDATE_CONFIG = gql`
   mutation UpdateConfig($id: ID!, $input: ConfigInput) {
     updateConfig(id: $id, input: $input) {

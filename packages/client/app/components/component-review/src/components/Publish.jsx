@@ -19,7 +19,11 @@ import {
   SectionActionInfo,
   SectionAction,
 } from './style'
-import { ActionButton, SectionContent } from '../../../shared'
+import {
+  ActionButton,
+  DataciteTestModeBanner,
+  SectionContent,
+} from '../../../shared'
 import Alert from './publishing/Alert'
 import PublishingResponse from './publishing/PublishingResponse'
 import { getLanguages } from '../../../../i18n'
@@ -178,6 +182,8 @@ const Publish = ({
         <SectionHeader>
           <Title>{t('decisionPage.decisionTab.Publishing')}</Title>
         </SectionHeader>
+
+        <DataciteTestModeBanner />
 
         <SectionRowGrid>
           <SectionActionInfo>

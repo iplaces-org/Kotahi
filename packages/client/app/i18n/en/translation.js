@@ -769,10 +769,23 @@ const en = {
       adaLogin: 'ADA username',
       adaPassword: 'ADA password',
       Datacite: 'Datacite',
-      dataciteLogin: 'Datacite username',
-      datacitePassword: 'Datacite password',
-      dataciteUseSandbox: 'Publish to Datacite sandbox',
-      dataciteDoiPrefix: 'Datacite DOI prefix',
+      dataciteLogin: 'Real DOIs: DataCite repository ID',
+      datacitePassword: 'Real DOIs: DataCite password',
+      dataciteUseSandbox: 'Use test DOIs (DataCite sandbox)',
+      dataciteUseSandboxHelp:
+        'Ticked: records get test DOIs from api.test.datacite.org using the test settings below. Test DOIs do not resolve at doi.org. Unticked: records get real, permanent DOIs. Before unticking, unpublish or delete test records, or they get real DOIs when republished.',
+      dataciteDoiPrefix: 'Real DOIs: DOI prefix',
+      dataciteTestLogin:
+        'Test DOIs: DataCite test repository ID (leave blank to use the real one)',
+      dataciteTestPassword:
+        'Test DOIs: DataCite test password (leave blank to use the real one)',
+      dataciteTestDoiPrefix: 'Test DOIs: test DOI prefix',
+      dataciteTestModeBanner:
+        'Test DOIs: this station uses the DataCite sandbox',
+      dataciteTestModeBannerDetail:
+        'Publishing gives records test DOIs that do not resolve at doi.org. Switch to real DOIs in Configuration > Integrations and Publishing > DataCite.',
+      dataciteCheckTitle: 'DataCite check',
+      dataciteCheckRunning: 'Checking the DataCite settings…',
       publishedArticleLocationPrefixDatacite:
         'Datacite published article location',
       publisher: 'Publisher',

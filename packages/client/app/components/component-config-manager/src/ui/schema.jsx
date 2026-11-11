@@ -1040,6 +1040,14 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
+                // iplaces: one switch picks the server AND which set of
+                // settings below is used (server: getActiveDatacite).
+                useSandbox: {
+                  type: 'boolean',
+                  title: t('configPage.dataciteUseSandbox'),
+                  description: t('configPage.dataciteUseSandboxHelp'),
+                  default: false,
+                },
                 login: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteLogin'),
@@ -1052,10 +1060,17 @@ export const generateSchemas = ({
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
                 },
-                useSandbox: {
-                  type: 'boolean',
-                  title: t('configPage.dataciteUseSandbox'),
-                  default: false,
+                testLogin: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestLogin'),
+                },
+                testPassword: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestPassword'),
+                },
+                testDoiPrefix: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -2242,6 +2257,14 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
+                // iplaces: one switch picks the server AND which set of
+                // settings below is used (server: getActiveDatacite).
+                useSandbox: {
+                  type: 'boolean',
+                  title: t('configPage.dataciteUseSandbox'),
+                  description: t('configPage.dataciteUseSandboxHelp'),
+                  default: false,
+                },
                 login: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteLogin'),
@@ -2254,10 +2277,17 @@ export const generateSchemas = ({
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
                 },
-                useSandbox: {
-                  type: 'boolean',
-                  title: t('configPage.dataciteUseSandbox'),
-                  default: false,
+                testLogin: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestLogin'),
+                },
+                testPassword: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestPassword'),
+                },
+                testDoiPrefix: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -3489,6 +3519,14 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
+                // iplaces: one switch picks the server AND which set of
+                // settings below is used (server: getActiveDatacite).
+                useSandbox: {
+                  type: 'boolean',
+                  title: t('configPage.dataciteUseSandbox'),
+                  description: t('configPage.dataciteUseSandboxHelp'),
+                  default: false,
+                },
                 login: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteLogin'),
@@ -3501,10 +3539,17 @@ export const generateSchemas = ({
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
                 },
-                useSandbox: {
-                  type: 'boolean',
-                  title: t('configPage.dataciteUseSandbox'),
-                  default: false,
+                testLogin: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestLogin'),
+                },
+                testPassword: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestPassword'),
+                },
+                testDoiPrefix: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -4742,6 +4787,14 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
+                // iplaces: one switch picks the server AND which set of
+                // settings below is used (server: getActiveDatacite).
+                useSandbox: {
+                  type: 'boolean',
+                  title: t('configPage.dataciteUseSandbox'),
+                  description: t('configPage.dataciteUseSandboxHelp'),
+                  default: false,
+                },
                 login: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteLogin'),
@@ -4754,10 +4807,17 @@ export const generateSchemas = ({
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
                 },
-                useSandbox: {
-                  type: 'boolean',
-                  title: t('configPage.dataciteUseSandbox'),
-                  default: false,
+                testLogin: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestLogin'),
+                },
+                testPassword: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestPassword'),
+                },
+                testDoiPrefix: {
+                  type: ['string', 'null'],
+                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -5200,6 +5260,9 @@ export const generateSchemas = ({
         datacite: {
           classNames: 'col-md-12 col-md-offset-0',
           password: {
+            'ui:widget': 'password',
+          },
+          testPassword: {
             'ui:widget': 'password',
           },
         },
