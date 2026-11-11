@@ -41,6 +41,9 @@ const {
   publishToDatacite,
   requestToDatacite,
 } = require('../../services/publishing/datacite')
+const {
+  getActiveDatacite,
+} = require('../../services/publishing/datacite/utils')
 const { localContext: fetchLocalContext } = require('../localContext/localContext.controller')
 
 const {
@@ -1524,7 +1527,7 @@ const publishManuscript = async (id, groupId) => {
     })
   }
 
-  if (activeConfig.formData.publishing.datacite?.login) {
+  if (getActiveDatacite(activeConfig.formData.publishing.datacite).login) {
     const stepLabel = 'Datacite'
     let succeeded = false
     let errorMessage
@@ -2472,7 +2475,10 @@ const updateManuscript = async (id, input) => {
   if (isUnpublishTransition) {
     const doi = saved.doi || saved.submission?.$doi
 
-    if (doi && activeConfig.formData.publishing?.datacite?.login) {
+    if (
+      doi &&
+      getActiveDatacite(activeConfig.formData.publishing?.datacite).login
+    ) {
       try {
         await requestToDatacite(
           'PUT',

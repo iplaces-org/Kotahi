@@ -28,7 +28,7 @@ const {
   getRelatedItems,
 } = require('./fieldsTransformers')
 
-const { getDoi, getDataciteURL, getDoiWithoutError } = require('./utils')
+const { getActiveDatacite, getDoi, getDoiWithoutError } = require('./utils')
 
 const { isArray } = Array
 
@@ -61,7 +61,8 @@ const verifySubmission = (formData, submission) => {
     groupIdentity: { title },
   } = formData
 
-  const { doiPrefix, publishedArticleLocationPrefix: locationPrefix } = datacite
+  const { publishedArticleLocationPrefix: locationPrefix } = datacite
+  const { doiPrefix } = getActiveDatacite(datacite)
   const errors = []
   if (!doiPrefix) errors.push(ERROR_MESSAGES.noDoiPrefix)
   if (!title) errors.push(ERROR_MESSAGES.noJournalName)
@@ -97,7 +98,8 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
 
   const { formData } = activeConfig
   const { datacite } = formData.publishing
-  const { doiPrefix: prefix, publishedArticleLocationPrefix } = datacite
+  const { publishedArticleLocationPrefix } = datacite
+  const { doiPrefix: prefix } = getActiveDatacite(datacite)
 
   let suffix = id
 
@@ -164,9 +166,9 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
 }
 
 const requestToDatacite = (method, path, payload, { formData }) => {
-  const { useSandbox, login, password } = formData.publishing.datacite
-
-  const url = getDataciteURL(useSandbox)
+  const { url, login, password } = getActiveDatacite(
+    formData.publishing.datacite,
+  )
 
   const auth = Buffer.from(`${login}:${password}`).toString('base64')
   const authorization = `Basic ${auth}`
@@ -228,7 +230,8 @@ const checkPayload = async (manuscript, activeConfig) => {
 
   const { formData } = activeConfig
   const { datacite } = formData.publishing
-  const { doiPrefix: prefix, publishedArticleLocationPrefix } = datacite
+  const { publishedArticleLocationPrefix } = datacite
+  const { doiPrefix: prefix } = getActiveDatacite(datacite)
 
   const failureReason = []
   const submissionErrors = verifySubmission(formData, submission)
@@ -284,7 +287,82 @@ const checkPayload = async (manuscript, activeConfig) => {
   return { payload }
 }
 
+/** iPlaces: checks the station's DataCite settings against the server its
+ * mode points at, without creating anything. Used by the Configuration page
+ * to show whether Save left the station able to mint DOIs.
+ * 1. GET /clients/<login> (public): is this repository on this server, and is
+ *    the prefix one of its prefixes? A test repository is not on the real
+ *    server and the other way round, so this catches a mode/login mismatch.
+ * 2. GET /dois/random?prefix=<prefix> with the login: needs a valid login,
+ *    so a wrong password shows up here. It only suggests a suffix. */
+const checkDataciteConnection = async datacite => {
+  const { mode, url, login, password, doiPrefix } = getActiveDatacite(datacite)
+  const server = url.replace('https://', '')
+  const result = (ok, message) => ({ ok, mode, server, message })
+
+  if (!login) return result(false, 'No DataCite login, so no DOIs are minted.')
+  if (!password) return result(false, 'No DataCite password.')
+  if (!doiPrefix) return result(false, 'No DOI prefix.')
+
+  const prefix = doiPrefix
+    .replace(/^https?:\/\/doi\.org\//, '')
+    .replace(/\/+$/, '')
+
+  const other = mode === 'test' ? 'real' : 'test'
+  const headers = { accept: 'application/vnd.api+json' }
+
+  try {
+    const { data } = await axios.get(
+      `${url}/clients/${encodeURIComponent(login.toLowerCase())}`,
+      { headers, timeout: 15000 },
+    )
+
+    const prefixes = (data?.data?.relationships?.prefixes?.data || []).map(
+      p => p.id,
+    )
+
+    if (prefixes.length && !prefixes.includes(prefix))
+      return result(
+        false,
+        `Repository ${login} is on ${server} but prefix ${prefix} is not one of its prefixes (${prefixes.join(', ')}).`,
+      )
+  } catch (err) {
+    const status = err.response?.status
+    if (status === 404)
+      return result(
+        false,
+        `Repository ${login} is not on ${server}. If it is a ${other} DataCite repository, switch the station to ${other} DOIs or enter the ${mode} login.`,
+      )
+    return result(false, `Could not reach ${server} (${status || err.message}).`)
+  }
+
+  try {
+    const auth = Buffer.from(`${login}:${password}`).toString('base64')
+    await axios.get(`${url}/dois/random`, {
+      params: { prefix },
+      headers: { ...headers, authorization: `Basic ${auth}` },
+      timeout: 15000,
+    })
+  } catch (err) {
+    const status = err.response?.status
+    if (status === 401 || status === 403)
+      return result(
+        false,
+        `${server} refused the password for ${login} (HTTP ${status}).`,
+      )
+    return result(false, `Could not check the login on ${server} (${status || err.message}).`)
+  }
+
+  return result(
+    true,
+    mode === 'test'
+      ? `Test DOIs: ${server} accepted ${login} with prefix ${prefix}. Test DOIs do not resolve at doi.org.`
+      : `Real DOIs: ${server} accepted ${login} with prefix ${prefix}. Published records get real, permanent DOIs.`,
+  )
+}
+
 module.exports = {
+  checkDataciteConnection,
   requestToDatacite,
   publishToDatacite,
   getDoi,

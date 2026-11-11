@@ -556,3 +556,30 @@ publish/rebuild.
   datePublished) and `_partials/side.njk` (Published row, Cite year).
 - Backfill for records published before this patch:
   `server-fix/scripts/first-online-date/1-check.sql`, `2-fix.sql`.
+
+## Patch 35 — DataCite test mode per station (2026-11-11)
+
+Each station keeps its real DataCite settings (login, password, doiPrefix) and,
+beside them, test ones (testLogin, testPassword, testDoiPrefix). The
+"Use test DOIs" switch (`useSandbox`) picks which set is used AND which server
+is called (api.test.datacite.org or api.datacite.org), so switching is one tick
+and nothing is retyped. A blank test field falls back to the real value, so
+stations configured before this behave exactly as before.
+
+- `services/publishing/datacite/utils.js`: `getActiveDatacite(datacite)`;
+  `getDoi` uses the active prefix.
+- `services/publishing/datacite/index.js`: `requestToDatacite`,
+  `verifySubmission`, `checkPayload` use it; new `checkDataciteConnection`
+  (GET /clients/<login> on that server: repository exists there and owns the
+  prefix; GET /dois/random?prefix= with the login: password accepted).
+  Creates nothing.
+- `controllers/manuscript/manuscript.controllers.js`: the "is DataCite on"
+  checks (publish, unpublish/hide) use the active login.
+- New query `dataciteConnectionCheck` (config.graphql, config.resolvers.js),
+  rule `or(userIsGroupAdmin, userIsAdmin)` in permissions.js.
+- `server-fix/overlays/controllers/config/configUtils.js`: upstream
+  2026.11.03-0 file + testPassword masked, testLogin/testPassword stripped
+  from the public config.
+
+Client side (repeatable-group-spike): test fields on the DataCite settings,
+test-mode banner, connection status after Save, and the Save fix.

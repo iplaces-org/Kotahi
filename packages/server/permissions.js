@@ -843,6 +843,7 @@ const permissions = {
     cmsPage: or(userIsGroupAdmin, userIsAdmin),
     cmsPages: allow, // read by the public Flax site
     config: isAuthenticated,
+    dataciteConnectionCheck: or(userIsGroupAdmin, userIsAdmin), // iplaces
     convertToJats: or(
       userIsEditorOfAnyManuscript,
       userIsGm,

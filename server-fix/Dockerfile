@@ -25,6 +25,31 @@ COPY packages/server/services/publishing/datacite/index.js \
 COPY packages/server/services/publishing/datacite/index.js \
      /home/node/app/dist/services/publishing/datacite/index.js
 
+# (Patch 35) DataCite test mode per station. utils.js getActiveDatacite picks
+#     the real or the test login/password/prefix from the "Use test DOIs"
+#     switch; index.js checkDataciteConnection backs the new
+#     dataciteConnectionCheck query (config.graphql + config.resolvers.js,
+#     rule in permissions.js). configUtils.js is an OVERLAY of the upstream
+#     2026.11.03-0 file (the packages/server copy is older): it masks and
+#     strips testPassword/testLogin like the real ones. utils.js,
+#     config.graphql and config.resolvers.js were identical to the tag.
+COPY packages/server/services/publishing/datacite/utils.js \
+     /home/node/app/services/publishing/datacite/utils.js
+COPY packages/server/services/publishing/datacite/utils.js \
+     /home/node/app/dist/services/publishing/datacite/utils.js
+COPY server-fix/overlays/controllers/config/configUtils.js \
+     /home/node/app/controllers/config/configUtils.js
+COPY server-fix/overlays/controllers/config/configUtils.js \
+     /home/node/app/dist/controllers/config/configUtils.js
+COPY packages/server/api/graphql/config/config.graphql \
+     /home/node/app/api/graphql/config/config.graphql
+COPY packages/server/api/graphql/config/config.graphql \
+     /home/node/app/dist/api/graphql/config/config.graphql
+COPY packages/server/api/graphql/config/config.resolvers.js \
+     /home/node/app/api/graphql/config/config.resolvers.js
+COPY packages/server/api/graphql/config/config.resolvers.js \
+     /home/node/app/dist/api/graphql/config/config.resolvers.js
+
 # (2) Gump-clone seeds. A "station" is just a journal-type group; overlay
 #     forms-journal/submit.json + the de-slugged cmsTemplateFiles tree.
 #     Existing groups untouched (seedCmsFiles only seeds empty groups).
