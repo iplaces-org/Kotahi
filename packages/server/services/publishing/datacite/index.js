@@ -191,9 +191,33 @@ const requestToDatacite = (method, path, payload, { formData }) => {
   return axios.request(options)
 }
 
+/** iplaces: per-record test DOIs. An editor can tick "Publish this record
+ * with a test DOI" in the record's Publishing section, which sets
+ * submission.$testDoi. That record is then sent to the DataCite sandbox (the
+ * shared iPlaces test account) even when the station itself is on real DOIs.
+ * Returns the config to use for this record; the station's own is unchanged. */
+const configForRecord = (activeConfig, manuscript) => {
+  const datacite = activeConfig?.formData?.publishing?.datacite
+  if (!datacite || !manuscript?.submission?.$testDoi) return activeConfig
+
+  return {
+    ...activeConfig,
+    formData: {
+      ...activeConfig.formData,
+      publishing: {
+        ...activeConfig.formData.publishing,
+        datacite: { ...datacite, useSandbox: true },
+      },
+    },
+  }
+}
+
 const publishToDatacite = async manuscript => {
   const { submission, groupId } = manuscript
-  const activeConfig = await Config.getCached(groupId)
+  const activeConfig = configForRecord(
+    await Config.getCached(groupId),
+    manuscript,
+  )
   const { formData } = activeConfig
 
   const failureReason = verifySubmission(formData, submission)
@@ -381,6 +405,7 @@ const checkDataciteConnection = async datacite => {
 
 module.exports = {
   checkDataciteConnection,
+  configForRecord,
   requestToDatacite,
   publishToDatacite,
   getDoi,

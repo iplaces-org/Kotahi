@@ -594,3 +594,17 @@ Shared account = Fly secrets on iplaces-test-server:
 IPLACES_DATACITE_TEST_LOGIN, IPLACES_DATACITE_TEST_PASSWORD,
 IPLACES_DATACITE_TEST_PREFIX (a DataCite Fabrica Test repository).
 Real DOIs stay per station, entered by hand.
+
+### Patch 35c — per-record test DOIs, public test-DOI links (2026-11-11)
+
+- An editor can tick "Publish this record with a test DOI" in the record's
+  Publishing section (client); it sets `submission.$testDoi`.
+  `configForRecord` (datacite/index.js) then sends that record to the
+  sandbox with the shared test account even when the station is on real
+  DOIs. Untick and republish to give it a real DOI.
+- Publish stores `submission.$doiIsTest` (true when the DOI came from the
+  sandbox). Unpublish hides a test DOI on the sandbox, a real one on DataCite.
+- Station templates (station-master, cms-sync push): test DOIs link to
+  https://handle.test.datacite.org/<doi> (public, no login) and are marked
+  "(test DOI)"; citation_doi, JSON-LD identifier, DataCite Commons button,
+  connections and revisions panels are left out for test DOIs.
