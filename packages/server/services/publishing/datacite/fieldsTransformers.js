@@ -669,7 +669,7 @@ const spdxRightsFor = value => {
   const raw = value == null ? '' : String(value).trim()
   if (!raw) return []
 
-  // "Community terms (see Local Contexts Project)": no license entry; the
+  // "Community terms (Local Contexts)": no license entry; the
   // record's Local Contexts labels and notices fill rightsList instead
   // (getRightsList, merged in index.js).
   if (raw.toLowerCase() === 'localcontexts') return []
