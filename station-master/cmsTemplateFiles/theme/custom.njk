@@ -408,3 +408,26 @@ aside hr {
   width: 100%;
   max-width: 100%;
 }
+/* ---- Station logo in the header (desktop) ----------------------------- *
+   The header only capped the logo at max-width:75%, so a large uploaded
+   logo (Bailey's Tetiaroa file is 1000px wide) rendered at full size and
+   spilled over the page. Cap it by height, keep its proportions, and give
+   it breathing room from the edge and the top/bottom of the bar.
+   Mobile keeps its own 84px cap in mobile.njk. */
+#sticky-menu {
+  padding-left: 24px;
+  padding-right: 24px;
+  box-sizing: border-box;
+}
+#sticky-menu .logo {
+  flex-shrink: 0;
+  padding: 12px 0;
+}
+#sticky-menu .logo img {
+  display: block;
+  height: auto;
+  width: auto;
+  max-height: 72px;
+  max-width: 280px;
+  object-fit: contain;
+}
