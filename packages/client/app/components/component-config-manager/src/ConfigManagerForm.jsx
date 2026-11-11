@@ -17,13 +17,7 @@ import {
   configTabLabels,
 } from './ui/schema' // Import the function that generates the schema and uiSchema
 
-import {
-  ActionButton,
-  SectionContent,
-  HiddenTabs,
-  Alert,
-  DataciteTestModeBanner,
-} from '../../shared'
+import { ActionButton, SectionContent, HiddenTabs, Alert } from '../../shared'
 import Page from '../../../ui/shared/Page'
 import EmailTemplatesPage from '../../component-email-templates/src/EmailTemplatesPage'
 import emailTemplatesToSchema from './helpers'
@@ -131,7 +125,7 @@ const EmailsTabWrapper = styled(StyledSectionContent)`
   }
 `
 
-// iplaces: DataCite mode banner + check result above the Integrations tab
+// iplaces: failed DataCite check above the Integrations tab
 const DataciteStatus = styled.div`
   display: grid;
   gap: ${grid(1)};
@@ -176,6 +170,8 @@ const FieldTemplate = props => {
   const supressedDescriptions = [
     'form-emailNotifications_emailNotification_advancedSettings_secure',
     'form-emailNotifications_emailNotification_advancedSettings_requireTLS',
+    // iplaces: the checkbox widget already shows this help text
+    'form-integrationsAndPublishing_publishing_datacite_useSandbox',
   ]
 
   // TODO: remove `form-integrationsAndPublishing_integrations_coarNotify_repoIpAddress`
@@ -421,29 +417,20 @@ const ConfigManagerForm = ({
       <style>{`html { font-size: 16px; }`}</style>
       <Page title={t('configPage.Configuration')}>
         <StyledContainer>
-          {activeTab === 'integrationsAndPublishing' && (
-            <DataciteStatus>
-              <DataciteTestModeBanner />
-              {(dataciteChecking || dataciteCheck) && (
+          {/* iplaces: only a failed DataCite check is shown; the site-wide
+              bar shows test mode */}
+          {activeTab === 'integrationsAndPublishing' &&
+            dataciteCheck &&
+            !dataciteCheck.ok &&
+            !dataciteChecking && (
+              <DataciteStatus>
                 <Alert
-                  message={
-                    dataciteChecking
-                      ? t('configPage.dataciteCheckRunning')
-                      : `${t('configPage.dataciteCheckTitle')}: ${dataciteCheck.message}`
-                  }
+                  message={`${t('configPage.dataciteCheckTitle')}: ${dataciteCheck.message}`}
                   showIcon
-                  type={
-                    // eslint-disable-next-line no-nested-ternary
-                    dataciteChecking
-                      ? 'info'
-                      : dataciteCheck.ok
-                        ? 'success'
-                        : 'error'
-                  }
+                  type="error"
                 />
-              )}
-            </DataciteStatus>
-          )}
+              </DataciteStatus>
+            )}
           <HiddenTabs
             defaultActiveKey="general"
             onChange={setActiveTab}
