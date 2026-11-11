@@ -438,15 +438,18 @@ aside.side-section .button:hover {
     </div>
     <div class="modal-content__body">
       <div id="citedArea">
-        {% set authors = article.headerInfo.authorNames %}
-        {% for author in authors %}
-          {{- author.lastName -}}, {{ author.firstName[0] }}.{% if author.middleName and author.middleName.length > 0 %} {{ author.middleName[0] }}.{% endif %}
-          {% if not loop.last %}{% if loop.index == loop.length - 1 %}, & {% else %}, {% endif %}{% endif %}
-        {% endfor %}
+        {# Creators in DataCite order (buildCreators): more-than-human authors in First
+           position, then people, then the other more-than-human authors. MTH names are
+           cited whole, people as "Last, F. M.". #}
+        {% set citeNames = [] %}
+        {% for m in article.parsedSubmission.moreThanHumanAuthors or [] %}{% if m and m.name and m.position == 'First' %}{% set citeNames = citeNames.concat([m.name | trim]) %}{% endif %}{% endfor %}
+        {% for author in article.headerInfo.authorNames %}{% set citeNames = citeNames.concat([(author.lastName or '') + (', ' + author.firstName[0] + '.' if author.firstName else '') + (' ' + author.middleName[0] + '.' if author.middleName and author.middleName.length > 0 else '')]) %}{% endfor %}
+        {% for m in article.parsedSubmission.moreThanHumanAuthors or [] %}{% if m and m.name and m.position != 'First' %}{% set citeNames = citeNames.concat([m.name | trim]) %}{% endif %}{% endfor %}
+        {% for n in citeNames %}{{ n }}{% if not loop.last %}{% if loop.index == loop.length - 1 %}, &amp; {% else %}, {% endif %}{% endif %}{% endfor %}
         {# Citation year = original publication year, falling back to the online date. #}
         {% set pubYear = ((article.parsedSubmission.datePublished | default("", true) | string) | trim or (article.parsedSubmission.firstPublishedOn | default("", true) | string) | trim or (article.headerInfo.publishedOn | default("", true) | string)) | truncate(4, true, "") %}
         ({{ pubYear }}).
-        <span style="font-style: italic;">{{ article.parsedSubmission.$title or 'Untitled' }}</span>.
+        <span style="font-style: italic;">{{ (article.parsedSubmission.$title or 'Untitled') | trim }}</span>.
         {{ station.title | default("iPlaces") }}. https://doi.org/{{ article.parsedSubmission.$doi or 'N/A' }}
       </div>
 
