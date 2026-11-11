@@ -20,13 +20,12 @@ eleventyExcludeFromCollections: true
   {% set al = ((alRaw.value | default(alRaw)) | default("")) | string | lower | trim %}
   {% set hidden = station.hideConferencePapers and ('ConferencePaper' in a.submission) %}
   {% import "_partials/licenses.njk" as licenses %}{% set licRaw = a.parsedSubmission.license %}
-  {% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}
-  {% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
-  {% if (al == "" or al == "public") and lic.open and lic.url and not hidden %}
+  {% set licKeys = [] %}{% for k in (licRaw if (licRaw and licRaw.join) else [licRaw]) %}{% set kk = (k | default("", true)) | string | trim %}{% if kk and not (kk in licKeys) %}{% set _ = licKeys.push(kk) %}{% endif %}{% endfor %}{% if not licKeys.length %}{% set _ = licKeys.push(station.defaultLicense or licenses.default or "CC-BY-4.0") %}{% endif %}{% set lics = [] %}{% set licUrls = [] %}{% set licAllOpen = true %}{% for kk in licKeys %}{% set le = licenses.list[kk] if (licenses and licenses.list and licenses.list[kk]) else {"label": kk, "url": "", "open": false} %}{% set _ = lics.push({"key": kk, "label": le.label, "url": le.url, "open": le.open}) %}{% if le.url %}{% set _ = licUrls.push(le.url) %}{% endif %}{% if not (le.open and le.url) %}{% set licAllOpen = false %}{% endif %}{% endfor %}
+  {% if (al == "" or al == "public") and licAllOpen and not hidden %}
     {% set dOrig = (a.parsedSubmission.datePublished | default("", true) | string) | trim %}
     {% set dOnline = (a.headerInfo.publishedOn | string).split('T')[0] if a.headerInfo.publishedOn else "" %}
     {% set y = ((dOrig or dOnline) | string).slice(0, 4) or "Undated" %}
-    {% set _ = kept.push({ a: a, y: y, lic: lic }) %}
+    {% set _ = kept.push({ a: a, y: y, lics: lics }) %}
     {% if not (y in years) %}{% set _ = years.push(y) %}{% endif %}
   {% endif %}
 {% endfor %}
@@ -57,7 +56,7 @@ eleventyExcludeFromCollections: true
     <h2 id="y{{ y }}">{{ y }}</h2>
     <ol>
       {% for k in kept %}{% if k.y == y %}
-      <li><a href="{{ siteBase }}{{ cmsConfig.defaultArticleDirectory }}{{ k.a.shortId }}/index.html">{{ (k.a.headerInfo.title or k.a.parsedSubmission.$title) | safe }}</a>{% if k.a.parsedSubmission.$doi %} · https://doi.org/{{ k.a.parsedSubmission.$doi }}{% endif %} · <a href="{{ k.lic.url }}" rel="license">{{ k.lic.label }}</a><a class="clk-pdf" href="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ k.a.shortId }}">PDF</a></li>
+      <li><a href="{{ siteBase }}{{ cmsConfig.defaultArticleDirectory }}{{ k.a.shortId }}/index.html">{{ (k.a.headerInfo.title or k.a.parsedSubmission.$title) | safe }}</a>{% if k.a.parsedSubmission.$doi %} · https://doi.org/{{ k.a.parsedSubmission.$doi }}{% endif %} · {% for l in k.lics %}<a href="{{ l.url }}" rel="license">{{ l.label }}</a>{% if not loop.last %}; {% endif %}{% endfor %}<a class="clk-pdf" href="https://iplaces-pdf.fly.dev/pdf/{{ cmsConfig.group.name }}/{{ k.a.shortId }}">PDF</a></li>
       {% endif %}{% endfor %}
     </ol>
   </section>

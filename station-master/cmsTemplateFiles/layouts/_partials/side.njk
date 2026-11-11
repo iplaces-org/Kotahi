@@ -197,7 +197,7 @@ aside.side-section .button:hover {
               </div>
               {% endif %}
 
-              {% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKey = ((licRaw | default("", true)) | string | trim) or station.defaultLicense or licenses.default or "CC-BY-4.0" %}{% set lic = licenses.list[licKey] if (licenses and licenses.list and licenses.list[licKey]) else {"label": licKey, "url": "", "open": false} %}
+              {% import "_partials/licenses.njk" as licenses %}{% set licRaw = (article.parsedSubmission and article.parsedSubmission.license) or (article.articleMetadata and article.articleMetadata.submission and article.articleMetadata.submission.license) %}{% set licKeys = [] %}{% for k in (licRaw if (licRaw and licRaw.join) else [licRaw]) %}{% set kk = (k | default("", true)) | string | trim %}{% if kk and not (kk in licKeys) %}{% set _ = licKeys.push(kk) %}{% endif %}{% endfor %}{% if not licKeys.length %}{% set _ = licKeys.push(station.defaultLicense or licenses.default or "CC-BY-4.0") %}{% endif %}{% set lics = [] %}{% set licUrls = [] %}{% set licAllOpen = true %}{% for kk in licKeys %}{% set le = licenses.list[kk] if (licenses and licenses.list and licenses.list[kk]) else {"label": kk, "url": "", "open": false} %}{% set _ = lics.push({"key": kk, "label": le.label, "url": le.url, "open": le.open}) %}{% if le.url %}{% set _ = licUrls.push(le.url) %}{% endif %}{% if not (le.open and le.url) %}{% set licAllOpen = false %}{% endif %}{% endfor %}
               <div class="about-this__buttons">
                 {% if not isGated %}
                 <a class="button button--icon-download button--action" id="download-button" rel="nofollow"
@@ -225,7 +225,7 @@ aside.side-section .button:hover {
           <dl class="review-timeline" aria-label="Rights">
             <dt class="review-timeline__event review-timeline__event--revised">Rights</dt>
             <dd class="review-timeline__detail review-timeline__event--revised">
-              <p class="rights-license">{% if lic.url %}<a href="{{ lic.url }}"{% if not isGated %} rel="license"{% endif %}>{{ lic.label }}</a>{% elif licKey == "LocalContexts" and lc and lc.url %}<a href="{{ lc.url }}" target="_blank" rel="noopener noreferrer">{{ lic.label }}</a>{% else %}{{ lic.label }}{% endif %}</p>
+              {% for l in lics %}<p class="rights-license">{% if l.url %}<a href="{{ l.url }}"{% if not isGated %} rel="license"{% endif %}>{{ l.label }}</a>{% elif l.key == "LocalContexts" and lc and lc.url %}<a href="{{ lc.url }}" target="_blank" rel="noopener noreferrer">{{ l.label }}</a>{% else %}{{ l.label }}{% endif %}</p>{% endfor %}
               {% if hasLc %}
               {% if lc.label %}
                 <div class="local-context-labels">

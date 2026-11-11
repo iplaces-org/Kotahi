@@ -668,3 +668,20 @@ Profile page, shown only when you have a picture.
 
 By hand (no deploy): `UPDATE users SET profile_picture = NULL WHERE id = '<id>';`
 Users are shared by all stations, so a picture shows (and is cleared) everywhere.
+
+## Patch 39 — a record can have more than one licence (2026-11-11)
+
+`submission.license` may now hold several licences: an array (form field type
+Checkboxes) or, for older records, one string. Both are read the same way.
+
+- `getSpdxRights` in `services/publishing/datacite/fieldsTransformers.js` sends
+  one DataCite `rights` entry per licence (Rights is 0-n in the schema),
+  duplicates dropped. `LocalContexts` still sends nothing; empty sends nothing.
+- Station templates (cms-sync push): header and sidebar Rights panel list every
+  licence; `<link rel="license">` and JSON-LD `license` (one URL, or an array)
+  for each licence that has a URL; CLOCKSS manifest lists a record only when
+  EVERY chosen licence is open.
+
+Form: change the License field from Dropdown selection to Checkboxes, and turn
+existing string values into one-element arrays (a string value shows ticked but
+is lost on the next click). SQL in the PR description.

@@ -663,8 +663,10 @@ const SPDX_KEYS_LOWER = Object.keys(SPDX_LICENSES).reduce((acc, k) => {
   return acc
 }, {})
 
-const getSpdxRights = submission => {
-  const raw = submission?.license ? String(submission.license).trim() : ''
+// One SPDX value (or "LocalContexts", "All rights reserved", free text) to
+// DataCite Rights entries.
+const spdxRightsFor = value => {
+  const raw = value == null ? '' : String(value).trim()
   if (!raw) return []
 
   // "Community terms (see Local Contexts Project)": no license entry; the
@@ -686,6 +688,21 @@ const getSpdxRights = submission => {
       schemeUri: 'https://spdx.org/licenses/',
     },
   ]
+}
+
+// Patch 39: submission.license may hold several licences (a CheckboxGroup
+// gives an array; older records hold one string). DataCite Rights repeats
+// (0-n), so each one becomes its own rightsList entry, duplicates dropped.
+const getSpdxRights = submission => {
+  const value = submission?.license
+  const values = Array.isArray(value) ? value : [value]
+  const seen = new Set()
+  return values.flatMap(spdxRightsFor).filter(r => {
+    const id = r.rightsIdentifier || r.rights
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 }
 
 
