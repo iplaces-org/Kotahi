@@ -86,6 +86,7 @@
     "layouts/_partials/licenses.njk": "6aa7b147747fb738",
     "layouts/_partials/side.njk": "146b7cef08ca8259",
     "layouts/article-preview.njk": "1a09a685ca14ceb2",
-    "layouts/base.njk": "5b58fb4273d5507c"
+    "layouts/base.njk": "5b58fb4273d5507c",
+    "data/station.json": "0aee4503f44a0f12"
   }
 }
