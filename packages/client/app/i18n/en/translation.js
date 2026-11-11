@@ -178,7 +178,9 @@ const en = {
       ORCID: 'ORCID',
     },
     manuscriptsTable: {
-      authorTeam: 'Author team', // iplaces
+      authorTeam: 'Author accounts', // iplaces
+      authorTeamHelp:
+        'People with a login who can edit this record. These are not the named authors: add the Creator column to see those.', // iplaces
       'No matching manuscripts were found':
         'No matching manuscripts were found',
       searchChip: 'Search: {{query}}',

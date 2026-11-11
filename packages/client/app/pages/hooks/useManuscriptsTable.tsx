@@ -911,9 +911,17 @@ const useManuscriptsTable = (variant: Variant): UseManuscriptsTableResult => {
           align: columnAlignments[key] ?? 'left',
         }
 
+        // iplaces: "Author team" is the record's login accounts, not its named
+        // authors, which live in the Creator field. Say so on the header.
+        if (key === 'authorTeam') {
+          column.helpTooltip = t('manuscriptsTable.authorTeamHelp')
+        }
+
         if (column.key === 'actions') {
           return {
             ...column,
+            // iplaces: keep Control/View/Publish visible on wide tables
+            fixed: 'right',
             render: (_: any, record: any): ReactNode => {
               if (variant === 'submitter') {
                 const { id, status, showAuthorProofing } = record
