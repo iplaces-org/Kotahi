@@ -58,10 +58,20 @@ const overlaid = new Set(
   ),
 )
 
+// Extra schema that server-fix/Dockerfile APPENDS to an image file (Patch 36):
+// server-fix/schema-extensions/<name>.graphql goes onto <name>/<name>.graphql.
+const EXT_DIR = 'server-fix/schema-extensions'
+
+const extensionFor = file => {
+  const m = file.match(/^(\w+)\/\1\.graphql$/)
+  const p = m && `${EXT_DIR}/${m[1]}.graphql`
+  return p && fs.existsSync(p) ? `\n${fs.readFileSync(p, 'utf8')}` : ''
+}
+
 const readSchemaFile = file =>
-  overlaid.has(file)
+  (overlaid.has(file)
     ? fs.readFileSync(`packages/server/api/graphql/${file}`, 'utf8')
-    : show(file)
+    : show(file)) + extensionFor(file)
 
 if (overlaid.size)
   console.log(`(schema overlays from server-fix/Dockerfile: ${[...overlaid].join(', ')})`)

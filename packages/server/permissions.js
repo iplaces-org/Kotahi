@@ -1215,6 +1215,10 @@ const permissions = {
       userIsAdmin,
     ),
     reportUserIsActive: isAuthenticated,
+    // iplaces Patch 36: own picture only, the resolver uses ctx.userId
+    removeProfilePicture: isAuthenticated,
+    // iplaces: own picture only, the resolver uses ctx.userId
+    removeProfilePicture: isAuthenticated,
     resendCoarNotifyPayload: or(userIsGm, userIsGroupAdmin, userIsAdmin),
     updateCollaborativeTeamMembers: or(
       userIsEditorOfAnyManuscript,

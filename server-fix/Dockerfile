@@ -172,3 +172,19 @@ RUN for f in /home/node/app/api/graphql/manuscript/manuscript.resolvers.js /home
       grep -qF 'submissionForUser(parent, ctx && ctx.userId)' "$f" && ! grep -qF 'return JSON.stringify(parent.submission)' "$f" || { echo "Patch 33: sed failed in $f"; exit 1; }; \
       node --check "$f" || exit 1; \
     done
+
+# (Patch 36) Users can remove their own profile picture. user.graphql is NOT
+#     overlaid: server-fix/schema-extensions/user.graphql (an extra
+#     `extend type Mutation` block; GraphQL merges extend blocks) is appended to
+#     the image's own plain and dist copies, so nothing else in the image's
+#     schema changes. scripts/check-permission-rules.js reads the same file.
+#     Resolver: user.resolvers.js overlay (Patch 27). Controller:
+#     user.controllers.js overlay (Patch 17). Rule: permissions.js.
+COPY server-fix/schema-extensions/user.graphql /tmp/iplaces-user-extension.graphql
+RUN for f in /home/node/app/api/graphql/user/user.graphql /home/node/app/dist/api/graphql/user/user.graphql; do \
+      [ -f "$f" ] || { echo "Patch 36: $f not found"; exit 1; }; \
+      ! grep -qF 'removeProfilePicture' "$f" || { echo "Patch 36: removeProfilePicture already in $f (upstream added it? drop this patch)"; exit 1; }; \
+      cat /tmp/iplaces-user-extension.graphql >> "$f"; \
+      grep -qF 'removeProfilePicture' "$f" || { echo "Patch 36: append failed in $f"; exit 1; }; \
+    done; \
+    rm /tmp/iplaces-user-extension.graphql

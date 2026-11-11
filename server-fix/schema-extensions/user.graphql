@@ -1,0 +1,5 @@
+# iplaces Patch 36: appended to the image's api/graphql/user/user.graphql
+# by server-fix/Dockerfile. The resolver only ever acts on the logged-in user.
+extend type Mutation {
+  removeProfilePicture: User
+}
