@@ -338,7 +338,7 @@ async function push(ctx, readSource, opts = {}) {
 
 // Manifest "createPagesIfMissing": [{ url, title, file }]. The file is HTML with
 // {{title}}, {{hostOrg}} and {{contact}} filled from the station's data/station.json
-// (as this push would leave it: the manifest update if any, else the live file, never master's FIXME copy); contact falls back to commons@iplacesalliance.org.
+// (as this push would leave it: the manifest update if any, else the live file, never master's FIXME copy); contact falls back to the station's own <group>@iplacesalliance.org Google Group.
 async function planPages(ctx, stationJson, problems) {
   const { server, manifest, groups, groupIds, live } = ctx
   const specs = manifest.createPagesIfMissing || []
@@ -352,7 +352,7 @@ async function planPages(ctx, stationJson, problems) {
     if (!process.env.KOTAHI_TOKEN) { problems.push(`${g}: no CMS page at ${missing.map(s => s.url).join(', ')}; set KOTAHI_TOKEN to create it`); continue }
     let st = {}
     try { st = JSON.parse(stationJson[g] ?? live[g]['data/station.json'] ?? '{}') } catch (_) { /* checked below */ }
-    const values = { title: st.title, hostOrg: st.hostOrg?.name, contact: st.contactEmail || 'commons@iplacesalliance.org' }
+    const values = { title: st.title, hostOrg: st.hostOrg?.name, contact: st.contactEmail || `${g}@iplacesalliance.org` }
     const blank = Object.entries(values).filter(([, v]) => !v || /FIXME/.test(v)).map(([k]) => k)
     if (blank.length) { problems.push(`${g}: data/station.json has no ${blank.join(', ')}; page ${missing.map(s => s.url).join(', ')} not created`); continue }
     out[g] = missing.map(s => ({
