@@ -399,6 +399,33 @@
 .logo img{
   max-width: 75%;
 }
+
+/* ---- iPlaces: cleaner header, closer to the Alliance home page -------- *
+   A thin accent line in the station colour replaces the tall empty strip,
+   the menu bar gets a hairline instead of a heavy band, and the menu links
+   are smaller and quieter, underlining in the station colour on hover. */
+#topbar {
+  height: 5px;
+  max-height: 5px;
+  padding: 0 !important;
+}
+#sticky-menu {
+  min-height: 76px;
+  border-bottom: 1px solid #e3e2da;
+}
+#sticky-menu nav a,
+#sticky-menu nav .link > label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #2b2d27;
+}
+#sticky-menu nav a::before {
+  background-color: {{ cmsLayout.primaryColor or '#0470c0' }};
+}
+#sticky-menu nav a:hover {
+  color: {{ cmsLayout.primaryColor or '#0470c0' }};
+}
 </style>
 
 
