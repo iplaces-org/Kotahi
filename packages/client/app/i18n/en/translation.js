@@ -431,6 +431,13 @@ const en = {
           'For trying things out. Untick and publish again to give it a real DOI.',
         hasTestDoi:
           'This record has a test DOI ({{doi}}). Untick and publish again to give it a real DOI.',
+        reserveDoi: 'Reserve DOI',
+        reserveDoiHelp:
+          "Get this record's DOI now without publishing. It stays a private draft at DataCite until you publish, and Publish uses the same DOI.",
+        doiReserved:
+          'DOI reserved: {{doi}}. It is not public until you publish this record.',
+        testDoiReserved:
+          'Test DOI reserved: {{doi}}. It is not public until you publish this record.',
         'Archived version': 'Archived version',
         notCurrentVersion:
           'This is not the current, but an archived read-only version of the manuscript.',

@@ -7,6 +7,7 @@ import i18next from 'i18next'
 import styled, { useTheme } from 'styled-components'
 import { th, grid } from '@coko/client'
 import { Formik } from 'formik'
+import { useMutation } from '@apollo/client/react'
 
 import { ConfigContext } from '../../../config/src'
 import { RadioBox } from '../../../component-formbuilder/src/components/builderComponents'
@@ -24,6 +25,7 @@ import Alert from './publishing/Alert'
 import PublishingResponse from './publishing/PublishingResponse'
 import { getLanguages } from '../../../../i18n'
 import { FlexRow } from '../../../../globals'
+import { RESERVE_DATACITE_DOI } from '../../../../queries/group.queries'
 
 const ActionButtonsWrapper = styled(FlexRow)`
   gap: 8px;
@@ -108,6 +110,42 @@ const Publish = ({
     const checked = !!e?.target?.checked
     setTestDoi(checked)
     updateManuscript(manuscript.id, { submission: { $testDoi: checked } })
+  }
+
+  // iplaces: reserve a draft DOI without publishing (server Patch 35d)
+  const [reserveDataciteDoi] = useMutation(RESERVE_DATACITE_DOI)
+  const [isReserving, setIsReserving] = useState(false)
+  const [reserveError, setReserveError] = useState(null)
+
+  const [reservedDoi, setReservedDoi] = useState(
+    manuscript.submission?.$doiReserved ? manuscript.submission?.$doi : null,
+  )
+
+  const [reservedIsTest, setReservedIsTest] = useState(
+    !!manuscript.submission?.$doiIsTest,
+  )
+
+  const stationDatacite = config?.publishing?.datacite
+  const recordIsTest = !!stationDatacite?.useSandbox || testDoi
+
+  const canReserveDoi =
+    !manuscript.published &&
+    (!!stationDatacite?.doiPrefix || !!stationDatacite?.useSandbox)
+
+  const handleReserveDoi = () => {
+    setReserveError(null)
+    setIsReserving(true)
+
+    reserveDataciteDoi({ variables: { id: manuscript.id } })
+      .then(res => {
+        setReservedDoi(res.data.reserveDataciteDoi)
+        setReservedIsTest(recordIsTest)
+      })
+      .catch(error => {
+        console.error(error)
+        setReserveError(error.message)
+      })
+      .finally(() => setIsReserving(false))
   }
 
   const notAccepted = !['accepted', 'published', 'unpublished'].includes(
@@ -221,6 +259,36 @@ const Publish = ({
                 : t('decisionPage.decisionTab.publishWithTestDoiHelp')}
             </TestDoiHelp>
           </TestDoiRow>
+        )}
+
+        {canReserveDoi && (
+          <SectionRowGrid>
+            <SectionActionInfo>
+              <TestDoiHelp>
+                {reservedDoi
+                  ? t(
+                      reservedIsTest
+                        ? 'decisionPage.decisionTab.testDoiReserved'
+                        : 'decisionPage.decisionTab.doiReserved',
+                      { doi: reservedDoi },
+                    )
+                  : t('decisionPage.decisionTab.reserveDoiHelp')}
+              </TestDoiHelp>
+              {reserveError && <Alert type="error">{reserveError}</Alert>}
+            </SectionActionInfo>
+            {!reservedDoi && (
+              <SectionAction>
+                <ActionButton
+                  data-testid="reserve-doi-button"
+                  disabled={isPublishing}
+                  onClick={handleReserveDoi}
+                  status={isReserving ? 'pending' : undefined}
+                >
+                  {t('decisionPage.decisionTab.reserveDoi')}
+                </ActionButton>
+              </SectionAction>
+            )}
+          </SectionRowGrid>
         )}
 
         <SectionRowGrid>
