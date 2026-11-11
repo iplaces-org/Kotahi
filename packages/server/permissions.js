@@ -1050,6 +1050,7 @@ const permissions = {
       userIsAdmin,
     ),
     publishManuscript: userCanPublishManuscript,
+    reserveDataciteDoi: userCanPublishManuscript, // iplaces
     refreshAdaStatus: or(userIsAdmin, userIsEditor, userIsGm, userIsGroupAdmin),
     removeAuthor: or(
       userIsEditorOfAnyManuscript,

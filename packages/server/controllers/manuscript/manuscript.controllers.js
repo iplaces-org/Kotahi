@@ -1550,6 +1550,7 @@ const publishManuscript = async (id, groupId) => {
           // iplaces: station pages link test DOIs to handle.test.datacite.org
           // (public) instead of doi.org, and leave them out of Scholar/JSON-LD.
           $doiIsTest: recordDatacite.useSandbox,
+          $doiReserved: false, // iplaces: a reserved (draft) DOI is now published
         }
 
         update.doi = doi
