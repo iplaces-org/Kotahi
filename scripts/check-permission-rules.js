@@ -45,8 +45,29 @@ const files = list
 
 const schema = { Query: new Set(), Mutation: new Set(), Subscription: new Set() }
 
+// .graphql files that server-fix/Dockerfile COPYs over the image's own copies
+// (e.g. Patch 35 config.graphql) are read from this checkout, not from <ref>,
+// because that is the schema the deployed server actually loads.
+const dockerfile = fs.existsSync('server-fix/Dockerfile')
+  ? fs.readFileSync('server-fix/Dockerfile', 'utf8')
+  : ''
+
+const overlaid = new Set(
+  [...dockerfile.matchAll(/COPY\s+packages\/server\/api\/graphql\/(\S+\.graphql)/g)].map(
+    m => m[1],
+  ),
+)
+
+const readSchemaFile = file =>
+  overlaid.has(file)
+    ? fs.readFileSync(`packages/server/api/graphql/${file}`, 'utf8')
+    : show(file)
+
+if (overlaid.size)
+  console.log(`(schema overlays from server-fix/Dockerfile: ${[...overlaid].join(', ')})`)
+
 files.forEach(file => {
-  const src = show(file).replace(/"""[\s\S]*?"""/g, '')
+  const src = readSchemaFile(file).replace(/"""[\s\S]*?"""/g, '')
   const re = /(?:extend\s+)?type\s+(Query|Mutation|Subscription)\s*\{/g
   let m
 
