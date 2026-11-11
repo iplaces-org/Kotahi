@@ -208,7 +208,8 @@
     width: 100%;
     justify-content: flex-end;
     padding: 10px 20px;
-    background: rgb(4, 112, 192);
+    /* iPlaces: header strip uses the station's theme colour (CMS > Layout) */
+    background: {{ cmsLayout.primaryColor or '#0470c0' }};
     color: #fff;
     transition: all 0.3s;
     height: 34px;
@@ -259,7 +260,7 @@
 
     #sticky-menu {
       height: 60px;
-      background: #0470c0 !important;
+      background: {{ cmsLayout.primaryColor or '#0470c0' }} !important;
       padding-left: 0 !important;
     }
 
