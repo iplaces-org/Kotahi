@@ -627,3 +627,29 @@ never touched. Every colour in the lists passes 4.5:1 against white.
 Server-only (seedGroups runs at boot). The public pages pick up a changed
 `cms_layouts` colour on the next Flax rebuild (CMS > Layout > Publish, or a
 cms-sync push).
+
+## Patch 38 — users can remove their own profile picture (2026-11-11)
+
+Kotahi only had upload, which replaces the old picture, so once someone added a
+picture there was no way back to the default avatar (Erin, in WAMS).
+
+- New mutation `removeProfilePicture: User` (no arguments, acts on
+  `ctx.userId` only). Schema: `server-fix/schema-extensions/user.graphql`, an
+  extra `extend type Mutation` block that `server-fix/Dockerfile` appends to the
+  image's own `api/graphql/user/user.graphql` (plain and dist). The build fails
+  if the file is missing or already has `removeProfilePicture` (upstream added
+  it: drop this patch).
+- Resolver in the `user.resolvers.js` overlay; controller
+  `removeProfilePicture` in the `user.controllers.js` overlay: sets
+  `users.profile_picture` to null, then deletes the file (as `profileUpload`
+  does for a replaced picture; a failed delete is logged, not fatal).
+- Rule `removeProfilePicture: isAuthenticated` in permissions.js (safe because
+  the resolver never takes a user id).
+- `scripts/check-permission-rules.js` reads `server-fix/schema-extensions/`
+  too, so the new rule is not reported as "not in schema".
+
+Client side (repeatable-group-spike): "Remove picture" button on your own
+Profile page, shown only when you have a picture.
+
+By hand (no deploy): `UPDATE users SET profile_picture = NULL WHERE id = '<id>';`
+Users are shared by all stations, so a picture shows (and is cleared) everywhere.

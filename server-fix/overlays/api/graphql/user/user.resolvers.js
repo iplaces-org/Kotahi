@@ -7,6 +7,7 @@ const {
   isUserOnline,
   paginatedUsers,
   profilePictureUrl,
+  removeProfilePicture,
   searchUsers,
   sendEmail,
   setGlobalRole,
@@ -123,6 +124,11 @@ module.exports = {
   Mutation: {
     async deleteUser(_, { id }, ctx) {
       return deleteUser(id, ctx.req.headers['group-id'])
+    },
+
+    // iplaces Patch 38: own picture only (ctx.userId, never an id argument)
+    async removeProfilePicture(_, __, ctx) {
+      return removeProfilePicture(ctx.userId)
     },
 
     async sendEmail(_, { input }, ctx) {

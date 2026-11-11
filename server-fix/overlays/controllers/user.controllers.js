@@ -1,6 +1,11 @@
 const chunk = require('lodash/chunk')
 
-const { fileStorage, logger, useTransaction } = require('@coko/server')
+const {
+  deleteFiles,
+  fileStorage,
+  logger,
+  useTransaction,
+} = require('@coko/server')
 
 const {
   Channel,
@@ -807,6 +812,31 @@ const updateEmail = async (id, email) => {
   })
 }
 
+// iplaces Patch 38: a user can take their own profile picture off. Kotahi only
+// had upload (which replaces the old picture), so there was no way back to the
+// default avatar. Clears users.profile_picture, then deletes the file the way
+// profileUpload does for a replaced picture.
+const removeProfilePicture = async userId => {
+  const user = await User.query().findById(userId)
+  const previousProfilePictureId = user && user.profilePicture
+
+  if (!previousProfilePictureId) return user
+
+  const updatedUser = await User.query().patchAndFetchById(userId, {
+    profilePicture: null,
+  })
+
+  try {
+    await deleteFiles([previousProfilePictureId])
+  } catch (e) {
+    logger.error(
+      `removeProfilePicture: could not delete file ${previousProfilePictureId}: ${e.message}`,
+    )
+  }
+
+  return updatedUser
+}
+
 const updateLanguage = async (id, preferredLanguage) => {
   return User.query().patchAndFetchById(id, { preferredLanguage })
 }
@@ -850,6 +880,7 @@ module.exports = {
   isUserOnline,
   paginatedUsers,
   profilePictureUrl,
+  removeProfilePicture,
   searchUsers,
   sendEmail: sendEmailFn,
   sendEmailWithPreparedData,
