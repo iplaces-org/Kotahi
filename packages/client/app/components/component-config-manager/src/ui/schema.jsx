@@ -1040,8 +1040,8 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
-                // iplaces: one switch picks the server AND which set of
-                // settings below is used (server: getActiveDatacite).
+                // iplaces: ticked = shared iPlaces test account on the server
+                // (server: getActiveDatacite); the fields below are real DOIs.
                 useSandbox: {
                   type: 'boolean',
                   title: t('configPage.dataciteUseSandbox'),
@@ -1059,18 +1059,6 @@ export const generateSchemas = ({
                 doiPrefix: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
-                },
-                testLogin: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestLogin'),
-                },
-                testPassword: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestPassword'),
-                },
-                testDoiPrefix: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -2257,8 +2245,8 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
-                // iplaces: one switch picks the server AND which set of
-                // settings below is used (server: getActiveDatacite).
+                // iplaces: ticked = shared iPlaces test account on the server
+                // (server: getActiveDatacite); the fields below are real DOIs.
                 useSandbox: {
                   type: 'boolean',
                   title: t('configPage.dataciteUseSandbox'),
@@ -2276,18 +2264,6 @@ export const generateSchemas = ({
                 doiPrefix: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
-                },
-                testLogin: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestLogin'),
-                },
-                testPassword: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestPassword'),
-                },
-                testDoiPrefix: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -3519,8 +3495,8 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
-                // iplaces: one switch picks the server AND which set of
-                // settings below is used (server: getActiveDatacite).
+                // iplaces: ticked = shared iPlaces test account on the server
+                // (server: getActiveDatacite); the fields below are real DOIs.
                 useSandbox: {
                   type: 'boolean',
                   title: t('configPage.dataciteUseSandbox'),
@@ -3538,18 +3514,6 @@ export const generateSchemas = ({
                 doiPrefix: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
-                },
-                testLogin: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestLogin'),
-                },
-                testPassword: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestPassword'),
-                },
-                testDoiPrefix: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -4787,8 +4751,8 @@ export const generateSchemas = ({
               type: 'object',
               title: t('configPage.Datacite'),
               properties: {
-                // iplaces: one switch picks the server AND which set of
-                // settings below is used (server: getActiveDatacite).
+                // iplaces: ticked = shared iPlaces test account on the server
+                // (server: getActiveDatacite); the fields below are real DOIs.
                 useSandbox: {
                   type: 'boolean',
                   title: t('configPage.dataciteUseSandbox'),
@@ -4806,18 +4770,6 @@ export const generateSchemas = ({
                 doiPrefix: {
                   type: ['string', 'null'],
                   description: t('configPage.dataciteDoiPrefix'),
-                },
-                testLogin: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestLogin'),
-                },
-                testPassword: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestPassword'),
-                },
-                testDoiPrefix: {
-                  type: ['string', 'null'],
-                  description: t('configPage.dataciteTestDoiPrefix'),
                 },
                 publishedArticleLocationPrefix: {
                   type: ['string', 'null'],
@@ -5260,9 +5212,6 @@ export const generateSchemas = ({
         datacite: {
           classNames: 'col-md-12 col-md-offset-0',
           password: {
-            'ui:widget': 'password',
-          },
-          testPassword: {
             'ui:widget': 'password',
           },
         },
