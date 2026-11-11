@@ -87,3 +87,10 @@ export const GET_CONFIG_AND_EMAIL_TEMPLATES = gql`
     }
   }
 `
+
+// iplaces: reserve a draft DOI at DataCite without publishing (server Patch 35d)
+export const RESERVE_DATACITE_DOI = gql`
+  mutation ReserveDataciteDoi($id: ID!) {
+    reserveDataciteDoi(id: $id)
+  }
+`
