@@ -63,6 +63,13 @@
         "ror": "https://ror.org/04p8xrf95"
       },
       "mission": "A place-based journal documenting research, teaching, and community work at Bailey Station on Tetiaroa, French Polynesia, published through the iPlaces network.",
+      "browseTitle": "Published works at the Bailey Station",
+      "homeFilters": [
+        { "key": "science", "label": "Science", "tokens": ["science", "research"] },
+        { "key": "culture", "label": "Culture" },
+        { "key": "education", "label": "Education" },
+        { "key": "stewardship", "label": "Stewardship" }
+      ],
       "contactEmail": "baileystation@iplacesalliance.org"
     },
     "itemaohi": {
