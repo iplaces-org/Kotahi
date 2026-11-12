@@ -11,7 +11,7 @@
  *      submission.$doi so that Publish later UPDATES that DOI in place
  *      (new landing URL + metadata from iPlaces) instead of minting a new one.
  *   3. --write: creates each record as an unsubmitted draft in the group
- *      (createManuscript). Nothing is published and DataCite is NOT touched.
+ *      (createSubmission + updateManuscript, like the New submission page). Nothing is published and DataCite is NOT touched.
  *
  * DataCite is only changed later, when a record is published (Publish
  * button, or server-fix/scripts/republish.sh <group> --first <shortId>...).
@@ -342,7 +342,12 @@ const gql = async (o, token, query, variables) => {
   return json.data
 }
 
-const CREATE = `mutation ($input: ManuscriptInput) { createManuscript(input: $input) { id shortId } }`
+// Kotahi 2026.11.03: createManuscript is gone. A record is created the way
+// the New submission page does it (createSubmission, no file), then filled
+// with updateManuscript, as the editor form does.
+const CREATE = `mutation ($groupId: ID!) { createSubmission(groupId: $groupId) { id } }`
+const UPDATE = `mutation ($id: ID!, $input: String) { updateManuscript(id: $id, input: $input) { id } }`
+const SHORT_ID = `query ($id: ID!) { manuscript(id: $id) { id shortId } }`
 
 /* ---------------- main ---------------- */
 const main = async () => {
@@ -393,8 +398,9 @@ const main = async () => {
       result = `already imported (short id ${state[doi].shortId})`
       skipped += 1
     } else if (o.write) {
-      const input = { groupId: group.id, submission: JSON.stringify(submission), meta: { source: '' }, files: [] }
-      const m = (await gql(o, token, CREATE, { input })).createManuscript
+      const { id } = (await gql(o, token, CREATE, { groupId: group.id })).createSubmission
+      await gql(o, token, UPDATE, { id, input: JSON.stringify({ submission }) })
+      const m = (await gql(o, token, SHORT_ID, { id })).manuscript
       state[doi] = { id: m.id, shortId: m.shortId, title: submission.$title, at: new Date().toISOString() }
       fs.writeFileSync(statePath, JSON.stringify(state, null, 2))
       result = `created short id ${m.shortId}`
