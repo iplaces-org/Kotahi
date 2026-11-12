@@ -5,10 +5,14 @@
  * DOI from the station's prefix (10.60950), so it minted a second DOI for the
  * same record (e.g. 10.17913/100501.9190 -> DataCite Commons, and
  * 10.60950/100501.9190 -> iplacesalliance.org/gumpstation/articles/8).
- * A findable DOI can't be deleted. The fix: point the OLD DOI at the same
- * iPlaces page and add "IsIdenticalTo <new DOI>" to its related identifiers.
- * Only those two fields of the old DOI change; the rest of its metadata stays.
- * The new (10.60950) DOI is not touched (Kotahi manages it).
+ * A findable DOI can't be deleted. The fix makes the two records match: the
+ * OLD DOI gets a copy of the NEW DOI's metadata (titles, creators, related
+ * identifiers, dates, ...), the same iPlaces landing page, and
+ * "IsIdenticalTo <new DOI>". The new (10.60950) DOI is not touched here
+ * (Kotahi manages it); add "IsIdenticalTo <old DOI>" to the record's Related
+ * identifiers and republish it so the link goes both ways.
+ * Run this AFTER the record has been republished, so the copy is current.
+ * --links-only: change only the old DOI's url and add IsIdenticalTo.
  *
  * Pairs are found two ways, within the iPlaces DataCite repository:
  *   suffix  the same suffix under both prefixes (certain)
@@ -32,6 +36,7 @@ const SKIP_PUBLISHERS = ['Tetiaroa Society'] // these move to baileystation in p
 const args = process.argv.slice(2)
 const apply = args.includes('--apply')
 const suffixOnly = args.includes('--suffix-only')
+const linksOnly = args.includes('--links-only')
 const only = []
 const i = args.indexOf('--only')
 if (i >= 0) for (let j = i + 1; j < args.length && !args[j].startsWith('--'); j += 1) only.push(args[j].toLowerCase())
@@ -106,18 +111,36 @@ const main = async () => {
 
   const auth = `Basic ${Buffer.from(`${process.env.DATACITE_LOGIN}:${process.env.DATACITE_PASSWORD}`).toString('base64')}`
   for (const p of pairs.filter(x => !x.done && (!only.length || only.includes(x.o.doi)))) {
-    const relatedIdentifiers = [
-      ...(p.o.relatedIdentifiers || []).filter(r => !(r.relationType === 'IsIdenticalTo' && String(r.relatedIdentifier).toLowerCase() === p.n.doi)),
-      { relatedIdentifier: p.n.doi, relatedIdentifierType: 'DOI', relationType: 'IsIdenticalTo' },
-    ]
+    const isTwinLink = doi => r => r.relationType === 'IsIdenticalTo' && String(r.relatedIdentifier).toLowerCase() === doi
+    let attributes
+    if (linksOnly) {
+      attributes = {
+        url: p.n.url,
+        relatedIdentifiers: [
+          ...(p.o.relatedIdentifiers || []).filter(r => !isTwinLink(p.n.doi)(r)),
+          { relatedIdentifier: p.n.doi, relatedIdentifierType: 'DOI', relationType: 'IsIdenticalTo' },
+        ],
+      }
+    } else {
+      const fr = await fetch(`${API}/dois/${p.n.doi}`, { headers: { Accept: 'application/vnd.api+json' } })
+      if (!fr.ok) { console.log(`FAILED ${p.o.doi}: could not read ${p.n.doi} (HTTP ${fr.status})`); continue }
+      const src = (await fr.json()).data.attributes
+      const COPY = ['titles', 'creators', 'publisher', 'publicationYear', 'subjects', 'contributors', 'dates', 'language', 'types', 'alternateIdentifiers', 'sizes', 'formats', 'version', 'rightsList', 'descriptions', 'geoLocations', 'fundingReferences', 'relatedItems']
+      attributes = { url: p.n.url }
+      for (const k of COPY) if (src[k] !== undefined && src[k] !== null) attributes[k] = src[k]
+      attributes.relatedIdentifiers = [
+        ...(src.relatedIdentifiers || []).filter(r => !isTwinLink(p.o.doi)(r) && !isTwinLink(p.n.doi)(r)),
+        { relatedIdentifier: p.n.doi, relatedIdentifierType: 'DOI', relationType: 'IsIdenticalTo' },
+      ]
+    }
     const r = await fetch(`${API}/dois/${p.o.doi}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/vnd.api+json', Accept: 'application/vnd.api+json', Authorization: auth },
-      body: JSON.stringify({ data: { type: 'dois', attributes: { url: p.n.url, relatedIdentifiers } } }),
+      body: JSON.stringify({ data: { type: 'dois', attributes } }),
     })
     const body = await r.json().catch(() => ({}))
     if (!r.ok) console.log(`FAILED ${p.o.doi}: HTTP ${r.status} ${JSON.stringify(body.errors || body)}`)
-    else console.log(`fixed ${p.o.doi}: url now ${body.data.attributes.url}`)
+    else console.log(`fixed ${p.o.doi}: url now ${body.data.attributes.url}${linksOnly ? '' : `, metadata copied from ${p.n.doi}`}`)
   }
 }
 
