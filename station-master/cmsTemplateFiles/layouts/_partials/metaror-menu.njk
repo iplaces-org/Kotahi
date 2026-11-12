@@ -426,6 +426,39 @@
 #sticky-menu nav a:hover {
   color: {{ cmsLayout.primaryColor or '#0470c0' }};
 }
+/* Header logo: capped here as well as in theme/custom.njk, so the cap
+   applies wherever this partial is used. */
+#sticky-menu { padding-left: 24px; padding-right: 24px; box-sizing: border-box; }
+#sticky-menu .logo { flex-shrink: 0; padding: 12px 0; }
+#sticky-menu .logo img {
+  display: block; height: auto; width: auto;
+  max-height: 72px; max-width: 280px; object-fit: contain;
+}
+/* Mobile: same white bar as desktop (logo files are made for a light
+   background), logo inset from the edge and sized to the bar, dark menu icon. */
+@media screen and (max-width: 768px) {
+  #sticky-menu {
+    background: #fff !important;
+    height: auto !important;
+    min-height: 64px;
+    padding: 8px 16px !important;
+    box-sizing: border-box;
+  }
+  #sticky-menu .logo { padding: 0; }
+  #sticky-menu .logo img {
+    max-height: 48px !important;
+    max-width: 200px !important;
+    width: auto !important;
+  }
+  .menu-icon .menu,
+  .menu-icon .menu::before,
+  .menu-icon .menu::after,
+  .menu-icon:hover .menu,
+  .menu-icon:hover .menu::before,
+  .menu-icon:hover .menu::after {
+    background: #22251c;
+  }
+}
 </style>
 
 
