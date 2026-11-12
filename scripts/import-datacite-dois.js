@@ -218,6 +218,33 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
       }
     })
     .filter(r => (r.organization ? r.organization.label : r.givenName || r.familyName))
+  // The old Tetiaroa system listed the project team as ProjectMember /
+  // ProjectLeader contributors; they are the record's creators (Erin
+  // 2026-11-12). Move people with those roles to $authors, after the
+  // DataCite creators; keep Sponsor, Producer, etc. as contributors.
+  const TEAM_ROLES = ['ProjectMember', 'ProjectLeader']
+  let moved = 0
+  for (let k = contributors.length - 1; k >= 0; k -= 1) {
+    const r = contributors[k]
+    if (r.nameType === 'Personal' && TEAM_ROLES.includes(r.contributorType) && r.givenName && r.familyName) {
+      contributors.splice(k, 1)
+      moved += 1
+    }
+  }
+  const team = (a.contributors || []).filter(c => TEAM_ROLES.includes(str(c.contributorType)) && str(c.nameType) !== 'Organizational')
+  for (const c of team) {
+    let firstName = str(c.givenName)
+    let lastName = str(c.familyName)
+    if (!firstName && !lastName) ({ firstName, lastName } = splitName(c.name))
+    if (!firstName || !lastName) continue
+    $authors.push({ id: uuid(), firstName, middleName: '', lastName, email: '', orcid: orcidOf(c), ror: (c.affiliation || []).map(toAffiliation).filter(Boolean) })
+  }
+  if (moved) {
+    const before = $authors.length
+    $authors.splice(0, $authors.length, ...dedupe($authors, x => `${lc(x.firstName)}|${lc(x.lastName)}`))
+    warnings.push(`project team moved from contributors to creators (${$authors.length} creators)`)
+    if (before === 0) warnings.push('creators come only from the project team')
+  }
   const contributorCount = contributors.length
   contributors.splice(0, contributors.length, ...dedupe(contributors, r =>
     `${r.contributorType}|${r.organization ? lc(r.organization.label) : `${lc(r.givenName)}|${lc(r.familyName)}`}`))
