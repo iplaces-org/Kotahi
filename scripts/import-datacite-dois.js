@@ -174,6 +174,10 @@ const NAME_FIXES = {
   // Tetiaroa Society's own site spells it Marijn Van der Helm (Erin 2026-11-12)
   'martijn|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 36094
   'martin|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 33746
+  // Erin 2026-11-12
+  'araceli|samaniego': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 36429
+  'araceli|samaniego-herrera': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 33958
+  'jael|galichet': { firstName: 'Jaël', lastName: 'Galichet' }, // 45460
 }
 // Organisations or titles that the old system typed as people
 // ("Te Mana O Te Moana" is a title, Erin 2026-11-12)
@@ -255,7 +259,7 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     const tidyFirst = tidyCase(firstName)
     const tidyLast = tidyCase(lastName)
     if (tidyFirst !== firstName || tidyLast !== lastName) warnings.push(`name case fixed: "${lastName}, ${firstName}" -> "${tidyLast}, ${tidyFirst}"`)
-    let orcid = orcidOf(c)
+    let orcid = orcidOf(c) || (fix && fix.orcid) || ''
     if (!orcid && defaults.orcidIndex) {
       const hit = defaults.orcidIndex.get(nameKey(tidyFirst, tidyLast))
       if (hit && hit.orcids.size === 1) {
