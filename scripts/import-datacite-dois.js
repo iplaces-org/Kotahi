@@ -140,6 +140,7 @@ const mapRecord = (attrs, group) => {
     let lastName = str(c.familyName)
     if (!firstName && !lastName && !organizational) ({ firstName, lastName } = splitName(c.name))
     if (organizational || !firstName || !lastName) {
+      if (/^group,?$/i.test(str(c.name))) continue // placeholder creator in the old Tetiaroa records
       warnings.push(`creator "${str(c.name)}" left out (${organizational ? 'organisation' : 'no first + last name'}); Publish needs both names`)
       continue
     }
@@ -235,10 +236,34 @@ const mapRecord = (attrs, group) => {
     .filter(t => t !== main && str(t.title))
     .map(t => ({ id: uuid(), title: str(t.title), titleType: t.titleType || 'AlternativeTitle', lang: str(t.lang) }))
 
-  // rights: only SPDX identifiers map onto the licence field; never invent one
-  const spdx = (a.rightsList || []).map(r => str(r.rightsIdentifier)).filter(id => id && !/local contexts/i.test(id))
-  if ((a.rightsList || []).length && !spdx.length) warnings.push('rights statement without an SPDX id not carried over')
-  if (!(a.rightsList || []).length) warnings.push('no licence at DataCite; Rights left blank (choose one before publishing, or leave blank)')
+  // rights: only SPDX identifiers map onto the licence field; never invent one.
+  // A Local Contexts Hub project link becomes the record's Local Contexts
+  // project, which Publish re-fetches from the Hub (Patch 11/12), so its
+  // Notices and Labels carry over; the stored notice is the fallback.
+  const LC_RE = /localcontextshub\.org\/projects\/([0-9a-f-]{36})/i
+  const lcRows = (a.rightsList || []).filter(r => LC_RE.test(str(r.rightsUri)))
+  let $localContext = null
+  if (lcRows.length) {
+    const [, projectId] = str(lcRows[0].rightsUri).match(LC_RE)
+    $localContext = {
+      id: projectId,
+      url: `https://localcontextshub.org/projects/${projectId}`,
+      notice: lcRows.map(r => {
+        const text = str(r.rights)
+        const m = text.match(/^Local Contexts (.+?) Notice(?:\s+https?:\/\/\S+?)?:\s*(.*)$/s)
+        const kind = m ? m[1].replace(/\s*\(.*\)$/, '').toLowerCase() : 'notice'
+        return { noticeType: kind === 'biocultural' || kind === 'bc' ? 'biocultural' : kind, defaultText: m ? m[2] : text }
+      }),
+      label: [],
+    }
+  }
+  const spdx = (a.rightsList || [])
+    .filter(r => !LC_RE.test(str(r.rightsUri)))
+    .map(r => str(r.rightsIdentifier))
+    .filter(id => id && !/local contexts/i.test(id))
+  if ((a.rightsList || []).some(r => !LC_RE.test(str(r.rightsUri)) && !str(r.rightsIdentifier)))
+    warnings.push('a rights statement without an SPDX id is not carried over')
+  if (!spdx.length && !$localContext) warnings.push('no licence at DataCite; Rights left blank (choose one before publishing, or leave blank)')
 
   const subjects = (a.subjects || []).map(s => str(s.subject)).filter(Boolean)
   const altIds = (a.alternateIdentifiers || [])
@@ -269,6 +294,7 @@ const mapRecord = (attrs, group) => {
     ...(extraTitles.length ? { titles: extraTitles } : {}),
     ...(altIds.length ? { alternateIdentifiers: altIds } : {}),
     ...(spdx.length ? { license: spdx.length === 1 ? spdx[0] : spdx } : {}),
+    ...($localContext ? { $localContext } : {}),
     ...(str(a.language) ? { language: str(a.language) } : {}),
     ...(str(a.version) ? { version: str(a.version) } : {}),
     topics: [],
