@@ -22,7 +22,8 @@
   "overrides": {},
   "stationJson": {
     "*": {
-      "hideConferencePapers": false
+      "hideConferencePapers": false,
+      "hideCollections": true
     },
     "gumpstation": {
       "hideConferencePapers": true,

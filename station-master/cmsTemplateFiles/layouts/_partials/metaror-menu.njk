@@ -513,10 +513,11 @@
     <a href="/archive/" {% if page.url == '/archive/' %}aria-current="page"{% endif %}>
       <span>Archive</span>
     </a>
-    <a href="/collections/" {% if page.url == '/collections/' %}aria-current="page"{% endif %}>
+{# Collections link: hidden when station.json has "hideCollections": true (set in manifest.json stationJson). #}
+{% if not station.hideCollections %}    <a href="/collections/" {% if page.url == '/collections/' %}aria-current="page"{% endif %}>
       <span>Collections</span>
     </a>
-{# Shown only when the station has a CMS page at /editorial-policy/ (same check as footer.njk). #}
+{% endif %}{# Shown only when the station has a CMS page at /editorial-policy/ (same check as footer.njk). #}
 {% set edPolicyMenu = [] %}{% for p in (cmsPages.pages or []) %}{% if p.url == "/editorial-policy/" %}{% set _ = edPolicyMenu.push(p) %}{% endif %}{% endfor %}
 {% if edPolicyMenu.length %}    <a href="{{ edPolicyMenu[0].url }}" {% if page.url == edPolicyMenu[0].url %}aria-current="page"{% endif %}>
       <span>Editorial policy</span>
