@@ -434,6 +434,25 @@
   display: block; height: auto; width: auto;
   max-height: 72px; max-width: 280px; object-fit: contain;
 }
+/* Masthead lockup: logo | hairline | station title, all on one centre
+   line with the menu. The title is quieter than the logo (600 weight, the
+   menu's ink colour) so the two read as one mark, not two competing ones. */
+#sticky-menu { min-height: 84px; }
+#sticky-menu .logo img { max-height: 60px; }
+.iplaces-masthead { display: flex; align-items: center; min-width: 0; padding: 12px 0; }
+#sticky-menu .iplaces-masthead .logo { padding: 0; }
+.iplaces-masthead .logo, .iplaces-masthead .logo a, .iplaces-masthead .logo img { display: block; }
+.iplaces-masthead-title {
+  display: block; margin-left: 22px; padding: 6px 0 6px 22px;
+  border-left: 1px solid #d9d8cf;
+  font-weight: 600; font-size: 32px; line-height: 1.1; letter-spacing: -0.005em;
+  color: #1b1b1a; text-decoration: none; white-space: nowrap;
+}
+#sticky-menu .iplaces-masthead-title { font-family: Georgia, "Times New Roman", serif !important; }
+.iplaces-masthead-title:hover { background: none; color: #1b1b1a; }
+@media screen and (max-width: 1100px) {
+  .iplaces-masthead-title { font-size: 25px; white-space: normal; }
+}
 /* Mobile: same white bar as desktop (logo files are made for a light
    background), logo inset from the edge and sized to the bar, dark menu icon. */
 @media screen and (max-width: 768px) {
@@ -450,6 +469,9 @@
     max-width: 200px !important;
     width: auto !important;
   }
+  .iplaces-masthead { padding: 0; }
+  #sticky-menu .logo img { max-height: 40px !important; }
+  .iplaces-masthead-title { font-size: 20px; margin-left: 12px; padding: 4px 0 4px 12px; }
   .menu-icon .menu,
   .menu-icon .menu::before,
   .menu-icon .menu::after,
@@ -472,7 +494,11 @@
 </div>
 {% endif %}
 <div id="sticky-menu" role="banner">
+<div class="iplaces-masthead">
 {% include "_partials/logo.njk" %}
+{% set mastTitle = station.title or cmsLayout.publishConfig.title or cmsConfig.group.name %}
+<a class="iplaces-masthead-title" href="/{% if cmsLayout.hexCode %}{{cmsLayout.hexCode}}/{% endif %}">{{ mastTitle }}</a>
+</div>
   <input type="checkbox" id="menu-btn" aria-label="Menu" aria-controls="menu" /><label
     for="menu-btn"
     class="menu-icon"

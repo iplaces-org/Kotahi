@@ -14,7 +14,8 @@
     <p class="iplaces-cover-eyebrow">{{ station.browseTitle or cmsConfig.group.name }}</p>
     {% set coverTitle = station.title | default("iPlaces") %}
     {# iPlaces: "iPlaces <place>" titles get the place in italic accent, like the Alliance home page #}
-    <h1 class="iplaces-cover-title">{% if coverTitle.indexOf("iPlaces ") == 0 %}iPlaces <em>{{ coverTitle.slice(8) }}</em>{% else %}{{ coverTitle }}{% endif %}</h1>
+    {# Title now lives in the header; kept here for screen readers and search only #}
+    <h1 class="iplaces-cover-title iplaces-visually-hidden">{% if coverTitle.indexOf("iPlaces ") == 0 %}iPlaces <em>{{ coverTitle.slice(8) }}</em>{% else %}{{ coverTitle }}{% endif %}</h1>
     <p class="iplaces-cover-mission">{{ station.mission | default("") }}</p>
    {# {% if current %}<p class="iplaces-cover-issue">{{ current.label }}</p>{% endif %} #}
     <p class="iplaces-cover-actions">
@@ -73,6 +74,11 @@
   .iplaces-cover-links a { font-size: 0.85rem; color: #185fa5; text-decoration: none; margin-right: 1.25rem; }
   .iplaces-cover-links a:hover { text-decoration: underline; }
 
+  .iplaces-visually-hidden {
+    position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .iplaces-cover-eyebrow { margin-bottom: 1rem !important; }
   /* ---- iPlaces: hero styled like the Alliance home page --------------- */
   .iplaces-cover-eyebrow {
     display: flex; align-items: center; gap: 12px;
