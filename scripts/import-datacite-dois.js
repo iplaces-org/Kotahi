@@ -73,13 +73,14 @@ const DEFAULTS = {
 
 // Per-station publisher and contributor (Erin 2026-11-12): on Bailey every
 // imported record gets publisher "Bailey Station" and ONE organisational
-// contributor, Bailey Station with the Tetiaroa Society ROR; every person is
-// a creator. Other organisational contributors (Tetiaroa Society Ecostation,
+// contributor, Tetiaroa Society with its ROR; every person is a creator. Other organisational contributors (Tetiaroa Society Ecostation,
 // UC Berkeley, ...) are replaced and listed in analysis.txt.
 const STATIONS = {
+  // A ROR id goes only with the name ROR has for it (04p8xrf95 = Tetiaroa
+  // Society); Bailey Station has no ROR of its own (Erin 2026-11-12).
   baileystation: {
-    publisher: { label: 'Bailey Station', value: 'https://ror.org/04p8xrf95' },
-    contributor: { name: 'Bailey Station', ror: 'https://ror.org/04p8xrf95', type: 'Sponsor' },
+    publisher: { label: 'Bailey Station', value: 'Bailey Station' },
+    contributor: { name: 'Tetiaroa Society', ror: 'https://ror.org/04p8xrf95', type: 'Sponsor' },
   },
 }
 // Where to look for ORCIDs of people whose old DOI has none: every DOI in
@@ -181,6 +182,11 @@ const NAME_FIXES = {
   'araceli|samaniego': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 36429
   'araceli|samaniego-herrera': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 33958
   'jael|galichet': { firstName: 'Jaël', lastName: 'Galichet' }, // 45460
+}
+// Records whose only DataCite creator is the "Group," placeholder: the
+// people to use instead (Erin 2026-11-12)
+const EXTRA_CREATORS = {
+  '10.17913/f3/100501.46702': [{ firstName: 'Richard', lastName: 'Griffiths' }], // Removing rats from Tetiaroa Atoll
 }
 // Organisations or titles that the old system typed as people
 // ("Te Mana O Te Moana" is a title, Erin 2026-11-12)
@@ -301,6 +307,11 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
   $authors.splice(0, $authors.length, ...byName.values())
   if ($authors.length < authorCount) warnings.push(`${authorCount - $authors.length} repeated person/people dropped`)
   if (fromContributors) warnings.push(`${fromContributors} person/people moved from contributors to creators`)
+  for (const x of EXTRA_CREATORS[str(a.doi).toLowerCase()] || []) {
+    if ($authors.some(y => nameKey(y.firstName, y.lastName) === nameKey(x.firstName, x.lastName))) continue
+    $authors.push({ id: uuid(), firstName: x.firstName, middleName: '', lastName: x.lastName, email: '', orcid: x.orcid || '', ror: [] })
+    warnings.push(`creator ${x.firstName} ${x.lastName} added by hand rule`)
+  }
   if (!$authors.length) warnings.push('NO AUTHORS: Publish will refuse this record until one is added')
 
   // Organisational contributors. A station with a set contributor (Bailey)
