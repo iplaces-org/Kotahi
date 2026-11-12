@@ -33,6 +33,9 @@
  *   --only DOI ...      import only these DOIs (space or comma separated)
  *   --topics, --place, --data-policy, --license   station defaults (see DEFAULTS)
  *   --station-publisher  send the station as publisher instead of DataCite's
+ *   --refresh           with --write: re-send the mapping to drafts this script
+ *                       already created (fixes them after a script change);
+ *                       published records are left alone
  *   --server URL        Kotahi server (default https://iplaces-test-server.fly.dev)
  *
  * Safe to re-run: DOIs already imported (import-out/imported-<group>.json)
@@ -75,6 +78,7 @@ const parseArgs = argv => {
     else if (a === '--data-policy') o.dataPolicy = next()
     else if (a === '--license') o.license = next()
     else if (a === '--station-publisher') o.stationPublisher = true
+    else if (a === '--refresh') o.refresh = true
     else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     else if (a === '--only') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
@@ -145,6 +149,19 @@ const SPDX_CASE = Object.fromEntries(
   ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0', 'CC-BY-NC-SA-4.0', 'CC-BY-ND-4.0', 'CC-BY-NC-ND-4.0', 'CC0-1.0'].map(x => [x.toLowerCase(), x]),
 )
 
+// Some old Tetiaroa DOIs list the same person several times (e.g. f3mw27
+// has each Institut Louis Malardé member 2-4 times). Keep the first of each.
+const dedupe = (rows, keyOf) => {
+  const seen = new Set()
+  return rows.filter(r => {
+    const k = keyOf(r)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+const lc = v => str(v).toLowerCase()
+
 /* ---------------- DataCite -> submission ---------------- */
 const mapRecord = (attrs, group, defaults = DEFAULTS) => {
   const warnings = []
@@ -173,6 +190,9 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
       ror: (c.affiliation || []).map(toAffiliation).filter(Boolean),
     })
   }
+  const authorCount = $authors.length
+  $authors.splice(0, $authors.length, ...dedupe($authors, x => `${lc(x.firstName)}|${lc(x.lastName)}`))
+  if ($authors.length < authorCount) warnings.push(`${authorCount - $authors.length} repeated creator(s) dropped`)
   if (!$authors.length) warnings.push('NO AUTHORS: Publish will refuse this record until one is added')
 
   // contributors -> ContributorsInput rows
@@ -198,6 +218,10 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
       }
     })
     .filter(r => (r.organization ? r.organization.label : r.givenName || r.familyName))
+  const contributorCount = contributors.length
+  contributors.splice(0, contributors.length, ...dedupe(contributors, r =>
+    `${r.contributorType}|${r.organization ? lc(r.organization.label) : `${lc(r.givenName)}|${lc(r.familyName)}`}`))
+  if (contributors.length < contributorCount) warnings.push(`${contributorCount - contributors.length} repeated contributor(s) dropped`)
 
   // descriptions -> $abstract (all of them, in order)
   const descs = (a.descriptions || []).filter(d => str(d.description))
@@ -222,8 +246,10 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     warnings.push(`place "${places.join('; ')}" replaced by "${defaults.place}"`)
 
   // related identifiers
-  const relatedIdentifiers = (a.relatedIdentifiers || [])
-    .filter(r => str(r.relatedIdentifier) && r.relatedIdentifierType && r.relationType)
+  const relatedIdentifiers = dedupe(
+    (a.relatedIdentifiers || []).filter(r => str(r.relatedIdentifier) && r.relatedIdentifierType && r.relationType),
+    r => `${lc(r.relatedIdentifier)}|${r.relationType}`,
+  )
     .map(r => ({
       id: uuid(),
       relatedIdentifier: str(r.relatedIdentifier),
@@ -324,7 +350,7 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     ...(subjects.length ? { keywords: subjects.join(', ') } : {}),
     ...(contributors.length ? { contributors } : {}),
     ...(relatedIdentifiers.length ? { relatedIdentifiers } : {}),
-    ...(fundingReferences.length ? { fundingReferences } : {}),
+    ...(fundingReferences.length ? { fundingReferences: dedupe(fundingReferences, f => lc(f.funder.label)) } : {}),
     ...(extraTitles.length ? { titles: extraTitles } : {}),
     ...(altIds.length ? { alternateIdentifiers: altIds } : {}),
     ...(spdx.length || defaults.license ? { license: spdx.length ? spdx : [defaults.license] } : {}),
@@ -427,7 +453,16 @@ const main = async () => {
     fs.writeFileSync(path.join(outDir, 'records', `${doi.replace(/[^a-z0-9.]+/g, '_')}.json`), JSON.stringify({ datacite: at, submission, warnings }, null, 2))
 
     let result = 'dry run'
-    if (state[doi]) {
+    if (state[doi] && o.write && o.refresh) {
+      const cur = (await gql(o, token, `query ($id: ID!) { manuscript(id: $id) { id status } }`, { id: state[doi].id })).manuscript
+      if (!cur) result = `short id ${state[doi].shortId} not found, not refreshed`
+      else if (cur.status === 'published') result = `short id ${state[doi].shortId} is published, not refreshed`
+      else {
+        await gql(o, token, UPDATE, { id: state[doi].id, input: JSON.stringify({ submission }) })
+        result = `refreshed short id ${state[doi].shortId}`
+      }
+      skipped += 1
+    } else if (state[doi]) {
       result = `already imported (short id ${state[doi].shortId})`
       skipped += 1
     } else if (o.write) {
