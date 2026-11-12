@@ -63,7 +63,8 @@ const DEFAULTS = {
   // 9999.9999 is a placeholder. The three Moorea projects belong at Gump, not
   // Bailey (Erin 2026-11-12); import them with --group gumpstation --only ...
   // 31289 "Culture and Education Plan" is not a project to keep (Erin 2026-11-12).
-  skip: ['10.17913/f3/9999.9999', '10.17913/f30592', '10.17913/f33w2k', '10.17913/f3/100501.40152', '10.17913/f3/100501.31289'],
+  // 32394 "Hinano and Frank Murphy to Tetiaroa" is not kept either (Erin 2026-11-12).
+  skip: ['10.17913/f3/9999.9999', '10.17913/f30592', '10.17913/f33w2k', '10.17913/f3/100501.40152', '10.17913/f3/100501.31289', '10.17913/f3/100501.32394'],
   server: 'https://iplaces-test-server.fly.dev',
   // Station defaults for every imported record (Erin 2026-11-12, Tetiaroa):
   topics: ['Research'],
