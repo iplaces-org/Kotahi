@@ -67,3 +67,4 @@ packages/server/scripts/local
 
 # cms-sync drift reports and live CMS copies
 cms-sync-out/
+import-out/
