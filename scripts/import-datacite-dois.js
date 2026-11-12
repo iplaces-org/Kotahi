@@ -31,6 +31,8 @@
  *   --publisher NAME    keep only DOIs with this publisher (default "Tetiaroa Society")
  *   --skip DOI,DOI      leave these out (default 10.17913/f3/9999.9999, a placeholder)
  *   --only DOI ...      import only these DOIs (space or comma separated)
+ *   --topics, --place, --data-policy, --license   station defaults (see DEFAULTS)
+ *   --station-publisher  send the station as publisher instead of DataCite's
  *   --server URL        Kotahi server (default https://iplaces-test-server.fly.dev)
  *
  * Safe to re-run: DOIs already imported (import-out/imported-<group>.json)
@@ -46,8 +48,15 @@ const DEFAULTS = {
   prefix: '10.17913',
   client: 'sjyq.omytlw',
   publisher: 'Tetiaroa Society',
-  skip: ['10.17913/f3/9999.9999'],
+  // 9999.9999 is a placeholder. The three Moorea projects belong at Gump, not
+  // Bailey (Erin 2026-11-12); import them with --group gumpstation --only ...
+  skip: ['10.17913/f3/9999.9999', '10.17913/f30592', '10.17913/f33w2k', '10.17913/f3/100501.40152'],
   server: 'https://iplaces-test-server.fly.dev',
+  // Station defaults for every imported record (Erin 2026-11-12, Tetiaroa):
+  topics: ['Research'],
+  place: 'Tetiʻaroa', // with the ʻeta (U+02BB)
+  dataPolicy: 'yes', // submission.datacode, Field Station Data Policy Agreement
+  license: 'CC-BY-4.0', // used when DataCite has no licence; an existing licence is kept
 }
 
 const parseArgs = argv => {
@@ -61,6 +70,11 @@ const parseArgs = argv => {
     else if (a === '--client') o.client = next()
     else if (a === '--publisher') o.publisher = next()
     else if (a === '--server') o.server = next().replace(/\/$/, '')
+    else if (a === '--topics') o.topics = next().split(',').map(t => t.trim()).filter(Boolean)
+    else if (a === '--place') o.place = next()
+    else if (a === '--data-policy') o.dataPolicy = next()
+    else if (a === '--license') o.license = next()
+    else if (a === '--station-publisher') o.stationPublisher = true
     else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     else if (a === '--only') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
@@ -126,8 +140,13 @@ const rorOfOrg = org => {
   return id ? rorUrl(id.nameIdentifier) : ''
 }
 
+// DataCite lower-cases SPDX ids; the form's Rights options use the SPDX case.
+const SPDX_CASE = Object.fromEntries(
+  ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0', 'CC-BY-NC-SA-4.0', 'CC-BY-ND-4.0', 'CC-BY-NC-ND-4.0', 'CC0-1.0'].map(x => [x.toLowerCase(), x]),
+)
+
 /* ---------------- DataCite -> submission ---------------- */
-const mapRecord = (attrs, group) => {
+const mapRecord = (attrs, group, defaults = DEFAULTS) => {
   const warnings = []
   const a = attrs
 
@@ -199,7 +218,8 @@ const mapRecord = (attrs, group) => {
   const places = (a.geoLocations || []).map(g => str(g.geoLocationPlace)).filter(Boolean)
   if ((a.geoLocations || []).some(g => g.geoLocationPoint || g.geoLocationBox || g.geoLocationPolygon))
     warnings.push('geoLocation points/boxes not carried over (iPlaces sends place names only)')
-  if (places.length > 1) warnings.push(`several places joined into one: ${places.join('; ')}`)
+  if (defaults.place && places.length && places.join('; ') !== defaults.place)
+    warnings.push(`place "${places.join('; ')}" replaced by "${defaults.place}"`)
 
   // related identifiers
   const relatedIdentifiers = (a.relatedIdentifiers || [])
@@ -214,18 +234,27 @@ const mapRecord = (attrs, group) => {
     }))
 
   // funding
-  const fundingReferences = (a.fundingReferences || [])
-    .filter(f => str(f.funderName))
-    .map(f => ({
-      id: uuid(),
-      funder: {
-        label: str(f.funderName),
-        value: (/ror/i.test(str(f.funderIdentifierType)) && rorUrl(f.funderIdentifier)) || rorUrl(f.funderIdentifier) || str(f.funderName),
-      },
-      awardNumber: str(f.awardNumber),
-      awardTitle: str(f.awardTitle),
-      awardUri: str(f.awardUri),
-    }))
+  // "X and Y" in one funderName is two funders (Erin 2026-11-12). The ROR id
+  // goes to the part that names its organisation (Tetiaroa Society), else to
+  // the first part.
+  const fundingReferences = []
+  for (const f of (a.fundingReferences || []).filter(x => str(x.funderName))) {
+    const ror = rorUrl(f.funderIdentifier)
+    const parts = str(f.funderName).split(/\s+(?:and|&)\s+/i).map(x => x.trim()).filter(Boolean)
+    if (parts.length > 1) warnings.push(`funder "${str(f.funderName)}" split into ${parts.map(x => `"${x}"`).join(' + ')}`)
+    const rorOwner = ror && ror.endsWith('04p8xrf95') ? parts.findIndex(x => /tetiaroa society/i.test(x)) : -1
+    parts.forEach((name, k) => {
+      const hasRor = ror && (rorOwner >= 0 ? k === rorOwner : k === 0)
+      fundingReferences.push({
+        id: uuid(),
+        funder: { label: name, value: hasRor ? ror : name },
+        // award details stay with the first funder
+        awardNumber: k === 0 ? str(f.awardNumber) : '',
+        awardTitle: k === 0 ? str(f.awardTitle) : '',
+        awardUri: k === 0 ? str(f.awardUri) : '',
+      })
+    })
+  }
   if ((a.fundingReferences || []).some(f => str(f.funderIdentifier) && !rorUrl(f.funderIdentifier)))
     warnings.push('a non-ROR funder identifier (e.g. Crossref Funder ID) is not carried over')
 
@@ -261,9 +290,11 @@ const mapRecord = (attrs, group) => {
     .filter(r => !LC_RE.test(str(r.rightsUri)))
     .map(r => str(r.rightsIdentifier))
     .filter(id => id && !/local contexts/i.test(id))
+    .map(id => SPDX_CASE[id.toLowerCase()] || id)
   if ((a.rightsList || []).some(r => !LC_RE.test(str(r.rightsUri)) && !str(r.rightsIdentifier)))
     warnings.push('a rights statement without an SPDX id is not carried over')
-  if (!spdx.length && !$localContext) warnings.push('no licence at DataCite; Rights left blank (choose one before publishing, or leave blank)')
+  if (spdx.length && defaults.license && !spdx.some(x => x.toLowerCase() === defaults.license.toLowerCase()))
+    warnings.push(`kept the licence DataCite already has (${spdx.join(', ')}), not ${defaults.license}`)
 
   const subjects = (a.subjects || []).map(s => str(s.subject)).filter(Boolean)
   const altIds = (a.alternateIdentifiers || [])
@@ -282,22 +313,24 @@ const mapRecord = (attrs, group) => {
     ...(a.types && str(a.types.resourceType) && a.types.resourceType !== a.types.resourceTypeGeneral
       ? { ifother: str(a.types.resourceType) }
       : {}),
-    publisher: { label: publisherName, value: publisherRor || publisherName },
+    // --station-publisher: leave publisher empty so the station's own name is sent
+    ...(defaults.stationPublisher ? {} : { publisher: { label: publisherName, value: publisherRor || publisherName } }),
     publicationYear: str(a.publicationYear),
     datePublished,
     ...(coverage ? { coverageDate: str(coverage.date) } : {}),
-    ...(places.length ? { geolocation: places.join('; ') } : {}),
+    geolocation: defaults.place || places.join('; '),
+    topics: defaults.topics || [],
+    ...(defaults.dataPolicy ? { datacode: defaults.dataPolicy } : {}),
     ...(subjects.length ? { keywords: subjects.join(', ') } : {}),
     ...(contributors.length ? { contributors } : {}),
     ...(relatedIdentifiers.length ? { relatedIdentifiers } : {}),
     ...(fundingReferences.length ? { fundingReferences } : {}),
     ...(extraTitles.length ? { titles: extraTitles } : {}),
     ...(altIds.length ? { alternateIdentifiers: altIds } : {}),
-    ...(spdx.length ? { license: spdx.length === 1 ? spdx[0] : spdx } : {}),
+    ...(spdx.length || defaults.license ? { license: spdx.length ? spdx : [defaults.license] } : {}),
     ...($localContext ? { $localContext } : {}),
     ...(str(a.language) ? { language: str(a.language) } : {}),
     ...(str(a.version) ? { version: str(a.version) } : {}),
-    topics: [],
     $importedFrom: {
       source: 'DataCite',
       doi: str(a.doi).toLowerCase(),
@@ -390,7 +423,7 @@ const main = async () => {
   for (const d of wanted) {
     const at = d.attributes
     const doi = str(at.doi).toLowerCase()
-    const { submission, warnings } = mapRecord(at, o.group)
+    const { submission, warnings } = mapRecord(at, o.group, o)
     fs.writeFileSync(path.join(outDir, 'records', `${doi.replace(/[^a-z0-9.]+/g, '_')}.json`), JSON.stringify({ datacite: at, submission, warnings }, null, 2))
 
     let result = 'dry run'
