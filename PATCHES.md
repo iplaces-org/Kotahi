@@ -685,3 +685,22 @@ Checkboxes) or, for older records, one string. Both are read the same way.
 Form: change the License field from Dropdown selection to Checkboxes, and turn
 existing string values into one-element arrays (a string value shows ticked but
 is lost on the next click). SQL in the PR description.
+
+## Patch 40 — Publish keeps a record's own DOI (2026-11-12)
+
+Before: Publish built the DOI as `<station prefix>/<suffix of $doi>`, so a
+record that already had a DOI under another prefix got a second DOI. The
+Gump migration minted `10.60950/100501.9190` next to `10.17913/100501.9190`
+this way, by mistake.
+
+Now (`resolveRecordDoi` in `services/publishing/datacite/index.js`, used by
+Publish and Reserve DOI): on real DOIs, if `submission.$doi` already exists at
+DataCite **and** belongs to the station's repository (its DataCite client id is
+the station's login), that DOI is used as it is, prefix included, and updated in
+place. No `$doi`, test mode, a DOI of another repository, or a DOI not yet at
+DataCite: unchanged behaviour (station prefix + suffix). The server log says
+`keepOwnDoi: using the record's own DOI ...` when it applies.
+
+Before deploying, check that no live record still holds an old-prefix `$doi`
+that it was republished away from (that record would then update the old DOI
+and leave its 10.60950 DOI as it is). SQL in the PR description.
