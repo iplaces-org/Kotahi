@@ -1,0 +1,398 @@
+#!/usr/bin/env node
+/* iplaces: import existing DataCite DOIs as draft records in one station.
+ *
+ * Written for the Tetiaroa Society DOIs (prefix 10.17913, publisher
+ * "Tetiaroa Society", in the iPlaces DataCite repository SJYQ.OMYTLW) going
+ * into the baileystation group, but works for any prefix/publisher/group.
+ *
+ * What it does:
+ *   1. Lists the DOIs at DataCite (public REST API, no login).
+ *   2. Maps each one onto the iPlaces form fields, keeping the same DOI in
+ *      submission.$doi so that Publish later UPDATES that DOI in place
+ *      (new landing URL + metadata from iPlaces) instead of minting a new one.
+ *   3. --write: creates each record as an unsubmitted draft in the group
+ *      (createManuscript). Nothing is published and DataCite is NOT touched.
+ *
+ * DataCite is only changed later, when a record is published (Publish
+ * button, or server-fix/scripts/republish.sh <group> --first <shortId>...).
+ * For that the group's DataCite settings must use the repository that owns
+ * the DOIs and the DOI's own prefix (10.17913), because Kotahi builds the
+ * DOI as <configured prefix>/<suffix of $doi>.
+ *
+ * Usage (from ~/Kotahi):
+ *   node scripts/import-datacite-dois.js                 dry run: writes import-out/<time>/ report, creates nothing
+ *   node scripts/import-datacite-dois.js --write         create the drafts (needs KOTAHI_TOKEN)
+ *   node scripts/import-datacite-dois.js --write --only 10.17913/f3g6g ...   just these DOIs
+ *
+ * Options:
+ *   --group NAME        target group (default baileystation)
+ *   --prefix P          DOI prefix (default 10.17913)
+ *   --client ID         DataCite repository id (default sjyq.omytlw)
+ *   --publisher NAME    keep only DOIs with this publisher (default "Tetiaroa Society")
+ *   --skip DOI,DOI      leave these out (default 10.17913/f3/9999.9999, a placeholder)
+ *   --only DOI ...      import only these DOIs (space or comma separated)
+ *   --server URL        Kotahi server (default https://iplaces-test-server.fly.dev)
+ *
+ * Safe to re-run: DOIs already imported (import-out/imported-<group>.json)
+ * are skipped. Requires Node 18+.
+ */
+/* eslint-disable no-console, no-await-in-loop, no-restricted-syntax */
+const crypto = require('crypto')
+const fs = require('fs')
+const path = require('path')
+
+const DEFAULTS = {
+  group: 'baileystation',
+  prefix: '10.17913',
+  client: 'sjyq.omytlw',
+  publisher: 'Tetiaroa Society',
+  skip: ['10.17913/f3/9999.9999'],
+  server: 'https://iplaces-test-server.fly.dev',
+}
+
+const parseArgs = argv => {
+  const o = { ...DEFAULTS, write: false, only: [] }
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i]
+    const next = () => argv[++i] // eslint-disable-line no-plusplus
+    if (a === '--write') o.write = true
+    else if (a === '--group') o.group = next()
+    else if (a === '--prefix') o.prefix = next()
+    else if (a === '--client') o.client = next()
+    else if (a === '--publisher') o.publisher = next()
+    else if (a === '--server') o.server = next().replace(/\/$/, '')
+    else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    else if (a === '--only') {
+      while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
+    } else throw new Error(`unknown option ${a}`)
+  }
+  o.only = o.only.map(s => s.trim().toLowerCase()).filter(Boolean)
+  o.skip = o.skip.map(s => s.toLowerCase())
+  return o
+}
+
+/* ---------------- helpers ---------------- */
+const uuid = () => crypto.randomUUID()
+const str = v => (v == null ? '' : String(v)).trim()
+const escapeHtml = s =>
+  str(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// DataCite descriptions are plain text; keep paragraph breaks.
+const toParagraphs = text =>
+  str(text)
+    .split(/\n\s*\n/)
+    .map(p => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map(p => `<p class="paragraph">${escapeHtml(p)}</p>`)
+    .join('')
+const bareOrcid = s => str(s).replace(/^https?:\/\/orcid\.org\//i, '')
+const rorUrl = s => {
+  const v = str(s)
+  if (!v) return ''
+  if (/ror\.org\//i.test(v)) return v.replace(/^http:/i, 'https:')
+  if (/^0[a-z0-9]{8}$/i.test(v)) return `https://ror.org/${v}`
+  return ''
+}
+
+const splitName = name => {
+  const n = str(name)
+  if (!n) return { firstName: '', lastName: '' }
+  if (n.includes(',')) {
+    const [last, ...first] = n.split(',')
+    return { firstName: first.join(',').trim(), lastName: last.trim() }
+  }
+  const parts = n.split(/\s+/)
+  if (parts.length === 1) return { firstName: '', lastName: parts[0] }
+  return { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] }
+}
+
+// DataCite affiliation (string or {name, affiliationIdentifier}) -> form {label, value}
+const toAffiliation = a => {
+  if (!a) return null
+  if (typeof a === 'string') return { label: a.trim(), value: a.trim() }
+  const label = str(a.name)
+  if (!label) return null
+  const ror = /ror/i.test(str(a.affiliationIdentifierScheme)) ? rorUrl(a.affiliationIdentifier) : rorUrl(a.affiliationIdentifier)
+  return { label, value: ror || label }
+}
+
+const orcidOf = person =>
+  bareOrcid(
+    ((person.nameIdentifiers || []).find(n => /orcid/i.test(str(n.nameIdentifierScheme))) || {})
+      .nameIdentifier,
+  )
+
+const rorOfOrg = org => {
+  const id = (org.nameIdentifiers || []).find(n => /ror/i.test(str(n.nameIdentifierScheme)))
+  return id ? rorUrl(id.nameIdentifier) : ''
+}
+
+/* ---------------- DataCite -> submission ---------------- */
+const mapRecord = (attrs, group) => {
+  const warnings = []
+  const a = attrs
+
+  // creators -> $authors (people). Kotahi's serializer needs a first AND last
+  // name for every author, or Publish fails, so anything else is reported.
+  const $authors = []
+  for (const c of a.creators || []) {
+    const organizational = str(c.nameType) === 'Organizational'
+    let firstName = str(c.givenName)
+    let lastName = str(c.familyName)
+    if (!firstName && !lastName && !organizational) ({ firstName, lastName } = splitName(c.name))
+    if (organizational || !firstName || !lastName) {
+      warnings.push(`creator "${str(c.name)}" left out (${organizational ? 'organisation' : 'no first + last name'}); Publish needs both names`)
+      continue
+    }
+    $authors.push({
+      id: uuid(),
+      firstName,
+      middleName: '',
+      lastName,
+      email: '',
+      orcid: orcidOf(c),
+      ror: (c.affiliation || []).map(toAffiliation).filter(Boolean),
+    })
+  }
+  if (!$authors.length) warnings.push('NO AUTHORS: Publish will refuse this record until one is added')
+
+  // contributors -> ContributorsInput rows
+  const contributors = (a.contributors || [])
+    .map(c => {
+      const contributorType = str(c.contributorType) || 'Other'
+      if (str(c.nameType) === 'Organizational' || (!c.givenName && !c.familyName && c.nameType !== 'Personal')) {
+        const affil = (c.affiliation || []).map(toAffiliation).filter(Boolean)[0]
+        const value = rorOfOrg(c) || (affil && affil.label === str(c.name) ? affil.value : '') || str(c.name)
+        return { id: uuid(), contributorType, nameType: 'Organizational', organization: { label: str(c.name), value } }
+      }
+      let givenName = str(c.givenName)
+      let familyName = str(c.familyName)
+      if (!givenName && !familyName) ({ firstName: givenName, lastName: familyName } = splitName(c.name))
+      return {
+        id: uuid(),
+        contributorType,
+        nameType: 'Personal',
+        givenName,
+        familyName,
+        orcid: orcidOf(c),
+        affiliation: (c.affiliation || []).map(toAffiliation).filter(Boolean),
+      }
+    })
+    .filter(r => (r.organization ? r.organization.label : r.givenName || r.familyName))
+
+  // descriptions -> $abstract (all of them, in order)
+  const descs = (a.descriptions || []).filter(d => str(d.description))
+  const $abstract = descs.map(d => toParagraphs(d.description)).join('')
+  if (descs.some(d => str(d.descriptionType) && !/abstract/i.test(d.descriptionType)))
+    warnings.push(`description type ${[...new Set(descs.map(d => d.descriptionType))].join('/')} will be sent as Abstract`)
+
+  // dates
+  const dates = a.dates || []
+  const issued = dates.find(d => /issued/i.test(str(d.dateType)))
+  const isoish = v => (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(str(v)) ? str(v) : '')
+  const datePublished = isoish(issued && issued.date) || str(a.publicationYear)
+  const coverage = dates.find(d => /coverage/i.test(str(d.dateType)))
+  const dropped = dates.filter(d => !/issued|coverage/i.test(str(d.dateType)))
+  if (dropped.length) warnings.push(`dates not carried over: ${dropped.map(d => `${d.dateType} ${d.date}`).join(', ')}`)
+
+  // geolocation (place names only; iPlaces sends geoLocationPlace)
+  const places = (a.geoLocations || []).map(g => str(g.geoLocationPlace)).filter(Boolean)
+  if ((a.geoLocations || []).some(g => g.geoLocationPoint || g.geoLocationBox || g.geoLocationPolygon))
+    warnings.push('geoLocation points/boxes not carried over (iPlaces sends place names only)')
+  if (places.length > 1) warnings.push(`several places joined into one: ${places.join('; ')}`)
+
+  // related identifiers
+  const relatedIdentifiers = (a.relatedIdentifiers || [])
+    .filter(r => str(r.relatedIdentifier) && r.relatedIdentifierType && r.relationType)
+    .map(r => ({
+      id: uuid(),
+      relatedIdentifier: str(r.relatedIdentifier),
+      relatedIdentifierType: r.relatedIdentifierType,
+      relationType: r.relationType,
+      ...(r.resourceTypeGeneral ? { resourceTypeGeneral: r.resourceTypeGeneral } : {}),
+      ...(r.relationTypeInformation ? { relationTypeInformation: r.relationTypeInformation } : {}),
+    }))
+
+  // funding
+  const fundingReferences = (a.fundingReferences || [])
+    .filter(f => str(f.funderName))
+    .map(f => ({
+      id: uuid(),
+      funder: {
+        label: str(f.funderName),
+        value: (/ror/i.test(str(f.funderIdentifierType)) && rorUrl(f.funderIdentifier)) || rorUrl(f.funderIdentifier) || str(f.funderName),
+      },
+      awardNumber: str(f.awardNumber),
+      awardTitle: str(f.awardTitle),
+      awardUri: str(f.awardUri),
+    }))
+  if ((a.fundingReferences || []).some(f => str(f.funderIdentifier) && !rorUrl(f.funderIdentifier)))
+    warnings.push('a non-ROR funder identifier (e.g. Crossref Funder ID) is not carried over')
+
+  // titles
+  const titles = a.titles || []
+  const main = titles.find(t => !t.titleType) || titles[0] || {}
+  const extraTitles = titles
+    .filter(t => t !== main && str(t.title))
+    .map(t => ({ id: uuid(), title: str(t.title), titleType: t.titleType || 'AlternativeTitle', lang: str(t.lang) }))
+
+  // rights: only SPDX identifiers map onto the licence field; never invent one
+  const spdx = (a.rightsList || []).map(r => str(r.rightsIdentifier)).filter(id => id && !/local contexts/i.test(id))
+  if ((a.rightsList || []).length && !spdx.length) warnings.push('rights statement without an SPDX id not carried over')
+  if (!(a.rightsList || []).length) warnings.push('no licence at DataCite; Rights left blank (choose one before publishing, or leave blank)')
+
+  const subjects = (a.subjects || []).map(s => str(s.subject)).filter(Boolean)
+  const altIds = (a.alternateIdentifiers || [])
+    .filter(x => str(x.alternateIdentifier))
+    .map(x => ({ id: uuid(), alternateIdentifier: str(x.alternateIdentifier), alternateIdentifierType: str(x.alternateIdentifierType) }))
+
+  const publisherName = typeof a.publisher === 'object' && a.publisher ? str(a.publisher.name) : str(a.publisher)
+  const publisherRor = typeof a.publisher === 'object' && a.publisher ? rorUrl(a.publisher.publisherIdentifier) : ''
+
+  const submission = {
+    $title: str(main.title),
+    $abstract,
+    $authors,
+    $doi: str(a.doi).toLowerCase(),
+    resourcetype: str(a.types && a.types.resourceTypeGeneral) || 'Other',
+    ...(a.types && str(a.types.resourceType) && a.types.resourceType !== a.types.resourceTypeGeneral
+      ? { ifother: str(a.types.resourceType) }
+      : {}),
+    publisher: { label: publisherName, value: publisherRor || publisherName },
+    publicationYear: str(a.publicationYear),
+    datePublished,
+    ...(coverage ? { coverageDate: str(coverage.date) } : {}),
+    ...(places.length ? { geolocation: places.join('; ') } : {}),
+    ...(subjects.length ? { keywords: subjects.join(', ') } : {}),
+    ...(contributors.length ? { contributors } : {}),
+    ...(relatedIdentifiers.length ? { relatedIdentifiers } : {}),
+    ...(fundingReferences.length ? { fundingReferences } : {}),
+    ...(extraTitles.length ? { titles: extraTitles } : {}),
+    ...(altIds.length ? { alternateIdentifiers: altIds } : {}),
+    ...(spdx.length ? { license: spdx.length === 1 ? spdx[0] : spdx } : {}),
+    ...(str(a.language) ? { language: str(a.language) } : {}),
+    ...(str(a.version) ? { version: str(a.version) } : {}),
+    topics: [],
+    $importedFrom: {
+      source: 'DataCite',
+      doi: str(a.doi).toLowerCase(),
+      previousUrl: str(a.url),
+      registered: str(a.registered),
+      group,
+    },
+  }
+
+  if (!submission.$title) warnings.push('NO TITLE')
+  return { submission, warnings }
+}
+
+/* ---------------- network ---------------- */
+const getJson = async (url, opts = {}) => {
+  const r = await fetch(url, { ...opts, headers: { Accept: 'application/vnd.api+json', ...(opts.headers || {}) } })
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`)
+  return r.json()
+}
+
+const listDois = async o => {
+  const out = []
+  let url =
+    `https://api.datacite.org/dois?client-id=${encodeURIComponent(o.client)}` +
+    `&prefix=${encodeURIComponent(o.prefix)}&affiliation=true&publisher=true` +
+    `&page[size]=100&page[number]=1`
+  while (url) {
+    const page = await getJson(url)
+    out.push(...page.data)
+    url = page.links && page.links.next
+  }
+  return out
+}
+
+const gql = async (o, token, query, variables) => {
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  if (o.groupId) headers['group-id'] = o.groupId
+  const r = await fetch(`${o.server}/graphql`, { method: 'POST', headers, body: JSON.stringify({ query, variables }) })
+  const json = await r.json()
+  if (json.errors) throw new Error(`GraphQL: ${json.errors.map(e => e.message).join('; ')}`)
+  return json.data
+}
+
+const CREATE = `mutation ($input: ManuscriptInput) { createManuscript(input: $input) { id shortId } }`
+
+/* ---------------- main ---------------- */
+const main = async () => {
+  const o = parseArgs(process.argv.slice(2))
+  const token = process.env.KOTAHI_TOKEN
+  if (o.write && !token) throw new Error('--write needs KOTAHI_TOKEN (see cms-sync: copy(localStorage.getItem("token")) in the browser console)')
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const outDir = path.join('import-out', stamp)
+  fs.mkdirSync(path.join(outDir, 'records'), { recursive: true })
+  const statePath = path.join('import-out', `imported-${o.group}.json`)
+  const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : {}
+
+  const { groups } = await gql(o, null, '{ groups { id name } }')
+  const group = groups.find(g => g && g.name === o.group)
+  if (!group) throw new Error(`no group "${o.group}" on ${o.server}`)
+  o.groupId = group.id
+
+  console.log(`DataCite: repository ${o.client}, prefix ${o.prefix}, publisher "${o.publisher}"`)
+  const all = await listDois(o)
+  const wanted = all.filter(d => {
+    const at = d.attributes
+    const pub = typeof at.publisher === 'object' && at.publisher ? at.publisher.name : at.publisher
+    const doi = str(at.doi).toLowerCase()
+    if (o.only.length) return o.only.includes(doi)
+    return str(pub) === o.publisher && !o.skip.includes(doi)
+  })
+  const otherPublishers = {}
+  for (const d of all) {
+    const at = d.attributes
+    const pub = str(typeof at.publisher === 'object' && at.publisher ? at.publisher.name : at.publisher)
+    if (pub !== o.publisher) otherPublishers[pub] = (otherPublishers[pub] || 0) + 1
+  }
+  console.log(`${all.length} DOIs under ${o.prefix}; ${wanted.length} to import into ${o.group}` +
+    (Object.keys(otherPublishers).length ? ` (left out, other publishers: ${Object.entries(otherPublishers).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''))
+
+  const rows = [['doi', 'title', 'year', 'type', 'authors', 'current_url', 'state', 'result', 'warnings']]
+  let created = 0
+  let skipped = 0
+  for (const d of wanted) {
+    const at = d.attributes
+    const doi = str(at.doi).toLowerCase()
+    const { submission, warnings } = mapRecord(at, o.group)
+    fs.writeFileSync(path.join(outDir, 'records', `${doi.replace(/[^a-z0-9.]+/g, '_')}.json`), JSON.stringify({ datacite: at, submission, warnings }, null, 2))
+
+    let result = 'dry run'
+    if (state[doi]) {
+      result = `already imported (short id ${state[doi].shortId})`
+      skipped += 1
+    } else if (o.write) {
+      const input = { groupId: group.id, submission: JSON.stringify(submission), meta: { source: '' }, files: [] }
+      const m = (await gql(o, token, CREATE, { input })).createManuscript
+      state[doi] = { id: m.id, shortId: m.shortId, title: submission.$title, at: new Date().toISOString() }
+      fs.writeFileSync(statePath, JSON.stringify(state, null, 2))
+      result = `created short id ${m.shortId}`
+      created += 1
+    }
+    console.log(`${doi}  ${result}${warnings.length ? `  (${warnings.length} warning${warnings.length > 1 ? 's' : ''})` : ''}`)
+    rows.push([doi, submission.$title, submission.publicationYear, submission.resourcetype, submission.$authors.length, at.url, at.state, result, warnings.join(' | ')])
+  }
+
+  const csv = rows.map(r => r.map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  fs.writeFileSync(path.join(outDir, 'report.csv'), `${csv}\n`)
+  const shortIds = Object.values(state).map(s => s.shortId).sort((x, y) => x - y)
+  console.log(`\nreport: ${path.join(outDir, 'report.csv')}  (mapped records in ${path.join(outDir, 'records')})`)
+  if (o.write) {
+    console.log(`created ${created}, already there ${skipped}. Imported short ids in ${o.group}: ${shortIds.join(' ')}`)
+    console.log('Nothing is published and DataCite is unchanged.')
+  } else console.log('DRY RUN: nothing created. Re-run with --write to create the drafts.')
+}
+
+if (require.main === module) {
+  main().catch(e => {
+    console.error(`IMPORT FAILED: ${e.message}`)
+    process.exit(1)
+  })
+}
+
+module.exports = { mapRecord, splitName, parseArgs }
