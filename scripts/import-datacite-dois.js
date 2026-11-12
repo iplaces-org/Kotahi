@@ -165,9 +165,15 @@ const tidyCase = v => {
   return t.toLowerCase().replace(/(^|[\s\-'’.])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase())
 }
 const nameKey = (first, last) =>
-  `${first} ${last}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim()
+  `${first} ${last}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]+/g, '') // "Jean Yves"/"Jean-Yves", "DeVore"/"De Vore" match
 const looksLikeEmail = (...parts) => parts.some(x => /@|\.(fr|com|org|net|edu|pf)\b/i.test(str(x)))
-// Organisations that the old system typed as people
+// Known bad names in the old records -> the real name (Erin 2026-11-12)
+const NAME_FIXES = {
+  'gachecamille|hotmail.fr': { firstName: 'Camille', lastName: 'Gache' }, // 10.17913/f3/100501.32207
+  'guillaume.molle|upf.pf': { firstName: 'Guillaume', lastName: 'Molle' }, // 10.17913/f3/100501.30664
+}
+// Organisations or titles that the old system typed as people
+// ("Te Mana O Te Moana" is a title, Erin 2026-11-12)
 const ORG_AS_PERSON = /\b(te mana o te moana|society|association|institut|institute|university|universit[eé]|station|ecostation|foundation|fondation|ministry|minist[eè]re|group|team)\b/i
 
 const orcidOf = person =>
@@ -225,10 +231,15 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     const fullName = str(c.name) || `${lastName}, ${firstName}`
     if (/^group,?$/i.test(fullName)) continue // placeholder creator in the old Tetiaroa records
     if (typedOrg || (!isCreator && !c.givenName && !c.familyName && str(c.nameType) !== 'Personal') || ORG_AS_PERSON.test(fullName)) {
-      if (!typedOrg) warnings.push(`"${fullName}" (${from}) is an organisation typed as a person; not made a creator`)
+      if (!typedOrg) warnings.push(`"${fullName}" (${from}) is an organisation or title typed as a person; not made a creator`)
       else if (isCreator) warnings.push(`organisation creator "${fullName}" left out`)
       else orgContributors.push(c)
       continue
+    }
+    const fix = NAME_FIXES[`${lc(firstName)}|${lc(lastName)}`]
+    if (fix) {
+      warnings.push(`name fixed: "${fullName}" -> "${fix.lastName}, ${fix.firstName}"`)
+      ;({ firstName, lastName } = fix)
     }
     if (looksLikeEmail(firstName, lastName)) {
       warnings.push(`NAME LOOKS LIKE AN EMAIL: "${fullName}" (${from}) left out; add this person by hand`)
@@ -521,11 +532,12 @@ const writeAnalysis = (outDir, mapped) => {
   const kinds = [
     ['Names that look like an email (left out, add by hand)', /^NAME LOOKS LIKE AN EMAIL/],
     ['Records with no person as creator', /^NO AUTHORS/],
-    ['Organisations typed as people (not creators)', /typed as a person/],
+    ['Organisations or titles typed as people (not creators)', /typed as a person/],
     ['Organisation creators left out', /^organisation creator/],
     ['People left out (no first + last name)', /left out \(no first/],
     ['ORCIDs added from another DOI with the same name', /^ORCID .* added/],
     ['Same name, several ORCIDs (none added)', /several ORCIDs/],
+    ['Names fixed by hand rule', /^name fixed/],
     ['Name capitals fixed', /^name case fixed/],
     ['People moved from contributors to creators', /moved from contributors/],
     ['Repeated people dropped', /repeated person/],
@@ -553,8 +565,8 @@ const writeAnalysis = (outDir, mapped) => {
   const noOrcid = [...people.values()].filter(e => !e.orcid).sort((p1, p2) => p2.dois.length - p1.dois.length)
   const bySurname = new Map()
   for (const e of people.values()) {
-    const parts = nameKey(...e.name.split(/ (?=[^ ]+$)/)).split(' ')
-    const k = `${parts[parts.length - 1]}|${parts[0][0]}`
+    const [first, last] = e.name.split(/ (?=[^ ]+$)/)
+    const k = `${nameKey('', last)}|${nameKey(first, '')[0]}`
     bySurname.set(k, [...(bySurname.get(k) || []), e])
   }
   const variants = [...bySurname.values()].filter(v => v.length > 1)
