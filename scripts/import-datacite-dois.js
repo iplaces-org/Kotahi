@@ -385,6 +385,12 @@ const main = async () => {
   if (o.write) {
     console.log(`created ${created}, already there ${skipped}. Imported short ids in ${o.group}: ${shortIds.join(' ')}`)
     console.log('Nothing is published and DataCite is unchanged.')
+    if (shortIds.length) {
+      console.log('\nTo publish the first one later (changes its real DOI):')
+      console.log(`bash server-fix/scripts/republish.sh ${o.group} --first ${shortIds[0]}`)
+      for (let k = 1; k < shortIds.length; k += 10)
+        console.log(`then: bash server-fix/scripts/republish.sh ${o.group} --first ${shortIds.slice(k, k + 10).join(' ')}`)
+    }
   } else console.log('DRY RUN: nothing created. Re-run with --write to create the drafts.')
 }
 
