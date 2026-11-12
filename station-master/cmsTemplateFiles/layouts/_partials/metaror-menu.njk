@@ -208,7 +208,8 @@
     width: 100%;
     justify-content: flex-end;
     padding: 10px 20px;
-    background: rgb(4, 112, 192);
+    /* iPlaces: header strip uses the station's theme colour (CMS > Layout) */
+    background: {{ cmsLayout.primaryColor or '#0470c0' }};
     color: #fff;
     transition: all 0.3s;
     height: 34px;
@@ -259,7 +260,7 @@
 
     #sticky-menu {
       height: 60px;
-      background: #0470c0 !important;
+      background: {{ cmsLayout.primaryColor or '#0470c0' }} !important;
       padding-left: 0 !important;
     }
 
@@ -397,6 +398,33 @@
 
 .logo img{
   max-width: 75%;
+}
+
+/* ---- iPlaces: cleaner header, closer to the Alliance home page -------- *
+   A thin accent line in the station colour replaces the tall empty strip,
+   the menu bar gets a hairline instead of a heavy band, and the menu links
+   are smaller and quieter, underlining in the station colour on hover. */
+#topbar {
+  height: 5px;
+  max-height: 5px;
+  padding: 0 !important;
+}
+#sticky-menu {
+  min-height: 76px;
+  border-bottom: 1px solid #e3e2da;
+}
+#sticky-menu nav a,
+#sticky-menu nav .link > label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #2b2d27;
+}
+#sticky-menu nav a::before {
+  background-color: {{ cmsLayout.primaryColor or '#0470c0' }};
+}
+#sticky-menu nav a:hover {
+  color: {{ cmsLayout.primaryColor or '#0470c0' }};
 }
 </style>
 

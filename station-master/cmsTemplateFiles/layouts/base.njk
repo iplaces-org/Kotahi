@@ -222,6 +222,32 @@
             <link rel="stylesheet" href="/{% if cmsLayout.hexCode %}{{cmsLayout.hexCode}}/{% endif %}assets/css/main.css?{{ [1,2,3,4,5,6,7,8,9] | random }}{{ [1,2,3,4,5,6,7,8,9] | random }}{{ [1,2,3,4,5,6,7,8,9] | random }}">
         {% endblock %}
 
+        {# iPlaces: same typeface as the Alliance home page (Libre Franklin).
+           Loaded after main.css so it wins over the theme's Noto/Georgia. #}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&display=swap" rel="stylesheet">
+        <style>
+          :root {
+            --iplaces-font: 'Libre Franklin', Helvetica, Arial, sans-serif;
+            --font-sans: var(--iplaces-font);
+            --font-serif: var(--iplaces-font);
+            --font-deco: var(--iplaces-font);
+            --font-title: var(--iplaces-font);
+            --font-body: var(--iplaces-font);
+            --font-meta: var(--iplaces-font);
+            --font-content: var(--iplaces-font);
+            --font-interface: var(--iplaces-font);
+          }
+          /* Many station templates hard-code Georgia; override text elements
+             but leave code, maths and monospaced DOI values alone. */
+          body,
+          body :where(h1, h2, h3, h4, h5, h6, p, li, a, span, div, nav, header, footer, section, article, aside, main,
+            button, input, select, textarea, label, summary, figcaption, blockquote, td, th, dt, dd, small, strong, em, b, i, cite):not(.dc-rev-dvals):not(.dc-rev-dvals *) {
+            font-family: var(--iplaces-font) !important;
+          }
+        </style>
+
     </head>
     <body class="{{class}} {% block bodyclass %}{% endblock %}">
 
