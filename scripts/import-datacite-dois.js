@@ -10,6 +10,13 @@
  *   2. Maps each one onto the iPlaces form fields, keeping the same DOI in
  *      submission.$doi so that Publish later UPDATES that DOI in place
  *      (new landing URL + metadata from iPlaces) instead of minting a new one.
+ *      On baileystation every person (creators and Personal contributors) is
+ *      a creator, the only contributor is Bailey Station (Tetiaroa Society
+ *      ROR) and the publisher is "Bailey Station" (STATIONS below). Missing
+ *      ORCIDs are filled from another iPlaces DOI with exactly the same name
+ *      (Gump's 10.60950 records included); ALL-CAPS / lower-case names are
+ *      tidied. Every run writes analysis.txt listing what was changed or
+ *      needs a look.
  *   3. --write: creates each record as an unsubmitted draft in the group
  *      (createSubmission + updateManuscript, like the New submission page). Nothing is published and DataCite is NOT touched.
  *
@@ -33,6 +40,11 @@
  *   --only DOI ...      import only these DOIs (space or comma separated)
  *   --topics, --place, --data-policy, --license   station defaults (see DEFAULTS)
  *   --station-publisher  send the station as publisher instead of DataCite's
+ *   --orcids FILE       ORCIDs to add: the CSV from scripts/orcid-lookup.js;
+ *                       only rows with use = yes are used
+ *   --refresh           with --write: re-send the mapping to drafts this script
+ *                       already created (fixes them after a script change);
+ *                       published records are left alone
  *   --server URL        Kotahi server (default https://iplaces-test-server.fly.dev)
  *
  * Safe to re-run: DOIs already imported (import-out/imported-<group>.json)
@@ -59,6 +71,22 @@ const DEFAULTS = {
   license: 'CC-BY-4.0', // used when DataCite has no licence; an existing licence is kept
 }
 
+// Per-station publisher and contributor (Erin 2026-11-12): on Bailey every
+// imported record gets publisher "Bailey Station" and ONE organisational
+// contributor, Bailey Station with the Tetiaroa Society ROR; every person is
+// a creator. Other organisational contributors (Tetiaroa Society Ecostation,
+// UC Berkeley, ...) are replaced and listed in analysis.txt.
+const STATIONS = {
+  baileystation: {
+    publisher: { label: 'Bailey Station', value: 'https://ror.org/04p8xrf95' },
+    contributor: { name: 'Bailey Station', ror: 'https://ror.org/04p8xrf95', type: 'Sponsor' },
+  },
+}
+// Where to look for ORCIDs of people whose old DOI has none: every DOI in
+// the iPlaces repository under these prefixes (Gump's published records are
+// under 10.60950). Only an exact full-name match with ONE ORCID is used.
+const ORCID_PREFIXES = ['10.17913', '10.60950']
+
 const parseArgs = argv => {
   const o = { ...DEFAULTS, write: false, only: [] }
   for (let i = 0; i < argv.length; i += 1) {
@@ -75,6 +103,8 @@ const parseArgs = argv => {
     else if (a === '--data-policy') o.dataPolicy = next()
     else if (a === '--license') o.license = next()
     else if (a === '--station-publisher') o.stationPublisher = true
+    else if (a === '--refresh') o.refresh = true
+    else if (a === '--orcids') o.orcidsFile = next()
     else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     else if (a === '--only') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
@@ -129,6 +159,33 @@ const toAffiliation = a => {
   return { label, value: ror || label }
 }
 
+// "BOSSIN" -> "Bossin", "eric" -> "Eric", "MATHIEU-DAUDE" -> "Mathieu-Daude".
+// Only a name part that is ALL capitals or all lower case is changed.
+const tidyCase = v => {
+  const t = str(v)
+  if (!/\p{L}/u.test(t) || (t !== t.toUpperCase() && t !== t.toLowerCase())) return t
+  if (t.length <= 2 && t === t.toUpperCase()) return t // initials such as "JM"
+  return t.toLowerCase().replace(/(^|[\s\-'’.])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase())
+}
+const nameKey = (first, last) =>
+  `${first} ${last}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]+/g, '') // "Jean Yves"/"Jean-Yves", "DeVore"/"De Vore" match
+const looksLikeEmail = (...parts) => parts.some(x => /@|\.(fr|com|org|net|edu|pf)\b/i.test(str(x)))
+// Known bad names in the old records -> the real name (Erin 2026-11-12)
+const NAME_FIXES = {
+  'gachecamille|hotmail.fr': { firstName: 'Camille', lastName: 'Gache' }, // 10.17913/f3/100501.32207
+  'guillaume.molle|upf.pf': { firstName: 'Guillaume', lastName: 'Molle' }, // 10.17913/f3/100501.30664
+  // Tetiaroa Society's own site spells it Marijn Van der Helm (Erin 2026-11-12)
+  'martijn|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 36094
+  'martin|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 33746
+  // Erin 2026-11-12
+  'araceli|samaniego': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 36429
+  'araceli|samaniego-herrera': { firstName: 'Araceli', lastName: 'Samaniego Herrera', orcid: '0000-0001-7182-3790' }, // 33958
+  'jael|galichet': { firstName: 'Jaël', lastName: 'Galichet' }, // 45460
+}
+// Organisations or titles that the old system typed as people
+// ("Te Mana O Te Moana" is a title, Erin 2026-11-12)
+const ORG_AS_PERSON = /\b(te mana o te moana|society|association|institut|institute|university|universit[eé]|station|ecostation|foundation|fondation|ministry|minist[eè]re|group|team)\b/i
+
 const orcidOf = person =>
   bareOrcid(
     ((person.nameIdentifiers || []).find(n => /orcid/i.test(str(n.nameIdentifierScheme))) || {})
@@ -145,59 +202,125 @@ const SPDX_CASE = Object.fromEntries(
   ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0', 'CC-BY-NC-SA-4.0', 'CC-BY-ND-4.0', 'CC-BY-NC-ND-4.0', 'CC0-1.0'].map(x => [x.toLowerCase(), x]),
 )
 
+// Some old Tetiaroa DOIs list the same person several times (e.g. f3mw27
+// has each Institut Louis Malardé member 2-4 times). Keep the first of each.
+const dedupe = (rows, keyOf) => {
+  const seen = new Set()
+  return rows.filter(r => {
+    const k = keyOf(r)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+const lc = v => str(v).toLowerCase()
+
 /* ---------------- DataCite -> submission ---------------- */
 const mapRecord = (attrs, group, defaults = DEFAULTS) => {
   const warnings = []
   const a = attrs
 
-  // creators -> $authors (people). Kotahi's serializer needs a first AND last
-  // name for every author, or Publish fails, so anything else is reported.
+  // People -> $authors. Every person is a creator (Erin 2026-11-12): the
+  // DataCite creators first, then every Personal contributor (ProjectLeader,
+  // ProjectMember, ...). Kotahi's serializer needs a first AND last name for
+  // every author, or Publish fails, so anything else is reported.
+  const station = STATIONS[group] || null
+  const people = [
+    ...(a.creators || []).map(c => ({ c, from: 'creator' })),
+    ...(a.contributors || []).map(c => ({ c, from: `contributor (${str(c.contributorType) || 'no role'})` })),
+  ]
   const $authors = []
-  for (const c of a.creators || []) {
-    const organizational = str(c.nameType) === 'Organizational'
+  const orgContributors = []
+  let fromContributors = 0
+  for (const { c, from } of people) {
+    const isCreator = from === 'creator'
     let firstName = str(c.givenName)
     let lastName = str(c.familyName)
-    if (!firstName && !lastName && !organizational) ({ firstName, lastName } = splitName(c.name))
-    if (organizational || !firstName || !lastName) {
-      if (/^group,?$/i.test(str(c.name))) continue // placeholder creator in the old Tetiaroa records
-      warnings.push(`creator "${str(c.name)}" left out (${organizational ? 'organisation' : 'no first + last name'}); Publish needs both names`)
+    const typedOrg = str(c.nameType) === 'Organizational'
+    if (!firstName && !lastName && !typedOrg) ({ firstName, lastName } = splitName(c.name))
+    const fullName = str(c.name) || `${lastName}, ${firstName}`
+    if (/^group,?$/i.test(fullName)) continue // placeholder creator in the old Tetiaroa records
+    if (typedOrg || (!isCreator && !c.givenName && !c.familyName && str(c.nameType) !== 'Personal') || ORG_AS_PERSON.test(fullName)) {
+      if (!typedOrg) warnings.push(`"${fullName}" (${from}) is an organisation or title typed as a person; not made a creator`)
+      else if (isCreator) warnings.push(`organisation creator "${fullName}" left out`)
+      else orgContributors.push(c)
       continue
     }
+    const fix = NAME_FIXES[`${lc(firstName)}|${lc(lastName)}`]
+    if (fix) {
+      warnings.push(`name fixed: "${fullName}" -> "${fix.lastName}, ${fix.firstName}"`)
+      ;({ firstName, lastName } = fix)
+    }
+    if (looksLikeEmail(firstName, lastName)) {
+      warnings.push(`NAME LOOKS LIKE AN EMAIL: "${fullName}" (${from}) left out; add this person by hand`)
+      continue
+    }
+    if (!firstName || !lastName) {
+      warnings.push(`${from} "${fullName}" left out (no first + last name); Publish needs both names`)
+      continue
+    }
+    const tidyFirst = tidyCase(firstName)
+    const tidyLast = tidyCase(lastName)
+    if (tidyFirst !== firstName || tidyLast !== lastName) warnings.push(`name case fixed: "${lastName}, ${firstName}" -> "${tidyLast}, ${tidyFirst}"`)
+    let orcid = orcidOf(c) || (fix && fix.orcid) || ''
+    if (!orcid && defaults.orcidOverrides && defaults.orcidOverrides.has(nameKey(tidyFirst, tidyLast))) {
+      orcid = defaults.orcidOverrides.get(nameKey(tidyFirst, tidyLast))
+      warnings.push(`ORCID ${orcid} added for ${tidyFirst} ${tidyLast} (ORCID lookup, use=yes)`)
+    }
+    if (!orcid && defaults.orcidIndex) {
+      const hit = defaults.orcidIndex.get(nameKey(tidyFirst, tidyLast))
+      if (hit && hit.orcids.size === 1) {
+        ;[orcid] = [...hit.orcids]
+        warnings.push(`ORCID ${orcid} added for ${tidyFirst} ${tidyLast} (same name on ${[...hit.dois].slice(0, 2).join(', ')})`)
+      } else if (hit && hit.orcids.size > 1) warnings.push(`${tidyFirst} ${tidyLast}: several ORCIDs elsewhere (${[...hit.orcids].join(', ')}), none added`)
+    }
+    if (!isCreator) fromContributors += 1
     $authors.push({
       id: uuid(),
-      firstName,
+      firstName: tidyFirst,
       middleName: '',
-      lastName,
+      lastName: tidyLast,
       email: '',
-      orcid: orcidOf(c),
+      orcid,
       ror: (c.affiliation || []).map(toAffiliation).filter(Boolean),
     })
   }
+  // Same person twice (e.g. f3mw27, or creator and ProjectLeader): keep the
+  // first, but take an ORCID or affiliation a later copy has.
+  const byName = new Map()
+  for (const x of $authors) {
+    const k = nameKey(x.firstName, x.lastName)
+    const first = byName.get(k)
+    if (!first) byName.set(k, x)
+    else {
+      if (!first.orcid && x.orcid) first.orcid = x.orcid
+      if (!first.ror.length && x.ror.length) first.ror = x.ror
+    }
+  }
+  const authorCount = $authors.length
+  $authors.splice(0, $authors.length, ...byName.values())
+  if ($authors.length < authorCount) warnings.push(`${authorCount - $authors.length} repeated person/people dropped`)
+  if (fromContributors) warnings.push(`${fromContributors} person/people moved from contributors to creators`)
   if (!$authors.length) warnings.push('NO AUTHORS: Publish will refuse this record until one is added')
 
-  // contributors -> ContributorsInput rows
-  const contributors = (a.contributors || [])
-    .map(c => {
-      const contributorType = str(c.contributorType) || 'Other'
-      if (str(c.nameType) === 'Organizational' || (!c.givenName && !c.familyName && c.nameType !== 'Personal')) {
+  // Organisational contributors. A station with a set contributor (Bailey)
+  // gets only that one; otherwise the DataCite ones are kept.
+  let contributors
+  if (station && station.contributor) {
+    const sc = station.contributor
+    contributors = [{ id: uuid(), contributorType: sc.type, nameType: 'Organizational', organization: { label: sc.name, value: sc.ror } }]
+    const replaced = [...new Set(orgContributors.map(c => `${str(c.name)} (${str(c.contributorType)})`))]
+    if (replaced.length) warnings.push(`contributors replaced by ${sc.name}: ${replaced.join('; ')}`)
+  } else {
+    contributors = dedupe(
+      orgContributors.map(c => {
         const affil = (c.affiliation || []).map(toAffiliation).filter(Boolean)[0]
         const value = rorOfOrg(c) || (affil && affil.label === str(c.name) ? affil.value : '') || str(c.name)
-        return { id: uuid(), contributorType, nameType: 'Organizational', organization: { label: str(c.name), value } }
-      }
-      let givenName = str(c.givenName)
-      let familyName = str(c.familyName)
-      if (!givenName && !familyName) ({ firstName: givenName, lastName: familyName } = splitName(c.name))
-      return {
-        id: uuid(),
-        contributorType,
-        nameType: 'Personal',
-        givenName,
-        familyName,
-        orcid: orcidOf(c),
-        affiliation: (c.affiliation || []).map(toAffiliation).filter(Boolean),
-      }
-    })
-    .filter(r => (r.organization ? r.organization.label : r.givenName || r.familyName))
+        return { id: uuid(), contributorType: str(c.contributorType) || 'Other', nameType: 'Organizational', organization: { label: str(c.name), value } }
+      }),
+      r => `${r.contributorType}|${lc(r.organization.label)}`,
+    )
+  }
 
   // descriptions -> $abstract (all of them, in order)
   const descs = (a.descriptions || []).filter(d => str(d.description))
@@ -222,8 +345,10 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     warnings.push(`place "${places.join('; ')}" replaced by "${defaults.place}"`)
 
   // related identifiers
-  const relatedIdentifiers = (a.relatedIdentifiers || [])
-    .filter(r => str(r.relatedIdentifier) && r.relatedIdentifierType && r.relationType)
+  const relatedIdentifiers = dedupe(
+    (a.relatedIdentifiers || []).filter(r => str(r.relatedIdentifier) && r.relatedIdentifierType && r.relationType),
+    r => `${lc(r.relatedIdentifier)}|${r.relationType}`,
+  )
     .map(r => ({
       id: uuid(),
       relatedIdentifier: str(r.relatedIdentifier),
@@ -304,6 +429,9 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
   const publisherName = typeof a.publisher === 'object' && a.publisher ? str(a.publisher.name) : str(a.publisher)
   const publisherRor = typeof a.publisher === 'object' && a.publisher ? rorUrl(a.publisher.publisherIdentifier) : ''
 
+  if (station && station.publisher && publisherName !== station.publisher.label)
+    warnings.push(`publisher "${publisherName}" -> "${station.publisher.label}"`)
+
   const submission = {
     $title: str(main.title),
     $abstract,
@@ -313,8 +441,11 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     ...(a.types && str(a.types.resourceType) && a.types.resourceType !== a.types.resourceTypeGeneral
       ? { ifother: str(a.types.resourceType) }
       : {}),
-    // --station-publisher: leave publisher empty so the station's own name is sent
-    ...(defaults.stationPublisher ? {} : { publisher: { label: publisherName, value: publisherRor || publisherName } }),
+    // Bailey: "Bailey Station" (STATIONS). --station-publisher: leave it empty
+    // so the station's configured name is sent. Otherwise keep DataCite's.
+    ...(station && station.publisher
+      ? { publisher: station.publisher }
+      : defaults.stationPublisher ? {} : { publisher: { label: publisherName, value: publisherRor || publisherName } }),
     publicationYear: str(a.publicationYear),
     datePublished,
     ...(coverage ? { coverageDate: str(coverage.date) } : {}),
@@ -324,7 +455,7 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     ...(subjects.length ? { keywords: subjects.join(', ') } : {}),
     ...(contributors.length ? { contributors } : {}),
     ...(relatedIdentifiers.length ? { relatedIdentifiers } : {}),
-    ...(fundingReferences.length ? { fundingReferences } : {}),
+    ...(fundingReferences.length ? { fundingReferences: dedupe(fundingReferences, f => lc(f.funder.label)) } : {}),
     ...(extraTitles.length ? { titles: extraTitles } : {}),
     ...(altIds.length ? { alternateIdentifiers: altIds } : {}),
     ...(spdx.length || defaults.license ? { license: spdx.length ? spdx : [defaults.license] } : {}),
@@ -382,6 +513,131 @@ const CREATE = `mutation ($groupId: ID!) { createSubmission(groupId: $groupId) {
 const UPDATE = `mutation ($id: ID!, $input: String) { updateManuscript(id: $id, input: $input) { id } }`
 const SHORT_ID = `query ($id: ID!) { manuscript(id: $id) { id shortId } }`
 
+// name -> ORCIDs seen on any DOI under these prefixes in the repository
+const buildOrcidIndex = async o => {
+  const index = new Map()
+  for (const prefix of ORCID_PREFIXES) {
+    let url = `https://api.datacite.org/dois?client-id=${encodeURIComponent(o.client)}&prefix=${prefix}&page[size]=500&page[number]=1&fields[dois]=doi,creators,contributors`
+    while (url) {
+      const page = await getJson(url)
+      for (const d of page.data) {
+        for (const c of [...(d.attributes.creators || []), ...(d.attributes.contributors || [])]) {
+          const orcid = orcidOf(c)
+          if (!orcid || str(c.nameType) === 'Organizational') continue
+          let first = str(c.givenName)
+          let last = str(c.familyName)
+          if (!first && !last) ({ firstName: first, lastName: last } = splitName(c.name))
+          const k = nameKey(first, last)
+          if (!k) continue
+          const e = index.get(k) || { orcids: new Set(), dois: new Set() }
+          e.orcids.add(orcid)
+          e.dois.add(str(d.attributes.doi).toLowerCase())
+          index.set(k, e)
+        }
+      }
+      url = page.links && page.links.next
+    }
+  }
+  return index
+}
+
+// Minimal CSV reader (quoted fields, "" escapes) for the orcid-lookup output
+const parseCsv = text => {
+  const rows = []
+  let row = []
+  let cur = ''
+  let q = false
+  for (let k = 0; k < text.length; k += 1) {
+    const ch = text[k]
+    if (q) {
+      if (ch === '"' && text[k + 1] === '"') { cur += '"'; k += 1 } else if (ch === '"') q = false
+      else cur += ch
+    } else if (ch === '"') q = true
+    else if (ch === ',') { row.push(cur); cur = '' } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[k + 1] === '\n') k += 1
+      row.push(cur); rows.push(row); row = []; cur = ''
+    } else cur += ch
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row) }
+  return rows.filter(r => r.some(Boolean))
+}
+const readOrcidCsv = file => {
+  const [head, ...rows] = parseCsv(fs.readFileSync(file, 'utf8'))
+  const col = n => head.indexOf(n)
+  const out = new Map()
+  for (const r of rows) {
+    if (!/^y(es)?$/i.test(str(r[col('use')]))) continue
+    const orcid = bareOrcid(r[col('orcid')])
+    if (/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcid)) out.set(nameKey(str(r[col('first')]), str(r[col('last')])), orcid)
+  }
+  return out
+}
+
+// Summary of everything odd across the imported records (analysis.txt)
+const writeAnalysis = (outDir, mapped) => {
+  const kinds = [
+    ['Names that look like an email (left out, add by hand)', /^NAME LOOKS LIKE AN EMAIL/],
+    ['Records with no person as creator', /^NO AUTHORS/],
+    ['Organisations or titles typed as people (not creators)', /typed as a person/],
+    ['Organisation creators left out', /^organisation creator/],
+    ['People left out (no first + last name)', /left out \(no first/],
+    ['ORCIDs added from another DOI with the same name', /^ORCID .* added/],
+    ['Same name, several ORCIDs (none added)', /several ORCIDs/],
+    ['Names fixed by hand rule', /^name fixed/],
+    ['Name capitals fixed', /^name case fixed/],
+    ['People moved from contributors to creators', /moved from contributors/],
+    ['Repeated people dropped', /repeated person/],
+    ['Contributors replaced by the station', /^contributors replaced/],
+    ['Publisher changed', /^publisher /],
+    ['Funders split', /^funder .* split/],
+    ['Licence kept from DataCite', /^kept the licence/],
+    ['Place replaced', /^place /],
+    ['Other', /./],
+  ]
+  const buckets = new Map(kinds.map(([t]) => [t, []]))
+  for (const { doi, warnings } of mapped)
+    for (const w of warnings) buckets.get(kinds.find(([, re]) => re.test(w))[0]).push(`${doi}  ${w}`)
+
+  // People without an ORCID, and possible same person with different first names
+  const people = new Map()
+  for (const { doi, submission } of mapped)
+    for (const x of submission.$authors) {
+      const k = nameKey(x.firstName, x.lastName)
+      const e = people.get(k) || { name: `${x.firstName} ${x.lastName}`, orcid: x.orcid, dois: [] }
+      if (!e.orcid && x.orcid) e.orcid = x.orcid
+      e.dois.push(doi)
+      people.set(k, e)
+    }
+  const noOrcid = [...people.values()].filter(e => !e.orcid).sort((p1, p2) => p2.dois.length - p1.dois.length)
+  const bySurname = new Map()
+  for (const e of people.values()) {
+    const [first, last] = e.name.split(/ (?=[^ ]+$)/)
+    const k = `${nameKey('', last)}|${nameKey(first, '')[0]}`
+    bySurname.set(k, [...(bySurname.get(k) || []), e])
+  }
+  const variants = [...bySurname.values()].filter(v => v.length > 1)
+  const titles = new Map()
+  for (const { doi, submission } of mapped) titles.set(lc(submission.$title), [...(titles.get(lc(submission.$title)) || []), doi])
+  const dupTitles = [...titles.entries()].filter(([, v]) => v.length > 1)
+
+  const out = [`${mapped.length} records, ${people.size} different people, ${noOrcid.length} of them without an ORCID\n`]
+  const summary = []
+  for (const [t, lines] of buckets) {
+    if (!lines.length) continue
+    summary.push(`${String(lines.length).padStart(4)}  ${t}`)
+    out.push(`== ${t} (${lines.length})`, ...lines, '')
+  }
+  out.push(`== Possibly the same person, different first names (${variants.length})`,
+    ...variants.map(v => v.map(e => `${e.name}${e.orcid ? ` [${e.orcid}]` : ''} (${e.dois.length})`).join('  /  ')), '')
+  out.push(`== Duplicate titles (${dupTitles.length})`, ...dupTitles.map(([t, v]) => `"${t}"  ${v.join(', ')}`), '')
+  out.push(`== People without an ORCID (${noOrcid.length}), most records first`, ...noOrcid.map(e => `${e.name}  (${e.dois.length}: ${e.dois.slice(0, 3).join(', ')}${e.dois.length > 3 ? ', ...' : ''})`), '')
+  summary.push(`${String(variants.length).padStart(4)}  Possibly the same person, different first names`)
+  summary.push(`${String(dupTitles.length).padStart(4)}  Duplicate titles`)
+  summary.push(`${String(noOrcid.length).padStart(4)}  People without an ORCID (of ${people.size})`)
+  fs.writeFileSync(path.join(outDir, 'analysis.txt'), `${out.join('\n')}\n`)
+  return summary
+}
+
 /* ---------------- main ---------------- */
 const main = async () => {
   const o = parseArgs(process.argv.slice(2))
@@ -417,6 +673,14 @@ const main = async () => {
   console.log(`${all.length} DOIs under ${o.prefix}; ${wanted.length} to import into ${o.group}` +
     (Object.keys(otherPublishers).length ? ` (left out, other publishers: ${Object.entries(otherPublishers).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''))
 
+  o.orcidIndex = await buildOrcidIndex(o)
+  if (o.orcidsFile) {
+    o.orcidOverrides = readOrcidCsv(o.orcidsFile)
+    console.log(`${o.orcidOverrides.size} ORCIDs marked use = yes in ${o.orcidsFile}`)
+  }
+  console.log(`ORCID lookup: ${o.orcidIndex.size} named people with an ORCID under ${ORCID_PREFIXES.join(' and ')}`)
+  const mapped = []
+
   const rows = [['doi', 'title', 'year', 'type', 'authors', 'current_url', 'state', 'result', 'warnings']]
   let created = 0
   let skipped = 0
@@ -424,10 +688,20 @@ const main = async () => {
     const at = d.attributes
     const doi = str(at.doi).toLowerCase()
     const { submission, warnings } = mapRecord(at, o.group, o)
+    mapped.push({ doi, submission, warnings })
     fs.writeFileSync(path.join(outDir, 'records', `${doi.replace(/[^a-z0-9.]+/g, '_')}.json`), JSON.stringify({ datacite: at, submission, warnings }, null, 2))
 
     let result = 'dry run'
-    if (state[doi]) {
+    if (state[doi] && o.write && o.refresh) {
+      const cur = (await gql(o, token, `query ($id: ID!) { manuscript(id: $id) { id status } }`, { id: state[doi].id })).manuscript
+      if (!cur) result = `short id ${state[doi].shortId} not found, not refreshed`
+      else if (cur.status === 'published') result = `short id ${state[doi].shortId} is published, not refreshed`
+      else {
+        await gql(o, token, UPDATE, { id: state[doi].id, input: JSON.stringify({ submission }) })
+        result = `refreshed short id ${state[doi].shortId}`
+      }
+      skipped += 1
+    } else if (state[doi]) {
       result = `already imported (short id ${state[doi].shortId})`
       skipped += 1
     } else if (o.write) {
@@ -446,6 +720,8 @@ const main = async () => {
   const csv = rows.map(r => r.map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(',')).join('\n')
   fs.writeFileSync(path.join(outDir, 'report.csv'), `${csv}\n`)
   const shortIds = Object.values(state).map(s => s.shortId).sort((x, y) => x - y)
+  console.log(`\nWhat the import changes or flags (details in ${path.join(outDir, 'analysis.txt')}):`)
+  for (const line of writeAnalysis(outDir, mapped)) console.log(line)
   console.log(`\nreport: ${path.join(outDir, 'report.csv')}  (mapped records in ${path.join(outDir, 'records')})`)
   if (o.write) {
     console.log(`created ${created}, already there ${skipped}. Imported short ids in ${o.group}: ${shortIds.join(' ')}`)
@@ -466,4 +742,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { mapRecord, splitName, parseArgs }
+module.exports = { mapRecord, splitName, parseArgs, writeAnalysis, tidyCase, listDois, buildOrcidIndex, nameKey, parseCsv, readOrcidCsv, str }
