@@ -171,6 +171,9 @@ const looksLikeEmail = (...parts) => parts.some(x => /@|\.(fr|com|org|net|edu|pf
 const NAME_FIXES = {
   'gachecamille|hotmail.fr': { firstName: 'Camille', lastName: 'Gache' }, // 10.17913/f3/100501.32207
   'guillaume.molle|upf.pf': { firstName: 'Guillaume', lastName: 'Molle' }, // 10.17913/f3/100501.30664
+  // Tetiaroa Society's own site spells it Marijn Van der Helm (Erin 2026-11-12)
+  'martijn|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 36094
+  'martin|van der helm': { firstName: 'Marijn', lastName: 'Van der Helm' }, // 33746
 }
 // Organisations or titles that the old system typed as people
 // ("Te Mana O Te Moana" is a title, Erin 2026-11-12)
