@@ -434,6 +434,17 @@
   display: block; height: auto; width: auto;
   max-height: 72px; max-width: 280px; object-fit: contain;
 }
+/* Journal title next to the logo, in the Alliance heading style */
+.iplaces-masthead { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.iplaces-masthead-title {
+  font-weight: 900; font-size: 30px; line-height: 1.05; letter-spacing: -0.035em;
+  color: #22251c; text-decoration: none; white-space: nowrap;
+}
+.iplaces-masthead-title em { font-style: italic; font-weight: 800; color: {{ cmsLayout.primaryColor or '#0470c0' }}; }
+.iplaces-masthead-title:hover { background: none; }
+@media screen and (max-width: 1100px) {
+  .iplaces-masthead-title { font-size: 22px; white-space: normal; }
+}
 /* Mobile: same white bar as desktop (logo files are made for a light
    background), logo inset from the edge and sized to the bar, dark menu icon. */
 @media screen and (max-width: 768px) {
@@ -450,6 +461,8 @@
     max-width: 200px !important;
     width: auto !important;
   }
+  .iplaces-masthead { gap: 10px; }
+  .iplaces-masthead-title { font-size: 17px; letter-spacing: -0.02em; }
   .menu-icon .menu,
   .menu-icon .menu::before,
   .menu-icon .menu::after,
@@ -472,7 +485,11 @@
 </div>
 {% endif %}
 <div id="sticky-menu" role="banner">
+<div class="iplaces-masthead">
 {% include "_partials/logo.njk" %}
+{% set mastTitle = station.title or cmsLayout.publishConfig.title or cmsConfig.group.name %}
+<a class="iplaces-masthead-title" href="/{% if cmsLayout.hexCode %}{{cmsLayout.hexCode}}/{% endif %}">{% if mastTitle.indexOf("iPlaces ") == 0 %}iPlaces <em>{{ mastTitle.slice(8) }}</em>{% else %}{{ mastTitle }}{% endif %}</a>
+</div>
   <input type="checkbox" id="menu-btn" aria-label="Menu" aria-controls="menu" /><label
     for="menu-btn"
     class="menu-icon"
