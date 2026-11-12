@@ -31,6 +31,8 @@
  *   --publisher NAME    keep only DOIs with this publisher (default "Tetiaroa Society")
  *   --skip DOI,DOI      leave these out (default 10.17913/f3/9999.9999, a placeholder)
  *   --only DOI ...      import only these DOIs (space or comma separated)
+ *   --topics, --place, --data-policy, --license   station defaults (see DEFAULTS)
+ *   --station-publisher  send the station as publisher instead of DataCite's
  *   --server URL        Kotahi server (default https://iplaces-test-server.fly.dev)
  *
  * Safe to re-run: DOIs already imported (import-out/imported-<group>.json)
@@ -46,7 +48,9 @@ const DEFAULTS = {
   prefix: '10.17913',
   client: 'sjyq.omytlw',
   publisher: 'Tetiaroa Society',
-  skip: ['10.17913/f3/9999.9999'],
+  // 9999.9999 is a placeholder. The three Moorea projects belong at Gump, not
+  // Bailey (Erin 2026-11-12); import them with --group gumpstation --only ...
+  skip: ['10.17913/f3/9999.9999', '10.17913/f30592', '10.17913/f33w2k', '10.17913/f3/100501.40152'],
   server: 'https://iplaces-test-server.fly.dev',
   // Station defaults for every imported record (Erin 2026-11-12, Tetiaroa):
   topics: ['Research'],
@@ -70,6 +74,7 @@ const parseArgs = argv => {
     else if (a === '--place') o.place = next()
     else if (a === '--data-policy') o.dataPolicy = next()
     else if (a === '--license') o.license = next()
+    else if (a === '--station-publisher') o.stationPublisher = true
     else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     else if (a === '--only') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
@@ -308,7 +313,8 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     ...(a.types && str(a.types.resourceType) && a.types.resourceType !== a.types.resourceTypeGeneral
       ? { ifother: str(a.types.resourceType) }
       : {}),
-    publisher: { label: publisherName, value: publisherRor || publisherName },
+    // --station-publisher: leave publisher empty so the station's own name is sent
+    ...(defaults.stationPublisher ? {} : { publisher: { label: publisherName, value: publisherRor || publisherName } }),
     publicationYear: str(a.publicationYear),
     datePublished,
     ...(coverage ? { coverageDate: str(coverage.date) } : {}),
