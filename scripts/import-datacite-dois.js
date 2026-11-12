@@ -40,6 +40,8 @@
  *   --only DOI ...      import only these DOIs (space or comma separated)
  *   --topics, --place, --data-policy, --license   station defaults (see DEFAULTS)
  *   --station-publisher  send the station as publisher instead of DataCite's
+ *   --orcids FILE       ORCIDs to add: the CSV from scripts/orcid-lookup.js;
+ *                       only rows with use = yes are used
  *   --refresh           with --write: re-send the mapping to drafts this script
  *                       already created (fixes them after a script change);
  *                       published records are left alone
@@ -102,6 +104,7 @@ const parseArgs = argv => {
     else if (a === '--license') o.license = next()
     else if (a === '--station-publisher') o.stationPublisher = true
     else if (a === '--refresh') o.refresh = true
+    else if (a === '--orcids') o.orcidsFile = next()
     else if (a === '--skip') o.skip = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     else if (a === '--only') {
       while (argv[i + 1] && !argv[i + 1].startsWith('--')) o.only.push(...next().split(','))
@@ -260,6 +263,10 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     const tidyLast = tidyCase(lastName)
     if (tidyFirst !== firstName || tidyLast !== lastName) warnings.push(`name case fixed: "${lastName}, ${firstName}" -> "${tidyLast}, ${tidyFirst}"`)
     let orcid = orcidOf(c) || (fix && fix.orcid) || ''
+    if (!orcid && defaults.orcidOverrides && defaults.orcidOverrides.has(nameKey(tidyFirst, tidyLast))) {
+      orcid = defaults.orcidOverrides.get(nameKey(tidyFirst, tidyLast))
+      warnings.push(`ORCID ${orcid} added for ${tidyFirst} ${tidyLast} (ORCID lookup, use=yes)`)
+    }
     if (!orcid && defaults.orcidIndex) {
       const hit = defaults.orcidIndex.get(nameKey(tidyFirst, tidyLast))
       if (hit && hit.orcids.size === 1) {
@@ -534,6 +541,38 @@ const buildOrcidIndex = async o => {
   return index
 }
 
+// Minimal CSV reader (quoted fields, "" escapes) for the orcid-lookup output
+const parseCsv = text => {
+  const rows = []
+  let row = []
+  let cur = ''
+  let q = false
+  for (let k = 0; k < text.length; k += 1) {
+    const ch = text[k]
+    if (q) {
+      if (ch === '"' && text[k + 1] === '"') { cur += '"'; k += 1 } else if (ch === '"') q = false
+      else cur += ch
+    } else if (ch === '"') q = true
+    else if (ch === ',') { row.push(cur); cur = '' } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[k + 1] === '\n') k += 1
+      row.push(cur); rows.push(row); row = []; cur = ''
+    } else cur += ch
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row) }
+  return rows.filter(r => r.some(Boolean))
+}
+const readOrcidCsv = file => {
+  const [head, ...rows] = parseCsv(fs.readFileSync(file, 'utf8'))
+  const col = n => head.indexOf(n)
+  const out = new Map()
+  for (const r of rows) {
+    if (!/^y(es)?$/i.test(str(r[col('use')]))) continue
+    const orcid = bareOrcid(r[col('orcid')])
+    if (/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcid)) out.set(nameKey(str(r[col('first')]), str(r[col('last')])), orcid)
+  }
+  return out
+}
+
 // Summary of everything odd across the imported records (analysis.txt)
 const writeAnalysis = (outDir, mapped) => {
   const kinds = [
@@ -635,6 +674,10 @@ const main = async () => {
     (Object.keys(otherPublishers).length ? ` (left out, other publishers: ${Object.entries(otherPublishers).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''))
 
   o.orcidIndex = await buildOrcidIndex(o)
+  if (o.orcidsFile) {
+    o.orcidOverrides = readOrcidCsv(o.orcidsFile)
+    console.log(`${o.orcidOverrides.size} ORCIDs marked use = yes in ${o.orcidsFile}`)
+  }
   console.log(`ORCID lookup: ${o.orcidIndex.size} named people with an ORCID under ${ORCID_PREFIXES.join(' and ')}`)
   const mapped = []
 
@@ -699,4 +742,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { mapRecord, splitName, parseArgs, writeAnalysis, tidyCase }
+module.exports = { mapRecord, splitName, parseArgs, writeAnalysis, tidyCase, listDois, buildOrcidIndex, nameKey, parseCsv, readOrcidCsv, str }
