@@ -11,8 +11,8 @@
  *      submission.$doi so that Publish later UPDATES that DOI in place
  *      (new landing URL + metadata from iPlaces) instead of minting a new one.
  *      On baileystation every person (creators and Personal contributors) is
- *      a creator, the only contributor is Bailey Station (Tetiaroa Society
- *      ROR) and the publisher is "Bailey Station" (STATIONS below). Missing
+ *      a creator, and Tetiaroa Society (ROR 04p8xrf95) is the publisher and
+ *      the only contributor (STATIONS below). Missing
  *      ORCIDs are filled from another iPlaces DOI with exactly the same name
  *      (Gump's 10.60950 records included); ALL-CAPS / lower-case names are
  *      tidied. Every run writes analysis.txt listing what was changed or
@@ -73,14 +73,15 @@ const DEFAULTS = {
 }
 
 // Per-station publisher and contributor (Erin 2026-11-12): on Bailey every
-// imported record gets publisher "Bailey Station" and ONE organisational
-// contributor, Tetiaroa Society with its ROR; every person is a creator. Other organisational contributors (Tetiaroa Society Ecostation,
+// imported record gets publisher Tetiaroa Society (ROR) and ONE
+// organisational contributor, Tetiaroa Society (ROR); every person is a creator. Other organisational contributors (Tetiaroa Society Ecostation,
 // UC Berkeley, ...) are replaced and listed in analysis.txt.
 const STATIONS = {
   // A ROR id goes only with the name ROR has for it (04p8xrf95 = Tetiaroa
-  // Society); Bailey Station has no ROR of its own (Erin 2026-11-12).
+  // Society); Bailey Station has no ROR of its own. Erin 2026-11-12: Tetiaroa
+  // Society (with ROR) as both publisher and contributor.
   baileystation: {
-    publisher: { label: 'Bailey Station', value: 'Bailey Station' },
+    publisher: { label: 'Tetiaroa Society', value: 'https://ror.org/04p8xrf95' },
     contributor: { name: 'Tetiaroa Society', ror: 'https://ror.org/04p8xrf95', type: 'Sponsor' },
   },
 }
