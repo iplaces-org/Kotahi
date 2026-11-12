@@ -55,6 +55,54 @@ const doiIsAvailable = async (checkDOI, activeConfig) => {
   }
 }
 
+/* iplaces Patch 40: keep a record's own DOI (keepOwnDoi).
+ * Kotahi used to build the DOI as <station prefix>/<suffix of $doi>, so a
+ * record that already had a DOI under another prefix got a SECOND DOI (the
+ * Gump migration minted 10.60950/100501.9190 next to 10.17913/100501.9190).
+ * Now, on real DOIs, if the record's $doi already exists at DataCite AND
+ * belongs to the station's repository (its client id is the login), Publish
+ * and Reserve DOI use that DOI as it is, prefix included, and update it in
+ * place. Anything else (no $doi, test mode, a DOI of another repository, a
+ * DOI that does not exist yet) keeps the old behaviour. */
+const resolveRecordDoi = async (manuscript, activeConfig) => {
+  const { $doi } = manuscript.submission || {}
+
+  const [, ownPrefix, ownSuffix] =
+    String($doi || '')
+      .trim()
+      .match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/)?(10\.\d{4,9})\/(.+)$/i) || []
+
+  const suffix = ownSuffix || manuscript.id
+  const stationDoi = getDoi(suffix, activeConfig)
+  const active = getActiveDatacite(activeConfig.formData.publishing.datacite)
+  const fallback = { doi: stationDoi, suffix, keptOwnDoi: false }
+
+  if (!ownPrefix || active.useSandbox || !active.login) return fallback
+  const ownDoi = `${ownPrefix}/${ownSuffix}`
+  if (ownDoi.toLowerCase() === stationDoi.toLowerCase()) return fallback
+
+  try {
+    const res = await requestToDatacite(
+      'get',
+      `dois/${ownDoi}`,
+      null,
+      activeConfig,
+    )
+
+    const client = res?.data?.data?.relationships?.client?.data?.id
+    const login = String(active.login).toLowerCase()
+
+    if (client && client.toLowerCase() === login) {
+      logger.info(`SERVICES: keepOwnDoi: using the record's own DOI ${ownDoi}`)
+      return { doi: ownDoi, suffix: ownSuffix, keptOwnDoi: true }
+    }
+  } catch (err) {
+    // not found, or not readable with this login: old behaviour
+  }
+
+  return fallback
+}
+
 const verifySubmission = (formData, submission) => {
   const {
     publishing: { datacite },
@@ -80,7 +128,7 @@ const verifySubmission = (formData, submission) => {
 }
 
 const getPathAndPayload = async (manuscript, activeConfig) => {
-  const { id, shortId, meta, submission } = manuscript
+  const { shortId, meta, submission } = manuscript
 
   const {
     $localContext,
@@ -89,7 +137,6 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
     $authors,
     $dois,
     relatedIdentifiers: formRelatedIdentifiers,
-    $doi,
     $issueYear: issueYear,
     resourcetype: resourceTypeGeneral = 'Other',
     ifother: resourceType = '',
@@ -99,19 +146,8 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
   const { formData } = activeConfig
   const { datacite } = formData.publishing
   const { publishedArticleLocationPrefix } = datacite
-  const { doiPrefix: prefix } = getActiveDatacite(datacite)
-
-  let suffix = id
-
-  if ($doi) {
-    const [, extractedSuffix] = $doi.match(/10\.\d{4,9}\/(.+)$/i) || []
-
-    if (extractedSuffix) {
-      suffix = extractedSuffix
-    }
-  }
-
-  const doi = getDoi(suffix, activeConfig)
+  const { doi, suffix } = await resolveRecordDoi(manuscript, activeConfig)
+  const [prefix] = doi.split('/')
   const publishDate = new Date()
 
   const doiAvailable = await doiIsAvailable(doi, activeConfig)
@@ -418,10 +454,7 @@ const reserveDoi = async manuscript => {
   const active = getActiveDatacite(activeConfig.formData.publishing.datacite)
   if (!active.login) throw new Error('DataCite is not set up for this station.')
 
-  const { $doi } = manuscript.submission || {}
-  const [, existingSuffix] = ($doi || '').match(/10\.\d{4,9}\/(.+)$/i) || []
-  const suffix = existingSuffix || manuscript.id
-  const doi = getDoi(suffix, activeConfig)
+  const { doi, suffix } = await resolveRecordDoi(manuscript, activeConfig)
 
   let alreadyThere = false
 
@@ -456,4 +489,5 @@ module.exports = {
   verifySubmission,
   getPathAndPayload,
   checkPayload,
+  resolveRecordDoi,
 }
