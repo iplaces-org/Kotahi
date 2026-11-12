@@ -2,7 +2,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 
 <section id="datacite-connections" class="dc-connections" data-doi="{{ article.parsedSubmission.$doi }}" data-title="{{ article.headerInfo.title | striptags }}">
-  <p class="dc-connections-intro">Related works registered with DataCite for this DOI. Click a bubble to open it on DataCite Commons.</p>
+  <p class="dc-connections-intro">Related works registered with DataCite for this DOI. Click a bubble to open it.</p>
   <p class="dc-connections-loading">Loading connections…</p>
   <div class="dc-connections-empty" style="display:none;">No connections registered for this DOI yet.</div>
   <div class="dc-graph-wrap"><svg class="dc-graph" viewBox="0 0 700 440" preserveAspectRatio="xMidYMid meet" aria-label="Connections graph"></svg></div>
@@ -69,41 +69,135 @@
   var empty = section.querySelector('.dc-connections-empty');
   var graphWrap = section.querySelector('.dc-graph-wrap');
 
-  fetch('https://api.datacite.org/graphql', {
+  // Two sources, merged: the DataCite GraphQL graph (inbound + outbound links
+  // between DataCite works) and the record's own relatedIdentifiers from the
+  // REST API. The graph only knows DataCite DOIs and the six relations above,
+  // and fills in some time after publishing, so related identifiers pointing at
+  // Crossref DOIs (journal articles), URLs, Handles etc. come from REST.
+  var REST = 'https://api.datacite.org/dois/';
+  var REL_LABELS = {
+    ispartof: 'Part of', haspart: 'Has part', references: 'References', isreferencedby: 'Referenced by',
+    cites: 'Cites', iscitedby: 'Cited by', isversionof: 'Version of', hasversion: 'Has version',
+    issupplementto: 'Supplement to', issupplementedby: 'Supplemented by', isderivedfrom: 'Derived from',
+    issourceof: 'Source of', isdocumentedby: 'Documented by', documents: 'Documents',
+    isdescribedby: 'Described by', describes: 'Describes', isnewversionof: 'New version of',
+    ispreviousversionof: 'Previous version of', iscontinuedby: 'Continued by', continues: 'Continues',
+    isidenticalto: 'Identical to', isvariantformof: 'Variant form of', isoriginalformof: 'Original form of',
+    iscompiledby: 'Compiled by', compiles: 'Compiles', isreviewedby: 'Reviewed by', reviews: 'Reviews',
+    requires: 'Requires', isrequiredby: 'Required by', obsoletes: 'Obsoletes', isobsoletedby: 'Obsoleted by',
+    ispublishedin: 'Published in', iscollectedby: 'Collected by', collects: 'Collects',
+    hastranslation: 'Has translation', istranslationof: 'Translation of', ismetadatafor: 'Metadata for',
+    hasmetadata: 'Has metadata', isrelatedto: 'Related to'
+  };
+  function relLabel(t) { return REL_LABELS[(t || '').toLowerCase()] || t || 'Related to'; }
+
+  function getJSON(u, opts) {
+    return fetch(u, opts).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  // Title of a DOI: DataCite first, then Crossref (journal articles)
+  function lookupDoi(d) {
+    return getJSON(REST + encodeURIComponent(d)).then(function (j) {
+      var a = j && j.data && j.data.attributes;
+      if (a) return { title: (a.titles && a.titles[0] && a.titles[0].title) || d, type: (a.types && a.types.resourceTypeGeneral) || 'Other', datacite: true };
+      return getJSON('https://api.crossref.org/works/' + encodeURIComponent(d)).then(function (c) {
+        var m = c && c.message;
+        if (!m) return { title: d, type: 'Other', datacite: false };
+        var t = (m.title && m.title[0]) || d;
+        var type = m.type === 'journal-article' ? 'JournalArticle' : (m.type === 'dataset' ? 'Dataset' : 'Text');
+        return { title: t, type: type, datacite: false };
+      });
+    });
+  }
+  function hrefFor(idType, raw, d, datacite) {
+    if (idType === 'doi') return datacite ? 'https://commons.datacite.org/doi.org/' + d : 'https://doi.org/' + d;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (idType === 'handle') return 'https://hdl.handle.net/' + raw;
+    if (idType === 'ark') return 'https://n2t.net/' + raw;
+    if (idType === 'pmid') return 'https://pubmed.ncbi.nlm.nih.gov/' + raw;
+    if (idType === 'arxiv') return 'https://arxiv.org/abs/' + raw.replace(/^arxiv:/i, '');
+    return '';
+  }
+
+  var graphQL = fetch('https://api.datacite.org/graphql', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: query, variables: { id: doi } })
-  })
-  .then(function (r) { return r.json(); })
-  .then(function (json) {
-    var work = json && json.data && json.data.work;
-    if (loading) loading.parentNode.removeChild(loading);
-    if (!work) { showEmpty(); return; }
+  }).then(function (r) { return r.json(); }).catch(function () { return null; });
+  var rest = getJSON(REST + encodeURIComponent(doi));
 
-    var body = section.querySelector('.dc-connections-body');
-    var allWorks = [], seen = {}, anything = false;
+  Promise.all([graphQL, rest]).then(function (res) {
+    var work = res[0] && res[0].data && res[0].data.work;
+    var attrs = (res[1] && res[1].data && res[1].data.attributes) || {};
+    var groups = {}, order = [], seen = {}, jobs = [];
+    function add(label, item) {
+      var key = label + '|' + item.key;
+      if (seen[key]) return;
+      seen[key] = true;
+      if (!groups[label]) { groups[label] = []; order.push(label); }
+      groups[label].push(item);
+    }
 
     REL.forEach(function (g) {
-      var grp = work[g.key];
-      if (!grp || !grp.nodes || grp.nodes.length === 0) return;
-      anything = true;
-      var html = '<div class="dc-group"><p class="dc-group-head">' + g.label + '<span class="dc-count">' + (grp.totalCount || grp.nodes.length) + '</span></p><ul>';
+      var grp = work && work[g.key];
+      if (!grp || !grp.nodes) return;
       grp.nodes.forEach(function (n) {
         var d = bareDoi(n.id);
-        var title = (n.titles && n.titles[0] && n.titles[0].title) ? n.titles[0].title : d;
-        var type = (n.types && n.types.resourceTypeGeneral) ? n.types.resourceTypeGeneral : 'Other';
-        var c = colorFor(type);
-        html += '<li><a class="dc-rel-title" href="https://commons.datacite.org/doi.org/' + d + '" target="_blank" rel="noopener"><span class="dc-type-badge" style="background:' + c + '22;color:' + c + '">' + esc(type) + '</span>' + esc(title) + '</a><span class="dc-rel-meta">' + esc(g.label) + ' · ' + esc(d) + '</span></li>';
-        if (!seen[d]) { seen[d] = true; allWorks.push({ doi: d, title: title, type: type, rel: g.label }); }
+        add(g.label, {
+          key: d.toLowerCase(), id: d, isDoi: true,
+          title: (n.titles && n.titles[0] && n.titles[0].title) ? n.titles[0].title : d,
+          type: (n.types && n.types.resourceTypeGeneral) ? n.types.resourceTypeGeneral : 'Other',
+          href: 'https://commons.datacite.org/doi.org/' + d
+        });
       });
-      html += '</ul></div>';
-      body.insertAdjacentHTML('beforeend', html);
     });
 
-    if (!anything) { showEmpty(); return; }
-    if (window.d3 && allWorks.length) drawGraph(allWorks);
-  })
-  .catch(function () {
-    if (loading) loading.parentNode.removeChild(loading);
+    (attrs.relatedIdentifiers || []).forEach(function (ri) {
+      var raw = (ri.relatedIdentifier || '').trim();
+      if (!raw) return;
+      var idType = (ri.relatedIdentifierType || '').toLowerCase();
+      var isDoi = idType === 'doi';
+      var d = isDoi ? bareDoi(raw) : raw;
+      var label = relLabel(ri.relationType);
+      if (seen[label + '|' + d.toLowerCase()]) return;
+      var item = {
+        key: d.toLowerCase(), id: d, isDoi: isDoi, title: d,
+        type: ri.resourceTypeGeneral || 'Other', idType: ri.relatedIdentifierType || '',
+        href: hrefFor(idType, raw, d, false)
+      };
+      add(label, item);
+      if (isDoi) {
+        jobs.push(lookupDoi(d).then(function (info) {
+          item.title = info.title;
+          if (!ri.resourceTypeGeneral) item.type = info.type;
+          item.href = hrefFor('doi', raw, d, info.datacite);
+        }));
+      }
+    });
+
+    return Promise.all(jobs).then(function () {
+      if (loading) loading.parentNode.removeChild(loading);
+      if (!order.length) { showEmpty(); return; }
+      var body = section.querySelector('.dc-connections-body');
+      var allWorks = [], drawn = {};
+      order.forEach(function (label) {
+        var items = groups[label];
+        var html = '<div class="dc-group"><p class="dc-group-head">' + esc(label) + '<span class="dc-count">' + items.length + '</span></p><ul>';
+        items.forEach(function (it) {
+          var c = colorFor(it.type);
+          var badge = '<span class="dc-type-badge" style="background:' + c + '22;color:' + c + '">' + esc(it.type) + '</span>';
+          var titleHtml = it.href
+            ? '<a class="dc-rel-title" href="' + esc(it.href) + '" target="_blank" rel="noopener">' + badge + esc(it.title) + '</a>'
+            : '<span class="dc-rel-title">' + badge + esc(it.title) + '</span>';
+          var idText = it.isDoi ? it.id : (it.idType ? it.idType + ' ' : '') + it.id;
+          html += '<li>' + titleHtml + '<span class="dc-rel-meta">' + esc(label) + ' · ' + esc(idText) + '</span></li>';
+          if (!drawn[it.key]) { drawn[it.key] = true; allWorks.push({ doi: it.key, title: it.title, type: it.type, href: it.href }); }
+        });
+        html += '</ul></div>';
+        body.insertAdjacentHTML('beforeend', html);
+      });
+      if (window.d3 && allWorks.length) drawGraph(allWorks);
+    });
+  }).catch(function () {
+    if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
     showEmpty();
   });
 
@@ -124,14 +218,14 @@
     var nodes = [{ id: '__center__', label: truncate(centerTitle, 28), type: 'center', r: 30 }];
     var links = [];
     works.forEach(function (w) {
-      nodes.push({ id: w.doi, label: truncate(w.title, 22), type: w.type, doi: w.doi, r: 22 });
+      nodes.push({ id: w.doi, label: truncate(w.title, 22), type: w.type, href: w.href, r: 22 });
       links.push({ source: '__center__', target: w.doi });
     });
 
     var link = svg.append('g').selectAll('line').data(links).enter().append('line');
     var node = svg.append('g').selectAll('g').data(nodes).enter().append('g')
       .attr('class', function (d) { return 'dc-node' + (d.type === 'center' ? ' dc-center' : ''); })
-      .on('click', function (e, d) { if (d.doi) window.open('https://commons.datacite.org/doi.org/' + d.doi, '_blank', 'noopener'); });
+      .on('click', function (e, d) { if (d.href) window.open(d.href, '_blank', 'noopener'); });
 
     node.append('title').text(function (d) { return d.type === 'center' ? centerTitle : (d.type + ' — ' + d.label); });
     node.append('circle').attr('r', function (d) { return d.r; })
