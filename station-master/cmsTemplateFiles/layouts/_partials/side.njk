@@ -323,10 +323,23 @@ aside.side-section .button:hover {
             .catch(function (e) { console.error("DataCite fetch failed:", u, e); return null; });
         }
 
+        // Title of a DOI, or null when the DOI is not findable: DataCite's public
+        // API answers only for findable DOIs, so a 404 there and at Crossref means
+        // draft, registered or unknown. Other failures keep the DOI (can't tell).
+        function status(u) {
+          return fetch(u).then(function (r) {
+            return r.ok ? r.json().then(function (j) { return { s: r.status, j: j }; }) : { s: r.status, j: null };
+          }).catch(function () { return { s: 0, j: null }; });
+        }
         function resolveTitle(id) {
-          return getJSON(API + "/dois/" + encodeURIComponent(id)).then(function (j) {
-            var a = (j && j.data && j.data.attributes) || {};
-            return (a.titles && a.titles[0] && a.titles[0].title) || id;
+          return status(API + "/dois/" + encodeURIComponent(id)).then(function (dc) {
+            var a = dc.j && dc.j.data && dc.j.data.attributes;
+            if (a) return a.state && a.state !== "findable" ? null : ((a.titles && a.titles[0] && a.titles[0].title) || id);
+            return status("https://api.crossref.org/works/" + encodeURIComponent(id)).then(function (cr) {
+              var m = cr.j && cr.j.message;
+              if (m) return (m.title && m.title[0]) || id;
+              return dc.s === 404 && cr.s === 404 ? null : id;
+            });
           });
         }
 
@@ -393,13 +406,11 @@ aside.side-section .button:hover {
 
           if (!rows.length) { el.innerHTML = "<li>No related works yet.</li>"; return; }
 
-          var shown = rows.slice(0, 5);
-
-          var jobs = shown.map(function (row) {
+          var jobs = rows.map(function (row) {
             if (row.ready) return Promise.resolve({ title: row.title, href: row.href });
             if (row.isDoi) {
               return resolveTitle(row.id).then(function (t) {
-                return { title: t, href: row.href };
+                return t === null ? null : { title: t, href: row.href };
               });
             }
             return Promise.resolve({
@@ -409,7 +420,9 @@ aside.side-section .button:hover {
           });
 
           Promise.all(jobs).then(function (out) {
+            out = out.filter(function (row) { return row; }).slice(0, 5);
             el.innerHTML = "";
+            if (!out.length) { el.innerHTML = "<li>No related works yet.</li>"; return; }
             out.forEach(function (row) {
               var li = document.createElement("li");
               li.className = "related-works__item";

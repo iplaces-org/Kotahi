@@ -120,17 +120,27 @@
   function getJSON(u, opts) {
     return fetch(u, opts).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
   }
-  // Title and type of a DOI: DataCite first, then Crossref (journal articles)
+  // { status, json }: status 0 when the request itself failed (offline, CORS, timeout)
+  function getStatus(u) {
+    return fetch(u).then(function (r) {
+      return r.ok ? r.json().then(function (j) { return { status: r.status, json: j }; }) : { status: r.status, json: null };
+    }).catch(function () { return { status: 0, json: null }; });
+  }
+  // Title and type of a DOI: DataCite first, then Crossref (journal articles).
+  // DataCite's public API only answers for FINDABLE DOIs (draft and registered
+  // ones are 404), so a DOI that neither DataCite nor Crossref knows is marked
+  // missing and left off the tab. If a lookup fails for any other reason we
+  // can't tell, so the DOI stays.
   var lookups = {};
   function lookupDoi(d) {
     var k = d.toLowerCase();
     if (lookups[k]) return lookups[k];
-    lookups[k] = getJSON(API + '/dois/' + encodeURIComponent(d)).then(function (j) {
-      var a = j && j.data && j.data.attributes;
-      if (a) return { title: (a.titles && a.titles[0] && a.titles[0].title) || d, type: (a.types && a.types.resourceTypeGeneral) || 'Other', datacite: true };
-      return getJSON('https://api.crossref.org/works/' + encodeURIComponent(d)).then(function (c) {
-        var m = c && c.message;
-        if (!m) return { title: d, type: 'Other', datacite: false };
+    lookups[k] = getStatus(API + '/dois/' + encodeURIComponent(d)).then(function (dc) {
+      var a = dc.json && dc.json.data && dc.json.data.attributes;
+      if (a) return { title: (a.titles && a.titles[0] && a.titles[0].title) || d, type: (a.types && a.types.resourceTypeGeneral) || 'Other', datacite: true, missing: !!(a.state && a.state !== 'findable') };
+      return getStatus('https://api.crossref.org/works/' + encodeURIComponent(d)).then(function (cr) {
+        var m = cr.json && cr.json.message;
+        if (!m) return { title: d, type: 'Other', datacite: false, missing: dc.status === 404 && cr.status === 404 };
         var type = m.type === 'journal-article' ? 'JournalArticle' : (m.type === 'dataset' ? 'Dataset' : 'Text');
         return { title: (m.title && m.title[0]) || d, type: type, datacite: false };
       });
@@ -160,6 +170,8 @@
     var id = isDoi ? bareDoi(raw) : raw;
     var key = id.toLowerCase();
     if (!key || key === self) return;
+    // files attached to a record (e.g. Zenodo's .svg badge) are not related works
+    if (/\.(svg|png|jpe?g|gif|webp)$/i.test(key)) return;
     var rk = relKey(relType);
     var label = relLabel(rk);
     if (seen[label + '|' + key]) {
@@ -172,7 +184,7 @@
       key: key, id: id, isDoi: isDoi, idType: isDoi ? 'DOI' : idType,
       title: (extra && extra.title) || id, type: (extra && extra.type) || 'Other',
       href: (extra && extra.href) || hrefFor(isDoi ? 'doi' : idType.toLowerCase(), raw, id, false),
-      needsLookup: isDoi && !(extra && extra.title)
+      needsLookup: isDoi
     };
     seen[label + '|' + key] = it;
     if (!groups[label]) { groups[label] = []; order.push(label); }
@@ -262,15 +274,24 @@
   }
 
   Promise.all(jobs).then(function () {
-    // titles for DOIs we only know by number
+    // check every DOI is findable, and fill in titles for DOIs we only know by number
     return Promise.all(items.filter(function (it) { return it.needsLookup; }).map(function (it) {
       return lookupDoi(it.id).then(function (info) {
+        if (info.missing) { it.missing = true; return; }
         if (it.title === it.id) it.title = info.title;
         if (it.type === 'Other') it.type = info.type;
         if (/^https:\/\/doi\.org\//.test(it.href)) it.href = hrefFor('doi', it.id, it.id, info.datacite);
       });
     }));
-  }).then(render).catch(function () { render(); });
+  }).then(dropMissing).then(render).catch(function () { render(); });
+
+  // DOIs that are not findable (draft, registered, or unknown) are left off
+  function dropMissing() {
+    order = order.filter(function (label) {
+      groups[label] = groups[label].filter(function (it) { return !it.missing; });
+      return groups[label].length;
+    });
+  }
 
   function render() {
     if (loading && loading.parentNode) loading.parentNode.removeChild(loading);
