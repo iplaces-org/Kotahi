@@ -215,11 +215,17 @@
         var other = a.doi || d.id;
         var title = (a.titles && a.titles[0] && a.titles[0].title) || other;
         var type = (a.types && a.types.resourceTypeGeneral) || 'Other';
+        var info = { title: title, type: type, href: 'https://commons.datacite.org/doi.org/' + other };
+        var matched = false;
         (a.relatedIdentifiers || []).forEach(function (ri) {
-          if (bareDoi(ri.relatedIdentifier).toLowerCase() !== self) return;
-          var inv = INVERSE[relKey(ri.relationType)] || 'isrelatedto';
-          add(inv, other, 'DOI', { title: title, type: type, href: 'https://commons.datacite.org/doi.org/' + other });
+          var rid = String(ri.relatedIdentifier || '').toLowerCase();
+          if (bareDoi(rid) !== self && rid.indexOf(self) === -1) return;
+          matched = true;
+          add(INVERSE[relKey(ri.relationType)] || 'isrelatedto', other, 'DOI', info);
         });
+        // The Related works box lists every record this search returns, so the
+        // tab does too, even when we can't tell which of its links matched.
+        if (!matched) add('isrelatedto', other, 'DOI', info);
       });
     }));
 
