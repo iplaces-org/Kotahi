@@ -20,12 +20,15 @@
     "!content/pages/collections.njk",
     "assets/ihs-*"
   ],
-  "overrides": {},
+  "overrides": {
+    "gumpstation": ["content/pages/collections.njk"]
+  },
   "stationJson": {
     "*": {
       "hideConferencePapers": false
     },
     "gumpstation": {
+      "collectionsLink": true,
       "hideConferencePapers": true,
       "title": "iPlaces Gump Station",
       "seriesTitle": "iPlaces Gump Station"
