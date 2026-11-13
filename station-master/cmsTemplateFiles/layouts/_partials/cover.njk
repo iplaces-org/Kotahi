@@ -24,7 +24,7 @@
     <p class="iplaces-cover-links">
       <a href="/archive/">All issues</a>
       <a href="/browse/">Browse by author &amp; institution</a>
-      <a href="/collections/">Collections</a>
+      {% if cmsCollections and cmsCollections.length %}<a href="/collections/">Collections</a>{% endif %}
     </p>
   </div>
 </section>

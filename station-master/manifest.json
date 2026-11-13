@@ -17,6 +17,8 @@
     "!content/pages/archive.njk",
     "!content/pages/page.njk",
     "!content/pages/issue_template.njk",
+    "!content/pages/collections.njk",
+    "!content/pages/collection_template.njk",
     "assets/ihs-*"
   ],
   "overrides": {},
