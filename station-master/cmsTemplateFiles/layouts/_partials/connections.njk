@@ -160,6 +160,8 @@
     var id = isDoi ? bareDoi(raw) : raw;
     var key = id.toLowerCase();
     if (!key || key === self) return;
+    // files attached to a record (e.g. Zenodo's .svg badge) are not related works
+    if (/\.(svg|png|jpe?g|gif|webp)$/i.test(key)) return;
     var rk = relKey(relType);
     var label = relLabel(rk);
     if (seen[label + '|' + key]) {
