@@ -18,7 +18,6 @@
     "!content/pages/page.njk",
     "!content/pages/issue_template.njk",
     "!content/pages/collections.njk",
-    "!content/pages/collection_template.njk",
     "assets/ihs-*"
   ],
   "overrides": {},
@@ -71,6 +70,12 @@
         { "key": "culture", "label": "Culture" },
         { "key": "education", "label": "Education" },
         { "key": "stewardship", "label": "Stewardship" }
+      ],
+      "collections": [
+        { "slug": "sea-turtles", "title": "Sea turtles", "description": "Green sea turtle (honu) nesting monitoring on Tetiʻaroa, season by season.", "shortIds": [11, 16, 21, 22, 24, 36, 90] },
+        { "slug": "mosquito-research", "title": "Mosquito research", "description": "Studies of Aedes mosquitoes on Tetiʻaroa, including the AeLIMIN+ and AegyptEND projects to control and eliminate disease vectors.", "shortIds": [12, 32, 34, 39, 69] },
+        { "slug": "rat-eradication", "title": "Rat eradication", "description": "Planning, carrying out, and measuring the effects of removing invasive rats from the motu of Tetiʻaroa.", "shortIds": [5, 14, 23, 29, 49, 50, 70, 73, 74, 81, 89] },
+        { "slug": "seeley-family-funding", "title": "Seeley family funding", "description": "Projects supported by the Seeley family and the Seeley Foundation.", "shortIds": [1, 15, 52, 57, 59, 78] }
       ],
       "contactEmail": "baileystation@iplacesalliance.org"
     },
