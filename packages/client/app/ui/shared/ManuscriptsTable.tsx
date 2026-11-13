@@ -100,6 +100,21 @@ const renderFallbackValue = (value: any): ReactNode => {
 
   return null
 }
+
+/**
+ * iplaces: the table sizes its columns to their content (scroll x
+ * 'max-content', needed for the pinned actions column). Without a cap, a
+ * long comma-separated list (Author accounts, Author names) stays on one
+ * line and stretches its column far past the page. Capping the cell
+ * content's width makes such text wrap instead, so the table fits the page.
+ */
+const CELL_MAX_WIDTH = '18rem'
+
+const CappedCell = styled.div`
+  max-width: ${CELL_MAX_WIDTH};
+  overflow-wrap: anywhere;
+  white-space: normal;
+`
 // #endregion helpers
 
 // #region options
@@ -1191,6 +1206,26 @@ const resolveColumn = (
 
   if (!resolved.render) {
     resolved = { ...resolved, render: renderFallbackValue }
+  }
+
+  // iplaces: wrap long text instead of widening the column (see CappedCell).
+  // Pinned columns (actions) keep their natural width.
+  if (!column.fixed) {
+    const innerRender = resolved.render as NonNullable<
+      TableColumnType<Record<string, any>>['render']
+    >
+
+    resolved = {
+      ...resolved,
+      render: (value: any, record: Record<string, any>, index: number) => {
+        const content = innerRender(value, record, index)
+        return content == null || content === '' ? (
+          content
+        ) : (
+          <CappedCell>{content as ReactNode}</CappedCell>
+        )
+      },
+    }
   }
 
   if (column.filterable && column.options) {
