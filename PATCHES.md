@@ -704,3 +704,40 @@ DataCite: unchanged behaviour (station prefix + suffix). The server log says
 Before deploying, check that no live record still holds an old-prefix `$doi`
 that it was republished away from (that record would then update the old DOI
 and leave its 10.60950 DOI as it is). SQL in the PR description.
+
+## Patch 41 — Republish keeps DataCite metadata the form can't hold (2026-11-14)
+
+Before: Publish PUTs every attribute it builds, and sends empty lists when the
+form has nothing (`geoLocations: []`, `alternateIdentifiers: []`, ...), so
+DataCite replaced them. Each republish wiped what older DOIs carried and the
+form has no place for, and `types.resourceType` was only sent when "if other"
+was filled in. Found from an outside FAIR analysis of the iPlaces repository
+(sjyq.omytlw) and the DataCite change history of the records.
+
+Now (`keepExistingMetadata` in `fieldsTransformers.js`, called from
+`getPathAndPayload` in `index.js` on an update): before the PUT, the record is
+read from DataCite and these parts are kept when the form doesn't send them:
+alternate identifiers (e.g. the RAMS application id, type
+`reserveID.applicationID`), the free-text resource type, geoLocation points,
+boxes and polygons (and place names when the form has none), subjects with a
+scheme, URI or classification code, dates of types the form never sends
+(Created, Collected, Available, ...), Methods/TechnicalInfo/SeriesInformation/
+TableOfContents descriptions, and related items. Everything the form does hold
+(titles, creators, contributors, publisher, licence, Local Contexts, funders,
+related identifiers, abstract) is still sent exactly as the form has it.
+
+Also: abstracts go to DataCite as plain text (`getDescriptions`): tags
+dropped, entities decoded, paragraphs kept. Kotahi sent JATS markup with
+numeric entities (`<p>Ramassage de d&#xE9;chets</p>`).
+
+Also: the journal related item (`getRelatedItems`, IsPublishedIn Journal)
+uses the station title as its main title when the station has an
+"Abbreviated name" but no journal name (the settings page has no journal
+name field), so it no longer goes out with only a Subtitle.
+
+Also: `getTypes` sends `resourceType` = the "if other" text, else the general
+type (e.g. "Project"), in both payload sites. `scripts/import-datacite-dois.js`
+now reads alternate identifiers from the REST `identifiers` key too.
+
+Trade-off: an alternate identifier or shaped location that exists only at
+DataCite can't be removed from Kotahi; remove it at DataCite (Fabrica).

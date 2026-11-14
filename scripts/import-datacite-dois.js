@@ -436,9 +436,17 @@ const mapRecord = (attrs, group, defaults = DEFAULTS) => {
     warnings.push(`kept the licence DataCite already has (${spdx.join(', ')}), not ${defaults.license}`)
 
   const subjects = (a.subjects || []).map(s => str(s.subject)).filter(Boolean)
-  const altIds = (a.alternateIdentifiers || [])
-    .filter(x => str(x.alternateIdentifier))
-    .map(x => ({ id: uuid(), alternateIdentifier: str(x.alternateIdentifier), alternateIdentifierType: str(x.alternateIdentifierType) }))
+  // The REST API returns alternate identifiers as `identifiers`
+  // ({identifier, identifierType}); read both shapes (the RAMS application
+  // id, type reserveID.applicationID, was lost on Bailey because only
+  // alternateIdentifiers was read).
+  const altIds = [
+    ...(a.alternateIdentifiers || []).map(x => [x.alternateIdentifier, x.alternateIdentifierType]),
+    ...(a.identifiers || []).map(x => [x.identifier, x.identifierType]),
+  ]
+    .filter(([id, type]) => str(id) && str(type) && str(type).toLowerCase() !== 'doi')
+    .filter(([id, type], i, all) => all.findIndex(([j, t]) => lc(j) === lc(id) && lc(t) === lc(type)) === i)
+    .map(([id, type]) => ({ id: uuid(), alternateIdentifier: str(id), alternateIdentifierType: str(type) }))
 
   const publisherName = typeof a.publisher === 'object' && a.publisher ? str(a.publisher.name) : str(a.publisher)
   const publisherRor = typeof a.publisher === 'object' && a.publisher ? rorUrl(a.publisher.publisherIdentifier) : ''

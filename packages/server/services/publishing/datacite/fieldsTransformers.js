@@ -1,5 +1,4 @@
 const cheerio = require('cheerio')
-const htmlToJats = require('../../jatsexport/htmlToJats')
 const { objIf, safeParse } = require('../../../utils/objectUtils')
 
 const { CITATION_SELECTOR, CITATION_DATA_STRUCTURE } = require('./constants')
@@ -197,15 +196,27 @@ const getFundingReferences = submission => {
     : []
 }
 
+/* iplaces Patch 41: DataCite descriptions are plain text. Kotahi sent the
+   abstract as JATS markup with numeric entities ("<p>Ramassage de
+   d&#xE9;chets</p>"), so every abstract reached DataCite with tags and
+   escaped accents. Now: tags dropped, entities decoded, paragraphs and line
+   breaks kept as line breaks. */
+const htmlToPlainText = html => {
+  const marked = String(html)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, '$&\n\n')
+  const $ = cheerio.load(`<body>${marked}</body>`)
+  return $('body')
+    .text()
+    .replace(/[ \t\u00a0]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 const getDescriptions = $abstract => {
-  return $abstract
-    ? [
-        {
-          descriptionType: 'Abstract',
-          description: htmlToJats($abstract),
-        },
-      ]
-    : []
+  const description = $abstract ? htmlToPlainText($abstract) : ''
+  return description ? [{ descriptionType: 'Abstract', description }] : []
 }
 
 const getRelatedIdentifiers = (meta, $dois) => {
@@ -503,8 +514,19 @@ const getDates = (issueYear, publishDate) => {
 // eslint-disable-next-line no-unused-vars
 const getRelatedItems = (submission, formData) => {
   const {
-    groupIdentity: { journalName, journalAbbreviatedName },
+    groupIdentity: {
+      journalName: configJournalName,
+      journalAbbreviatedName,
+      title: stationTitle,
+    },
   } = formData
+
+  /* iplaces Patch 41: the settings page only has "Abbreviated name", so the
+     journal item went out with a Subtitle and no main title. When a station
+     has an abbreviated name but no journal name, its title (the journal's
+     name, e.g. "iPlaces Gump Station") is the main title. */
+  const journalName =
+    configJournalName || (journalAbbreviatedName ? stationTitle : '')
 
   const relatedItems = []
 
@@ -526,7 +548,10 @@ const getRelatedItems = (submission, formData) => {
       })
     }
 
-    if (journalAbbreviatedName) {
+    if (
+      journalAbbreviatedName &&
+      String(journalAbbreviatedName).trim() !== String(journalName || '').trim()
+    ) {
       titles.push({
         title: journalAbbreviatedName,
         titleType: 'Subtitle',
@@ -744,7 +769,112 @@ const refreshLocalContext = async (stored, groupId) => {
   }
 }
 
+/* -------- Patch 41: keep what DataCite already holds that the form cannot --------
+   Publish PUTs the whole record, and DataCite replaces every attribute that
+   is sent. The form has no place for several things older DOIs carry
+   (geoLocation points and boxes, subject schemes and URIs, dates such as
+   Created or Collected, Methods and other description types, related items,
+   alternate identifiers such as the RAMS application id), so each republish
+   wiped them. keepExistingMetadata merges those parts of the record as it is
+   at DataCite now into the payload. What the form does hold (titles,
+   creators, contributors, licence, Local Contexts, funders, related
+   identifiers, abstract) is still sent exactly as the form has it, so editors
+   keep control of those. */
+const KOTAHI_DATE_TYPES = ['submitted', 'accepted', 'issued', 'coverage', 'updated']
+const KEPT_DESCRIPTION_TYPES = ['methods', 'seriesinformation', 'tableofcontents', 'technicalinfo']
+const lower = v => (v == null ? '' : String(v).trim().toLowerCase())
+
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+const keepExistingMetadata = (attributes, existing) => {
+  if (!existing || typeof existing !== 'object') return attributes
+  const out = { ...attributes }
+
+  // resource type: keep the free-text type DataCite has when the form gives
+  // none and the general type is unchanged
+  const types = { ...(out.types || {}) }
+  const oldTypes = existing.types || {}
+  if (
+    !types.resourceType &&
+    oldTypes.resourceType &&
+    lower(oldTypes.resourceTypeGeneral) === lower(types.resourceTypeGeneral)
+  )
+    types.resourceType = oldTypes.resourceType
+  out.types = types
+
+  // alternate identifiers (the REST API returns them as `identifiers`)
+  const alt = [...(out.alternateIdentifiers || [])]
+  const altKey = (id, type) => `${lower(id)}|${lower(type)}`
+  const haveAlt = new Set(alt.map(a => altKey(a.alternateIdentifier, a.alternateIdentifierType)))
+  ;[
+    ...(existing.alternateIdentifiers || []).map(a => [a.alternateIdentifier, a.alternateIdentifierType]),
+    ...(existing.identifiers || []).map(a => [a.identifier, a.identifierType]),
+  ].forEach(([id, type]) => {
+    if (!id || !type || lower(type) === 'doi') return
+    const k = altKey(id, type)
+    if (haveAlt.has(k)) return
+    haveAlt.add(k)
+    alt.push({ alternateIdentifier: String(id), alternateIdentifierType: String(type) })
+  })
+  out.alternateIdentifiers = alt
+
+  // geoLocations: points, boxes and polygons always; place names only when
+  // the form has no place of its own
+  const geo = [...(out.geoLocations || [])]
+  const formHasPlace = geo.some(g => g.geoLocationPlace)
+  ;(existing.geoLocations || []).forEach(g => {
+    if (!g || typeof g !== 'object') return
+    const shaped = g.geoLocationPoint || g.geoLocationBox || g.geoLocationPolygon
+    if (!shaped && formHasPlace) return
+    if (!shaped && !g.geoLocationPlace) return
+    if (geo.some(x => sameJson(x, g))) return
+    const samePlace = geo.findIndex(x => !x.geoLocationPoint && !x.geoLocationBox && !x.geoLocationPolygon && lower(x.geoLocationPlace) === lower(g.geoLocationPlace))
+    if (shaped && samePlace >= 0) geo[samePlace] = g
+    else geo.push(g)
+  })
+  out.geoLocations = geo
+
+  // subjects with a scheme, URI or classification code
+  const subjects = [...(out.subjects || [])]
+  ;(existing.subjects || []).forEach(s => {
+    if (!s || !s.subject) return
+    if (!(s.subjectScheme || s.schemeUri || s.valueUri || s.classificationCode)) return
+    const i = subjects.findIndex(x => lower(x.subject) === lower(s.subject))
+    if (i >= 0) {
+      if (!(subjects[i].subjectScheme || subjects[i].valueUri)) subjects[i] = s
+    } else subjects.push(s)
+  })
+  out.subjects = subjects
+
+  // dates of types the form never sends (Created, Collected, Available, ...)
+  const dates = [...(out.dates || [])]
+  ;(existing.dates || []).forEach(d => {
+    if (!d || !d.date || !d.dateType) return
+    if (KOTAHI_DATE_TYPES.includes(lower(d.dateType))) return
+    if (dates.some(x => lower(x.dateType) === lower(d.dateType) && lower(x.date) === lower(d.date))) return
+    dates.push(d)
+  })
+  out.dates = dates
+
+  // description types the form never sends
+  const descriptions = [...(out.descriptions || [])]
+  ;(existing.descriptions || []).forEach(d => {
+    if (!d || !d.description) return
+    if (!KEPT_DESCRIPTION_TYPES.includes(lower(d.descriptionType))) return
+    if (descriptions.some(x => lower(x.descriptionType) === lower(d.descriptionType) && lower(x.description) === lower(d.description))) return
+    descriptions.push(d)
+  })
+  out.descriptions = descriptions
+
+  // related items: keep DataCite's when the form produces none
+  if (!(out.relatedItems || []).length && (existing.relatedItems || []).length)
+    out.relatedItems = existing.relatedItems
+
+  return out
+}
+
 module.exports = {
+  keepExistingMetadata,
   getDates,
   getContributor,
   getMthCreator,
