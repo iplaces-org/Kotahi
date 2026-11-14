@@ -730,6 +730,11 @@ Also: abstracts go to DataCite as plain text (`getDescriptions`): tags
 dropped, entities decoded, paragraphs kept. Kotahi sent JATS markup with
 numeric entities (`<p>Ramassage de d&#xE9;chets</p>`).
 
+Also: the journal related item (`getRelatedItems`, IsPublishedIn Journal)
+uses the station title as its main title when the station has an
+"Abbreviated name" but no journal name (the settings page has no journal
+name field), so it no longer goes out with only a Subtitle.
+
 Also: `getTypes` sends `resourceType` = the "if other" text, else the general
 type (e.g. "Project"), in both payload sites. `scripts/import-datacite-dois.js`
 now reads alternate identifiers from the REST `identifiers` key too.

@@ -514,8 +514,19 @@ const getDates = (issueYear, publishDate) => {
 // eslint-disable-next-line no-unused-vars
 const getRelatedItems = (submission, formData) => {
   const {
-    groupIdentity: { journalName, journalAbbreviatedName },
+    groupIdentity: {
+      journalName: configJournalName,
+      journalAbbreviatedName,
+      title: stationTitle,
+    },
   } = formData
+
+  /* iplaces Patch 41: the settings page only has "Abbreviated name", so the
+     journal item went out with a Subtitle and no main title. When a station
+     has an abbreviated name but no journal name, its title (the journal's
+     name, e.g. "iPlaces Gump Station") is the main title. */
+  const journalName =
+    configJournalName || (journalAbbreviatedName ? stationTitle : '')
 
   const relatedItems = []
 
@@ -537,7 +548,10 @@ const getRelatedItems = (submission, formData) => {
       })
     }
 
-    if (journalAbbreviatedName) {
+    if (
+      journalAbbreviatedName &&
+      String(journalAbbreviatedName).trim() !== String(journalName || '').trim()
+    ) {
       titles.push({
         title: journalAbbreviatedName,
         titleType: 'Subtitle',
