@@ -1,5 +1,4 @@
 const cheerio = require('cheerio')
-const htmlToJats = require('../../jatsexport/htmlToJats')
 const { objIf, safeParse } = require('../../../utils/objectUtils')
 
 const { CITATION_SELECTOR, CITATION_DATA_STRUCTURE } = require('./constants')
@@ -197,15 +196,27 @@ const getFundingReferences = submission => {
     : []
 }
 
+/* iplaces Patch 41: DataCite descriptions are plain text. Kotahi sent the
+   abstract as JATS markup with numeric entities ("<p>Ramassage de
+   d&#xE9;chets</p>"), so every abstract reached DataCite with tags and
+   escaped accents. Now: tags dropped, entities decoded, paragraphs and line
+   breaks kept as line breaks. */
+const htmlToPlainText = html => {
+  const marked = String(html)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, '$&\n\n')
+  const $ = cheerio.load(`<body>${marked}</body>`)
+  return $('body')
+    .text()
+    .replace(/[ \t\u00a0]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 const getDescriptions = $abstract => {
-  return $abstract
-    ? [
-        {
-          descriptionType: 'Abstract',
-          description: htmlToJats($abstract),
-        },
-      ]
-    : []
+  const description = $abstract ? htmlToPlainText($abstract) : ''
+  return description ? [{ descriptionType: 'Abstract', description }] : []
 }
 
 const getRelatedIdentifiers = (meta, $dois) => {
