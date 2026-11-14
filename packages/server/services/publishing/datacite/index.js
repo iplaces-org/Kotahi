@@ -26,6 +26,7 @@ const {
   getSpdxRights,
   refreshLocalContext,
   getRelatedItems,
+  keepExistingMetadata,
 } = require('./fieldsTransformers')
 
 const { getActiveDatacite, getDoi, getDoiWithoutError } = require('./utils')
@@ -127,6 +128,28 @@ const verifySubmission = (formData, submission) => {
   return errors.length > 0 && errors
 }
 
+/* iplaces Patch 41: resourceType is free text. The form only fills it from
+ * "if other", so every other record went to DataCite without one. Use the
+ * "if other" text when there is one, else the general type itself (as the
+ * station records registered before Kotahi had it, e.g. "Project"). */
+const getTypes = (resourceTypeGeneral, ifOther) => {
+  const general = resourceTypeGeneral || 'Other'
+  const text = ifOther ? String(ifOther).trim() : ''
+  const resourceType = text || (general !== 'Other' ? general : '')
+  return { resourceTypeGeneral: general, ...(resourceType ? { resourceType } : {}) }
+}
+
+/* iplaces Patch 41: the record as DataCite has it now (attributes), or null
+ * when the DOI is not there yet or DataCite cannot be read. */
+const getExistingAttributes = async (doi, activeConfig) => {
+  try {
+    const res = await requestToDatacite('get', `dois/${doi}`, null, activeConfig)
+    return res?.data?.data?.attributes || null
+  } catch (err) {
+    return null
+  }
+}
+
 const getPathAndPayload = async (manuscript, activeConfig) => {
   const { shortId, meta, submission } = manuscript
 
@@ -153,6 +176,10 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
   const doiAvailable = await doiIsAvailable(doi, activeConfig)
   const path = doiAvailable ? 'dois' : `dois/${doi}`
   const method = doiAvailable ? 'post' : 'put'
+  // Patch 41: on an update, keep what DataCite has that the form can't hold
+  const existing = doiAvailable
+    ? null
+    : await getExistingAttributes(doi, activeConfig)
 
   const $freshLocalContext = await refreshLocalContext(
     $localContext,
@@ -168,7 +195,7 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       suffix,
       url: `${publishedArticleLocationPrefix}${shortId}`,
       schemaVersion: 'http://datacite.org/schema/kernel-4',
-      types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
+      types: getTypes(resourceTypeGeneral, resourceType),
       titles: getAllTitles(submission),
       alternateIdentifiers: getAlternateIdentifiers(submission),
       ...(submission.language && String(submission.language).trim()
@@ -200,6 +227,8 @@ const getPathAndPayload = async (manuscript, activeConfig) => {
       relatedItems: getRelatedItems(submission, formData),
     },
   }
+
+  payload.attributes = keepExistingMetadata(payload.attributes, existing)
 
   return { payload, path, method }
 }
@@ -317,7 +346,7 @@ const checkPayload = async (manuscript, activeConfig) => {
       suffix,
       url: `${publishedArticleLocationPrefix}${shortId}`,
       schemaVersion: 'http://datacite.org/schema/kernel-4',
-      types: { resourceTypeGeneral, ...(resourceType ? { resourceType } : {}) },
+      types: getTypes(resourceTypeGeneral, resourceType),
       titles: getAllTitles(submission),
       alternateIdentifiers: getAlternateIdentifiers(submission),
       ...(submission.language && String(submission.language).trim()
