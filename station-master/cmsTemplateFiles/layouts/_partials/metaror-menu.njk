@@ -513,8 +513,8 @@
     <a href="/archive/" {% if page.url == '/archive/' %}aria-current="page"{% endif %}>
       <span>Archive</span>
     </a>
-{# Collections link only when station.json lists collections (manifest stationJson). #}
-{% if station.collections and station.collections.length %}    <a href="/collections/" {% if page.url == '/collections/' %}aria-current="page"{% endif %}>
+{# Collections link when station.json lists collections, or sets collectionsLink for a station with its own collections page (Gump). #}
+{% if (station.collections and station.collections.length) or station.collectionsLink %}    <a href="/collections/" {% if page.url == '/collections/' %}aria-current="page"{% endif %}>
       <span>Collections</span>
     </a>
 {% endif %}
