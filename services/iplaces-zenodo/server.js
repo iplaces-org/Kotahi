@@ -9,9 +9,11 @@
         -> redirect to Zenodo OAuth authorize
      /zenodo/callback?code=..&state=..
         -> exchange code for the USER's token
-        -> read article metadata from Kotahi GraphQL
-        -> POST /api/deposit/depositions (draft, prefilled)
-        -> redirect user to draft.links.html (the edit form)
+        -> read the record from Kotahi GraphQL, and its DOI metadata
+           from DataCite (mapping.js)
+        -> POST /api/records (draft, prefilled); if Zenodo refuses,
+           POST /api/deposit/depositions
+        -> redirect user to the draft's edit form
 
    The client secret + user token live only here, never on the page.
    Node 18+ (global fetch). Express.
@@ -19,6 +21,7 @@
 
 const express = require("express");
 const crypto  = require("crypto");
+const { toRdm, toLegacy, submissionToDatacite, bareDoi } = require("./mapping");
 
 /* ---------------- CONFIG (all via env / fly secrets) ---------------- */
 const PORT             = process.env.PORT || 8080;
@@ -28,6 +31,8 @@ const CLIENT_SECRET    = process.env.ZENODO_CLIENT_SECRET;
 const SERVICE_BASE_URL = process.env.SERVICE_BASE_URL;     // e.g. https://iplaces-zenodo.fly.dev (no trailing slash)
 const KOTAHI_SERVER    = process.env.KOTAHI_SERVER;        // e.g. https://iplaces-test-server.fly.dev (server origin)
 const STATE_SECRET     = process.env.STATE_SECRET;         // any long random string, for signing the OAuth state
+const DATACITE_API      = process.env.DATACITE_API || "https://api.datacite.org";           // public REST API, no login
+const DATACITE_TEST_API = process.env.DATACITE_TEST_API || "https://api.test.datacite.org"; // test DOIs
 const SCOPE            = "deposit:write";                  // add " deposit:actions" only if you later want the SERVER to publish
 // Zenodo's anti-bot filter answers unnamed clients (Node's default "node") with
 // an HTML "403 Forbidden ... unusual traffic" page (seen 2026-11-03), so every
@@ -88,82 +93,74 @@ async function getArticle(group, shortId) {
   return JSON.parse(hit.submission);   // submission is a JSON string
 }
 
-/* ---------- iPlaces (DataCite resourceTypeGeneral) -> Zenodo related_identifiers resource_type ----------
-   The related-identifier resource_type uses Zenodo's OWN combined-type vocabulary
-   ("publication-article", "image-figure", "dataset", "software", "other", ...),
-   NOT the DataCite vocabulary and NOT the deposit upload_type list. Anything with
-   no Zenodo equivalent falls back to "other".
-   NOTE: the callback already echoes Zenodo's raw rejection on a 400, so if any one
-   slug below is refused by your Zenodo instance, you'll see exactly which and can
-   drop it to its top-level type (e.g. "publication") or "other". */
-const DATACITE_TO_ZENODO_RELATED = {
-  // direct, unambiguous
-  Dataset:               "dataset",
-  Software:              "software",
-  ComputationalNotebook: "software",
-  PhysicalObject:        "physicalobject",
-  Audiovisual:           "video",
-  Sound:                 "video",          // Zenodo files audio under its video/audio type
-  Image:                 "image",          // Zenodo accepts the bare type, no subtype needed
-  Event:                 "event",
-  Model:                 "model",
-  Workflow:              "workflow",
-  JournalArticle:        "publication-article",
-  Preprint:              "publication-preprint",
-  Book:                  "publication-book",
-  BookChapter:           "publication-section",
-  Dissertation:          "publication-thesis",
-  Report:                "publication-report",
-  ConferencePaper:       "publication-conferencepaper",
-  ConferenceProceeding:  "publication-conferenceproceeding",
-  DataPaper:             "publication-datapaper",
-  Journal:               "publication-journal",
-  PeerReview:            "publication-peerreview",
-  OutputManagementPlan:  "publication-datamanagementplan",
-  Standard:              "publication-standard",
-  StudyRegistration:     "publication-preprint",   // registered study filed under preprint in Zenodo
-  Text:                  "publication",             // generic textual work, no subtype
-  // no Zenodo equivalent -> "other" (the six you confirmed missing; fallback covers them anyway)
-  Award:                 "other",
-  Collection:            "other",
-  Instrument:            "other",
-  InteractiveResource:   "other",
-  Project:               "other",          // <- the case you flagged
-  Service:               "other",
-  Other:                 "other",
-};
-
-/* ---------- map a Kotahi submission -> Zenodo deposit metadata ---------- */
-function buildZenodoMetadata(sub) {
-  const bareOrcid = s => String(s || "").replace(/^https?:\/\/orcid\.org\//i, "").trim();
-  const creators = (sub.$authors || []).map(a => {
-    const name = [a.lastName, [a.firstName, a.middleName].filter(Boolean).join(" ")]
-                   .filter(Boolean).join(", ");
-    const c = { name: name || "Unknown" };
-    if (a.orcid) c.orcid = bareOrcid(a.orcid);
-    return c;
-  });
-
-  const meta = {
-    upload_type: "dataset",                         // best guess; the user can change it in the form
-    title: sub.$title || "Untitled",
-    creators: creators.length ? creators : [{ name: "Unknown" }],
-    description: sub.$abstract || sub.$title || "Supplementary files.",
-    access_right: "open",
-    license: "cc-by-sa-4.0",                        // see note below — first thing to drop if you get a 400
-  };
-
-  if (sub.$doi) {
-    // resource_type describes the iPlaces article being supplemented, so it
-    // follows the article's own DataCite resourcetype (not a fixed "other").
-    const rt = sub.resourcetype || sub.$resourcetype;
-    meta.related_identifiers = [{
-      identifier: sub.$doi,
-      relation: "isSupplementTo",
-      resource_type: DATACITE_TO_ZENODO_RELATED[rt] || "other",
-    }];
+/* ---------- the record's DOI metadata at DataCite (public, no login) ----------
+   This is what the station registered, so the Zenodo draft carries the
+   same funders, keywords, publisher, contributors, places and licence.
+   Test DOIs ($doiIsTest, or the station in test mode) live on DataCite's
+   test server. Returns null when there is no DOI or DataCite can't be
+   read; the caller then maps the Kotahi submission instead. */
+async function getDataciteAttributes(sub) {
+  const doi = bareDoi(sub.$doi);
+  if (!doi) return null;
+  const bases = sub.$doiIsTest ? [DATACITE_TEST_API] : [DATACITE_API, DATACITE_TEST_API];
+  for (const base of bases) {
+    try {
+      const r = await uaFetch(`${base}/dois/${encodeURIComponent(doi)}?publisher=true&affiliation=true`, {
+        headers: { Accept: "application/vnd.api+json" },
+      });
+      if (r.status === 404) continue;
+      const j = await readJson(r, "DataCite");
+      if (!r.ok || !j.data || !j.data.attributes) throw new Error(`HTTP ${r.status}`);
+      return j.data.attributes;
+    } catch (e) {
+      console.error(`DataCite read failed for ${doi} at ${base}:`, e.message);
+    }
   }
-  return { metadata: meta };
+  return null;
+}
+
+/* ---------- create the draft in the USER's account ----------
+   First Zenodo's records API, which has a place for nearly every DataCite
+   field (free-text funders included). If Zenodo refuses that, the older
+   deposit API, which takes less (funders go into Additional notes).
+   Returns the URL of the draft's edit page. */
+async function createDraft(userToken, attrs, ctx) {
+  const auth = { "Content-Type": "application/json", Authorization: "Bearer " + userToken };
+
+  const rdm = toRdm(attrs, ctx);
+  try {
+    const r = await uaFetch(ZENODO_BASE + "/api/records", { method: "POST", headers: auth, body: JSON.stringify(rdm) });
+    const j = await readJson(r, "Zenodo records API");
+    if (r.ok && j.id) {
+      // A draft is saved even when some fields fail Zenodo's checks; those
+      // fields are listed here and the depositor sees them in the form.
+      if (Array.isArray(j.errors) && j.errors.length)
+        console.error("draft saved with field errors", j.id, JSON.stringify(j.errors));
+      return (j.links && j.links.self_html) || ZENODO_BASE + "/uploads/" + j.id;
+    }
+    console.error("records API refused the draft", r.status, JSON.stringify(j));
+  } catch (e) {
+    console.error("records API failed:", e.message);
+  }
+
+  const legacy = toLegacy(attrs, ctx);
+  const depRes = await uaFetch(ZENODO_BASE + "/api/deposit/depositions", {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify(legacy),
+  });
+  const dep = await readJson(depRes, "Zenodo deposit API");
+  if (!depRes.ok) {
+    console.error("draft rejected", depRes.status, JSON.stringify(dep));
+    const err = new Error("Zenodo rejected the draft");
+    err.html =
+      "<h3>Zenodo rejected the draft</h3><pre>" +
+      JSON.stringify(dep, null, 2).replace(/</g, "&lt;") +
+      "</pre><p>Sent metadata:</p><pre>" +
+      JSON.stringify(legacy, null, 2).replace(/</g, "&lt;") + "</pre>";
+    throw err;
+  }
+  return (dep.links && dep.links.html) || ZENODO_BASE + "/uploads/" + dep.id;
 }
 
 /* ---------- routes ---------- */
@@ -207,33 +204,26 @@ app.get("/zenodo/callback", async (req, res) => {
     }
     const userToken = tok.access_token;   // used once, below; never stored
 
-    // 2. metadata from Kotahi
+    // 2. metadata: the record's DOI at DataCite, else the Kotahi submission
     const submission = await getArticle(group, shortId);
-    const payload    = buildZenodoMetadata(submission);
+    const fromDatacite = await getDataciteAttributes(submission);
+    const attrs = fromDatacite || submissionToDatacite(submission);
+    const ctx = {
+      doi: submission.$doi,
+      resourceTypeGeneral: (attrs.types && attrs.types.resourceTypeGeneral) || submission.resourcetype || submission.$resourcetype,
+    };
+    console.log(`draft for ${group}/${shortId} from ${fromDatacite ? "DataCite" : "Kotahi submission"}`);
 
     // 3. create the draft in the USER's account
-    const depRes = await uaFetch(ZENODO_BASE + "/api/deposit/depositions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + userToken,
-      },
-      body: JSON.stringify(payload),
-    });
-    const dep = await readJson(depRes, "Zenodo deposit API");
-    if (!depRes.ok) {
-      console.error("draft rejected", depRes.status, JSON.stringify(dep));
-      // surface the RAW Zenodo error so you can see exactly which field bounced
-      return res.status(502).send(
-        "<h3>Zenodo rejected the draft</h3><pre>" +
-        JSON.stringify(dep, null, 2).replace(/</g, "&lt;") +
-        "</pre><p>Sent metadata:</p><pre>" +
-        JSON.stringify(payload, null, 2).replace(/</g, "&lt;") + "</pre>"
-      );
+    let editUrl;
+    try {
+      editUrl = await createDraft(userToken, attrs, ctx);
+    } catch (e) {
+      if (e.html) return res.status(502).send(e.html);
+      throw e;
     }
 
     // 4. send the user to their prefilled, editable draft
-    const editUrl = (dep.links && dep.links.html) || (ZENODO_BASE + "/uploads/" + dep.id);
     res.redirect(editUrl);
   } catch (e) {
     console.error("deposit flow error:", e.message);
